@@ -35,41 +35,61 @@ The application uses a PostgreSQL database for persistence and client-side proce
 - QRCodeConfig: url, size (optional footer QR code)
 - Template: "modern" | "classic" | "minimal"
 - Pricelist (DB table): id, name, description, branding, salesAgents, qrCode, products, fieldMapping, template, createdAt, updatedAt
+- CompanyProfile (DB table): id, name, branding, createdAt, updatedAt (reusable company branding)
+- SalesAgentProfile (DB table): id, name, agents, createdAt, updatedAt (reusable sales teams)
 ```
 
 ## User Workflow
 
-1. **CSV Upload** (`csv-upload.tsx`)
+1. **Admin Setup (Optional)** (`admin.tsx`)
+   - Access via Admin button in header
+   - Create reusable Company Profiles (company name, tagline, logo)
+   - Create reusable Sales Agent Teams (up to 2 agents per team)
+   - Edit and delete saved profiles
+   - Profiles can be loaded into any pricelist
+
+2. **CSV Upload** (`csv-upload.tsx`)
    - Drag & drop or file picker
    - Real-time validation
    - Preview of first 5 rows
 
-2. **Field Mapping** (`field-mapping-panel.tsx`)
+3. **Field Mapping** (`field-mapping-panel.tsx`)
    - Map CSV headers to required fields (Product Name, SKU, Format, Price)
    - Map optional fields (Category, Notes)
    - Live preview of mapped data
    - Validation enforcement before continuing
 
-3. **Configuration** (`configuration-panel.tsx` + `template-selector.tsx`)
+4. **Configuration** (`configuration-panel.tsx` + `template-selector.tsx`)
    - Template selection (Modern, Classic, Minimal) with visual preview
-   - Company branding (name, tagline, logo upload with preview)
-   - Sales agents (up to 2 with name, email, phone, region)
+   - Company branding:
+     - Load from saved Company Profile (if profiles exist)
+     - Or manually enter company name, tagline, logo
+   - Sales agents:
+     - Load from saved Sales Agent Team (if teams exist)
+     - Or manually add up to 2 agents with name, email, phone, region
    - QR code (optional URL with live preview)
    - Validation alerts for limits
 
-4. **Preview & Export** (`preview-panel.tsx` + `pricelist-document.tsx`)
+5. **Preview & Export** (`preview-panel.tsx` + `pricelist-document.tsx`)
    - Live preview with template-specific styling
    - Products grouped by category
    - Print-optimized layout
    - PDF export via jsPDF with template styling
    
-5. **Save/Load** (`save-pricelist-dialog.tsx` + `load-pricelist-dropdown.tsx`)
+6. **Save/Load** (`save-pricelist-dialog.tsx` + `load-pricelist-dropdown.tsx`)
    - Save pricelists to database with name and description
    - Load saved pricelists with all configuration
    - Update existing pricelists
    - Delete pricelists
 
 ## Key Features
+
+### Admin System for Reusable Profiles
+- **Company Profiles**: Save company branding (name, tagline, logo) for reuse across pricelists
+- **Sales Agent Teams**: Save agent teams (up to 2 agents) for reuse across pricelists
+- Full CRUD operations for both profile types
+- Profile selector in configuration panel for quick loading
+- Users can still manually enter data if they prefer
 
 ### Template System (3 Professional Styles)
 1. **Modern** (Default): Dark category headers (#1a1a1a), zebra striping, Inter font, tabular numbers
@@ -82,6 +102,7 @@ The application uses a PostgreSQL database for persistence and client-side proce
 - Update existing pricelists
 - Delete pricelists
 - Timestamps for created/updated tracking
+- Separate storage for reusable company and sales agent profiles
 
 ### Professional Document Design
 - **Typography**: Template-specific fonts (Inter, Georgia, Helvetica)
@@ -109,12 +130,13 @@ The application uses a PostgreSQL database for persistence and client-side proce
 ```
 client/src/
 ├── pages/
-│   └── home.tsx              # Main application page with workflow orchestration
+│   ├── home.tsx              # Main application page with workflow orchestration
+│   └── admin.tsx             # Admin page for managing company/agent profiles
 ├── components/
 │   ├── csv-upload.tsx        # CSV file upload with drag & drop
 │   ├── field-mapping-panel.tsx  # Map CSV headers to fields
 │   ├── template-selector.tsx # Template selection UI with 3 cards
-│   ├── configuration-panel.tsx  # Company info, agents, QR code
+│   ├── configuration-panel.tsx  # Company info, agents, QR code (with profile loading)
 │   ├── preview-panel.tsx     # Preview controls and export
 │   ├── pricelist-document.tsx  # Document renderer with template routing
 │   ├── save-pricelist-dialog.tsx  # Save/update pricelist dialog
@@ -129,7 +151,7 @@ shared/
 └── schema.ts                 # TypeScript types, Zod schemas, DB tables
 
 server/
-├── routes.ts                 # API routes (GET, POST, PATCH, DELETE /api/pricelists)
+├── routes.ts                 # API routes (pricelists, company-profiles, sales-agent-profiles)
 └── storage.ts                # Database storage interface
 
 db/
@@ -172,6 +194,8 @@ The workflow "Start application" is configured and runs automatically.
 3. ✅ Save/load functionality with full configuration
 4. ✅ Template-specific PDF generation
 5. ✅ Neon WebSocket configuration for server-side database access
+6. ✅ Admin system for managing reusable company profiles and sales agent teams
+7. ✅ Profile selection integration in configuration panel
 
 **Planned Future Enhancements**:
 1. Product filtering and sorting options

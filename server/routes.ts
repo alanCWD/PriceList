@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { 
   insertPricelistSchema, 
   insertCompanyProfileSchema,
+  updateCompanyProfileSchema,
   insertSalesAgentProfileSchema 
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
@@ -137,15 +138,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid profile ID" });
       }
 
-      const validation = insertCompanyProfileSchema.partial().safeParse(req.body);
+      const validation = updateCompanyProfileSchema.safeParse(req.body);
       if (!validation.success) {
         const errorMessage = fromZodError(validation.error).message;
         return res.status(400).json({ error: errorMessage });
       }
 
-      const profile = await storage.updateCompanyProfile(id, validation.data);
-      if (!profile) {
+      // Get existing profile to merge data
+      const existing = await storage.getCompanyProfileById(id);
+      if (!existing) {
         return res.status(404).json({ error: "Profile not found" });
+      }
+
+      // Merge branding data if partially updating
+      const updatedData = {
+        name: validation.data.name || existing.name,
+        branding: validation.data.branding 
+          ? { ...existing.branding, ...validation.data.branding }
+          : existing.branding,
+      };
+
+      const profile = await storage.updateCompanyProfile(id, updatedData);
+      if (!profile) {
+        return res.status(500).json({ error: "Failed to update profile" });
       }
 
       res.json(profile);
@@ -162,9 +177,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid profile ID" });
       }
 
+      // Verify profile exists before attempting deletion
+      const existing = await storage.getCompanyProfileById(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+
       const success = await storage.deleteCompanyProfile(id);
       if (!success) {
-        return res.status(404).json({ error: "Profile not found" });
+        return res.status(500).json({ error: "Failed to delete profile" });
       }
 
       res.status(204).send();
@@ -214,9 +235,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: errorMessage });
       }
 
-      const profile = await storage.updateSalesAgentProfile(id, validation.data);
-      if (!profile) {
+      // Get existing profile to verify it exists
+      const existing = await storage.getSalesAgentProfileById(id);
+      if (!existing) {
         return res.status(404).json({ error: "Profile not found" });
+      }
+
+      // For agents array, replace entirely if provided (don't merge individual agents)
+      const updatedData = {
+        name: validation.data.name || existing.name,
+        agents: validation.data.agents || existing.agents,
+      };
+
+      const profile = await storage.updateSalesAgentProfile(id, updatedData);
+      if (!profile) {
+        return res.status(500).json({ error: "Failed to update profile" });
       }
 
       res.json(profile);
@@ -233,9 +266,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid profile ID" });
       }
 
+      // Verify profile exists before attempting deletion
+      const existing = await storage.getSalesAgentProfileById(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+
       const success = await storage.deleteSalesAgentProfile(id);
       if (!success) {
-        return res.status(404).json({ error: "Profile not found" });
+        return res.status(500).json({ error: "Failed to delete profile" });
       }
 
       res.status(204).send();

@@ -135,10 +135,23 @@ export type CompanyProfile = typeof companyProfiles.$inferSelect;
 
 export const insertCompanyProfileSchema = z.object({
   name: z.string().min(1, "Profile name is required"),
-  branding: companyBrandingSchema,
+  branding: z.object({
+    companyName: z.string().min(1, "Company name is required"),
+    tagline: z.string().optional(),
+    logoUrl: z.string().optional(),
+  }),
 });
 
 export type InsertCompanyProfile = z.infer<typeof insertCompanyProfileSchema>;
+
+// Update schema for PATCH operations - allows partial branding updates
+export const updateCompanyProfileSchema = insertCompanyProfileSchema.partial().extend({
+  branding: z.object({
+    companyName: z.string().min(1).optional(),
+    tagline: z.string().optional(),
+    logoUrl: z.string().optional(),
+  }).partial().optional(),
+});
 
 // Sales Agent Profile table for reusable sales agent configurations
 export const salesAgentProfiles = pgTable("sales_agent_profiles", {
@@ -153,7 +166,12 @@ export type SalesAgentProfile = typeof salesAgentProfiles.$inferSelect;
 
 export const insertSalesAgentProfileSchema = z.object({
   name: z.string().min(1, "Profile name is required"),
-  agents: z.array(salesAgentSchema).max(2).min(1, "At least one agent is required"),
+  agents: z.array(z.object({
+    name: z.string().min(1, "Agent name is required"),
+    email: z.string().email("Valid email is required"),
+    phone: z.string().min(1, "Phone number is required"),
+    region: z.string().optional(),
+  })).min(1, "At least one agent is required").max(2, "Maximum 2 agents allowed"),
 });
 
 export type InsertSalesAgentProfile = z.infer<typeof insertSalesAgentProfileSchema>;

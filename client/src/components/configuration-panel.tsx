@@ -1,13 +1,15 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Trash2, Upload, ArrowRight, Building2, Users, QrCode, AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Trash2, Upload, ArrowRight, Building2, Users, QrCode, AlertCircle, Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import type { CompanyBranding, SalesAgent, QRCodeConfig } from "@shared/schema";
+import type { CompanyBranding, SalesAgent, QRCodeConfig, CompanyProfile, SalesAgentProfile } from "@shared/schema";
 
 interface ConfigurationPanelProps {
   branding: CompanyBranding;
@@ -29,6 +31,31 @@ export function ConfigurationPanel({
   onContinue,
 }: ConfigurationPanelProps) {
   const [logoPreview, setLogoPreview] = useState<string | undefined>(branding.logoUrl);
+
+  const { data: companyProfiles } = useQuery<CompanyProfile[]>({
+    queryKey: ["/api/company-profiles"],
+  });
+
+  const { data: agentProfiles } = useQuery<SalesAgentProfile[]>({
+    queryKey: ["/api/sales-agent-profiles"],
+  });
+
+  const handleLoadCompanyProfile = (profileId: string) => {
+    const profile = companyProfiles?.find((p) => p.id === parseInt(profileId));
+    if (profile) {
+      onBrandingChange(profile.branding);
+      setLogoPreview(profile.branding.logoUrl);
+    }
+  };
+
+  const handleLoadAgentProfile = (profileId: string) => {
+    const profile = agentProfiles?.find((p) => p.id === parseInt(profileId));
+    if (profile) {
+      // Guard against loading more than 2 agents
+      const validAgents = profile.agents.slice(0, 2);
+      onSalesAgentsChange(validAgents);
+    }
+  };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -84,6 +111,33 @@ export function ConfigurationPanel({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {companyProfiles && companyProfiles.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="load-company-profile">Load Saved Profile</Label>
+              <Select onValueChange={handleLoadCompanyProfile}>
+                <SelectTrigger id="load-company-profile" data-testid="select-company-profile">
+                  <SelectValue placeholder="Select a company profile..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {companyProfiles.map((profile) => (
+                    <SelectItem 
+                      key={profile.id} 
+                      value={profile.id.toString()}
+                      data-testid={`option-company-${profile.id}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Download className="w-4 h-4" />
+                        {profile.name} - {profile.branding.companyName}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Or fill in the fields manually below
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="company-name">Company Name *</Label>
@@ -165,6 +219,33 @@ export function ConfigurationPanel({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {agentProfiles && agentProfiles.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="load-agent-profile">Load Saved Team</Label>
+              <Select onValueChange={handleLoadAgentProfile}>
+                <SelectTrigger id="load-agent-profile" data-testid="select-agent-profile">
+                  <SelectValue placeholder="Select a sales team..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {agentProfiles.map((profile) => (
+                    <SelectItem 
+                      key={profile.id} 
+                      value={profile.id.toString()}
+                      data-testid={`option-agent-${profile.id}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Download className="w-4 h-4" />
+                        {profile.name} ({profile.agents.length} agent{profile.agents.length !== 1 ? "s" : ""})
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Or add agents manually below
+              </p>
+            </div>
+          )}
           {salesAgents.length >= 2 && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
