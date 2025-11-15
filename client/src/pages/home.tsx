@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useMutation } from "@tanstack/react-query";
-import { Upload, FileText, Settings, Eye, Save } from "lucide-react";
+import { Upload, FileText, Settings, Eye, Save, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CSVUpload } from "@/components/csv-upload";
@@ -139,6 +140,12 @@ export default function Home() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Link href="/admin">
+                <Button variant="outline" data-testid="button-admin">
+                  <Lock className="w-4 h-4 mr-2" />
+                  Admin
+                </Button>
+              </Link>
               <LoadPricelistDropdown onLoad={handleLoadPricelist} />
               <Button
                 onClick={() => setSaveDialogOpen(true)}
