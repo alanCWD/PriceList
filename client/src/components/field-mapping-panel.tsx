@@ -2,7 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowRight, CheckCircle, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { FieldMapping } from "@shared/schema";
 
@@ -40,7 +41,7 @@ export function FieldMappingPanel({
     { key: "notes" as keyof FieldMapping, label: "Notes/Order Info", required: false },
   ];
 
-  const allRequiredMapped = requiredFields.every(field => mapping[field]);
+  const allRequiredMapped = requiredFields.every(field => mapping[field.key]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -80,9 +81,9 @@ export function FieldMappingPanel({
                       ))}
                     </SelectContent>
                   </Select>
-                  {mapping[field.key] && previewData[0] && (
+                  {mapping[field.key] && previewData[0] && mapping[field.key] && (
                     <p className="text-xs text-muted-foreground truncate" data-testid={`preview-${field.key}`}>
-                      Preview: {previewData[0][mapping[field.key]]}
+                      Preview: {previewData[0][mapping[field.key]!]}
                     </p>
                   )}
                 </div>
@@ -118,9 +119,9 @@ export function FieldMappingPanel({
                       ))}
                     </SelectContent>
                   </Select>
-                  {mapping[field.key] && previewData[0] && (
+                  {mapping[field.key] && previewData[0] && mapping[field.key] && (
                     <p className="text-xs text-muted-foreground truncate">
-                      Preview: {previewData[0][mapping[field.key]]}
+                      Preview: {previewData[0][mapping[field.key]!]}
                     </p>
                   )}
                 </div>
@@ -159,6 +160,16 @@ export function FieldMappingPanel({
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Validation Alert */}
+          {!allRequiredMapped && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Please map all required fields (Product Name, SKU, Format, and Price) before continuing.
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Action Button */}

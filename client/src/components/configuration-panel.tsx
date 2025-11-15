@@ -4,7 +4,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, Upload, ArrowRight, Building2, Users, QrCode } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Plus, Trash2, Upload, ArrowRight, Building2, Users, QrCode, AlertCircle } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import type { CompanyBranding, SalesAgent, QRCodeConfig } from "@shared/schema";
 
 interface ConfigurationPanelProps {
@@ -155,7 +157,7 @@ export function ConfigurationPanel({
               className="gap-2"
             >
               <Plus className="w-4 h-4" />
-              Add Agent
+              Add Agent {salesAgents.length > 0 && `(${salesAgents.length}/2)`}
             </Button>
           </div>
           <CardDescription>
@@ -163,6 +165,14 @@ export function ConfigurationPanel({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {salesAgents.length >= 2 && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Maximum of 2 sales agents reached. Remove an agent to add a different one.
+              </AlertDescription>
+            </Alert>
+          )}
           {salesAgents.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -248,7 +258,7 @@ export function ConfigurationPanel({
             Add a QR code to the footer that links to your website or catalog
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="qr-url">Website URL</Label>
             <Input
@@ -263,6 +273,16 @@ export function ConfigurationPanel({
               QR code will appear in the bottom right of the pricelist footer
             </p>
           </div>
+          {qrCodeConfig?.url && (
+            <div className="flex justify-center p-4 border rounded-md bg-white">
+              <div className="text-center space-y-2">
+                <div className="inline-block p-2 border rounded-md">
+                  <QRCodeSVG value={qrCodeConfig.url} size={80} />
+                </div>
+                <p className="text-xs text-muted-foreground">QR Code Preview</p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
