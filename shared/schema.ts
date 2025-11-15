@@ -11,6 +11,7 @@ export const productSchema = z.object({
   sku: z.string(),
   format: z.string(), // Package format (e.g., "12 x 750 ml")
   price: z.string(), // Price as string to preserve formatting
+  productImageUrl: z.string().optional(), // Product image URL for thumbnail display
 });
 
 export type Product = z.infer<typeof productSchema>;
@@ -50,6 +51,7 @@ export const fieldMappingSchema = z.object({
   sku: z.string(),
   format: z.string(),
   price: z.string(),
+  productImageUrl: z.string().optional(), // CSV column name for product image URL
 });
 
 export type FieldMapping = z.infer<typeof fieldMappingSchema>;

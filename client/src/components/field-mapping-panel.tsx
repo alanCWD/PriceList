@@ -34,13 +34,14 @@ export function FieldMappingPanel({
   const requiredFields = [
     { key: "product" as keyof FieldMapping, label: "Product Name", required: true },
     { key: "sku" as keyof FieldMapping, label: "SKU", required: true },
-    { key: "format" as keyof FieldMapping, label: "Format/Size", required: true },
+    { key: "format" as keyof FieldMapping, label: "Case/Size", required: true },
     { key: "price" as keyof FieldMapping, label: "Price", required: true },
   ];
 
   const optionalFields = [
     { key: "category" as keyof FieldMapping, label: "Category/Producer", required: false },
     { key: "notes" as keyof FieldMapping, label: "Notes/Order Info", required: false },
+    { key: "productImageUrl" as keyof FieldMapping, label: "Product Image", required: false },
   ];
 
   const allRequiredMapped = requiredFields.every(field => mapping[field.key]);

@@ -45,12 +45,22 @@ export default function Home() {
     
     // Auto-detect common field mappings
     const autoMapping: FieldMapping = {
-      product: headers.find(h => h.toLowerCase().includes("product")) || "",
+      product: headers.find(h => {
+        const lower = h.toLowerCase();
+        return lower === "name" || (lower.includes("product") && !lower.includes("image"));
+      }) || "",
       sku: headers.find(h => h.toLowerCase().includes("sku")) || "",
-      format: headers.find(h => h.toLowerCase().includes("format") || h.toLowerCase().includes("size")) || "",
+      format: headers.find(h => {
+        const lower = h.toLowerCase();
+        return lower.includes("case") || lower.includes("format") || lower.includes("size");
+      }) || "",
       price: headers.find(h => h.toLowerCase().includes("price")) || "",
       category: headers.find(h => h.toLowerCase().includes("category") || h.toLowerCase().includes("producer") || h.toLowerCase().includes("winery")) || "",
       notes: headers.find(h => h.toLowerCase().includes("note")) || "",
+      productImageUrl: headers.find(h => {
+        const lower = h.toLowerCase();
+        return lower.includes("productimage") || lower === "productimageurl";
+      }) || "",
     };
     
     setFieldMapping(autoMapping);
@@ -66,6 +76,7 @@ export default function Home() {
       sku: row[fieldMapping.sku] || "",
       format: row[fieldMapping.format] || "",
       price: row[fieldMapping.price] || "",
+      productImageUrl: fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "",
     }));
 
     setProducts(mappedProducts);
