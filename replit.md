@@ -196,12 +196,20 @@ The workflow "Start application" is configured and runs automatically.
 5. ✅ Neon WebSocket configuration for server-side database access
 6. ✅ Admin system for managing reusable company profiles and sales agent teams
 7. ✅ Profile selection integration in configuration panel
-8. ✅ Product image support added
+8. ✅ Product image support with Wix CSV integration
    - Optional "Product Image" field in CSV mapping
    - Displays thumbnail images in all three templates (Modern, Classic, Minimal)
+   - Auto-completes Wix image URLs (prepends `https://static.wixstatic.com/media/` to filenames)
    - Auto-maps "productimageUrl" or "productImageUrl" columns
    - Field renamed: "Format/Size" → "Case/Size" (better matches Wix data structure)
    - Product Name field auto-mapping improved to prefer "Name" over "productimageUrl"
+   - Case/Size auto-extracts from "Additional info sections" structured data (e.g., "CASE SIZE\n12 x 750 ml" → "12 x 750 ml")
+9. ✅ Redesigned header layout (all templates)
+   - Reduced height by 50% for more compact design
+   - Title and tagline centered at top
+   - Logo left-justified in bottom row
+   - Sales team contact info at bottom right
+   - Background color (#F5F1E8 cream/beige) matching typical wine/spirits branding
 
 **Known Limitations**:
 - Product images display in preview but are not included in PDF exports (requires complex image conversion)
