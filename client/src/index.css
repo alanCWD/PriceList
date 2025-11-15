@@ -286,3 +286,64 @@
     inset: -1px;
   }
 }
+
+/**
+ * Print styles for professional pricelist output
+ */
+@media print {
+  @page {
+    margin: 0.75in;
+    size: letter portrait;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Hide UI elements */
+  header,
+  .print\\:hidden {
+    display: none !important;
+  }
+
+  /* Ensure document fills page */
+  .pricelist-document {
+    width: 100%;
+    max-width: none;
+    box-shadow: none;
+    page-break-after: auto;
+  }
+
+  /* Prevent page breaks inside important elements */
+  table,
+  tr,
+  .border.rounded-md {
+    page-break-inside: avoid;
+  }
+
+  /* Category headers should stay with their content */
+  .bg-gray-800 {
+    page-break-after: avoid;
+  }
+
+  /* Ensure colors print correctly */
+  .bg-gray-800 {
+    background-color: #1f2937 !important;
+    color: white !important;
+  }
+
+  .bg-gray-50 {
+    background-color: #f9fafb !important;
+  }
+
+  .bg-gray-100 {
+    background-color: #f3f4f6 !important;
+  }
+
+  /* Remove shadows and unnecessary decorations */
+  .shadow-xl,
+  .shadow-sm {
+    box-shadow: none;
+  }
+}
