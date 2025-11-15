@@ -52,7 +52,7 @@ export default function Home() {
       sku: headers.find(h => h.toLowerCase().includes("sku")) || "",
       format: headers.find(h => {
         const lower = h.toLowerCase();
-        return lower.includes("case") || lower.includes("format") || lower.includes("size");
+        return lower.includes("additional info") || lower.includes("case") || lower.includes("format") || lower.includes("size");
       }) || "",
       price: headers.find(h => h.toLowerCase().includes("price")) || "",
       category: headers.find(h => h.toLowerCase().includes("category") || h.toLowerCase().includes("producer") || h.toLowerCase().includes("winery")) || "",
@@ -76,13 +76,23 @@ export default function Home() {
         imageUrl = `https://static.wixstatic.com/media/${imageUrl}`;
       }
       
+      // Extract case size from "Additional info sections" if it contains "CASE SIZE"
+      let format = fieldMapping.format ? row[fieldMapping.format] || "" : "";
+      if (format && format.includes('CASE SIZE')) {
+        const lines = format.split('\n');
+        const caseSizeIndex = lines.findIndex(line => line.trim().toUpperCase() === 'CASE SIZE');
+        if (caseSizeIndex !== -1 && caseSizeIndex + 1 < lines.length) {
+          format = lines[caseSizeIndex + 1].trim();
+        }
+      }
+      
       return {
         id: `product-${index}`,
         category: fieldMapping.category ? row[fieldMapping.category] || "" : "",
         notes: fieldMapping.notes ? row[fieldMapping.notes] || "" : "",
         product: row[fieldMapping.product] || "",
         sku: row[fieldMapping.sku] || "",
-        format: row[fieldMapping.format] || "",
+        format: format,
         price: row[fieldMapping.price] || "",
         productImageUrl: imageUrl,
       };
