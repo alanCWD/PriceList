@@ -121,3 +121,39 @@ export const insertPricelistSchema = z.object({
 });
 
 export type InsertPricelist = z.infer<typeof insertPricelistSchema>;
+
+// Company Profile table for reusable company branding
+export const companyProfiles = pgTable("company_profiles", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(), // Profile name (e.g., "Primary Company", "Secondary Brand")
+  branding: jsonb("branding").notNull().$type<CompanyBranding>(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type CompanyProfile = typeof companyProfiles.$inferSelect;
+
+export const insertCompanyProfileSchema = z.object({
+  name: z.string().min(1, "Profile name is required"),
+  branding: companyBrandingSchema,
+});
+
+export type InsertCompanyProfile = z.infer<typeof insertCompanyProfileSchema>;
+
+// Sales Agent Profile table for reusable sales agent configurations
+export const salesAgentProfiles = pgTable("sales_agent_profiles", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(), // Profile name (e.g., "West Coast Team", "East Coast Team")
+  agents: jsonb("agents").notNull().$type<SalesAgent[]>(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type SalesAgentProfile = typeof salesAgentProfiles.$inferSelect;
+
+export const insertSalesAgentProfileSchema = z.object({
+  name: z.string().min(1, "Profile name is required"),
+  agents: z.array(salesAgentSchema).max(2).min(1, "At least one agent is required"),
+});
+
+export type InsertSalesAgentProfile = z.infer<typeof insertSalesAgentProfileSchema>;
