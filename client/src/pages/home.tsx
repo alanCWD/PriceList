@@ -68,16 +68,25 @@ export default function Home() {
   };
 
   const handleApplyMapping = () => {
-    const mappedProducts: Product[] = csvData.map((row, index) => ({
-      id: `product-${index}`,
-      category: fieldMapping.category ? row[fieldMapping.category] || "" : "",
-      notes: fieldMapping.notes ? row[fieldMapping.notes] || "" : "",
-      product: row[fieldMapping.product] || "",
-      sku: row[fieldMapping.sku] || "",
-      format: row[fieldMapping.format] || "",
-      price: row[fieldMapping.price] || "",
-      productImageUrl: fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "",
-    }));
+    const mappedProducts: Product[] = csvData.map((row, index) => {
+      let imageUrl = fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "";
+      
+      // Auto-complete Wix image URLs if only filename is provided
+      if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+        imageUrl = `https://static.wixstatic.com/media/${imageUrl}`;
+      }
+      
+      return {
+        id: `product-${index}`,
+        category: fieldMapping.category ? row[fieldMapping.category] || "" : "",
+        notes: fieldMapping.notes ? row[fieldMapping.notes] || "" : "",
+        product: row[fieldMapping.product] || "",
+        sku: row[fieldMapping.sku] || "",
+        format: row[fieldMapping.format] || "",
+        price: row[fieldMapping.price] || "",
+        productImageUrl: imageUrl,
+      };
+    });
 
     setProducts(mappedProducts);
     setActiveTab("config");
