@@ -196,9 +196,7 @@ The workflow "Start application" is configured and runs automatically.
 5. ✅ Neon WebSocket configuration for server-side database access
 6. ✅ Admin system for managing reusable company profiles and sales agent teams
 7. ✅ Profile selection integration in configuration panel
-
-**Recent Enhancements (November 15, 2025)**:
-1. ✅ Product image support added
+8. ✅ Product image support added
    - Optional "Product Image" field in CSV mapping
    - Displays thumbnail images in all three templates (Modern, Classic, Minimal)
    - Auto-maps "productimageUrl" or "productImageUrl" columns
