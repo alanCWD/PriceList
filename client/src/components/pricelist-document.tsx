@@ -285,6 +285,11 @@ export function PricelistDocument({
                               borderRadius: '4px',
                               border: '1px solid #e5e7eb'
                             }}
+                            onError={(e) => {
+                              console.error('Image failed to load:', product.productImageUrl);
+                              e.currentTarget.style.display = 'none';
+                            }}
+                            data-testid={`product-image-${product.id}`}
                           />
                         )}
                       </td>
@@ -558,6 +563,11 @@ function ClassicTemplate({
                               borderRadius: '2px',
                               border: '1px solid #d1d5db'
                             }}
+                            onError={(e) => {
+                              console.error('Image failed to load:', product.productImageUrl);
+                              e.currentTarget.style.display = 'none';
+                            }}
+                            data-testid={`product-image-${product.id}`}
                           />
                         )}
                       </td>
@@ -698,6 +708,11 @@ function MinimalTemplate({
                           borderRadius: '4px',
                           border: '1px solid #e5e7eb'
                         }}
+                        onError={(e) => {
+                          console.error('Image failed to load:', product.productImageUrl);
+                          e.currentTarget.style.display = 'none';
+                        }}
+                        data-testid={`product-image-${product.id}`}
                       />
                     </div>
                   )}
