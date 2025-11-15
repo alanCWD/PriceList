@@ -1,14 +1,20 @@
 import { useState } from "react";
-import { Upload, FileText, Settings, Eye } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { Upload, FileText, Settings, Eye, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CSVUpload } from "@/components/csv-upload";
 import { ConfigurationPanel } from "@/components/configuration-panel";
 import { FieldMappingPanel } from "@/components/field-mapping-panel";
 import { PreviewPanel } from "@/components/preview-panel";
-import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping } from "@shared/schema";
+import { SavePricelistDialog } from "@/components/save-pricelist-dialog";
+import { LoadPricelistDropdown } from "@/components/load-pricelist-dropdown";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist } from "@shared/schema";
 
 export default function Home() {
+  const { toast } = useToast();
   const [csvData, setCSVData] = useState<any[]>([]);
   const [csvHeaders, setCSVHeaders] = useState<string[]>([]);
   const [fieldMapping, setFieldMapping] = useState<FieldMapping>({
@@ -25,6 +31,10 @@ export default function Home() {
   const [salesAgents, setSalesAgents] = useState<SalesAgent[]>([]);
   const [qrCodeConfig, setQRCodeConfig] = useState<QRCodeConfig | undefined>();
   const [activeTab, setActiveTab] = useState<string>("upload");
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [currentPricelistId, setCurrentPricelistId] = useState<number | null>(null);
+  const [currentPricelistName, setCurrentPricelistName] = useState<string>("");
+  const [currentPricelistDescription, setCurrentPricelistDescription] = useState<string>("");
 
   const handleCSVUpload = (data: any[], headers: string[]) => {
     setCSVData(data);
@@ -59,6 +69,59 @@ export default function Home() {
     setActiveTab("config");
   };
 
+  const saveMutation = useMutation({
+    mutationFn: async ({ name, description }: { name: string; description?: string }) => {
+      const payload = {
+        name,
+        description,
+        branding: companyBranding,
+        salesAgents,
+        qrCode: qrCodeConfig,
+        products,
+        fieldMapping,
+      };
+
+      if (currentPricelistId) {
+        return await apiRequest("PATCH", `/api/pricelists/${currentPricelistId}`, payload);
+      } else {
+        return await apiRequest("POST", "/api/pricelists", payload);
+      }
+    },
+    onSuccess: (data: any, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pricelists"] });
+      setCurrentPricelistId(data.id);
+      setCurrentPricelistName(variables.name);
+      setCurrentPricelistDescription(variables.description || "");
+      toast({
+        title: currentPricelistId ? "Pricelist updated" : "Pricelist saved",
+        description: "Your pricelist has been saved successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save pricelist",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLoadPricelist = (pricelist: Pricelist) => {
+    setCurrentPricelistId(pricelist.id);
+    setCurrentPricelistName(pricelist.name);
+    setCurrentPricelistDescription(pricelist.description || "");
+    setCompanyBranding(pricelist.branding);
+    setSalesAgents(pricelist.salesAgents as SalesAgent[]);
+    setQRCodeConfig(pricelist.qrCode as QRCodeConfig | undefined);
+    setProducts(pricelist.products as Product[]);
+    if (pricelist.fieldMapping) {
+      setFieldMapping(pricelist.fieldMapping as FieldMapping);
+    }
+    setActiveTab("preview");
+  };
+
+  const canSave = products.length > 0 && companyBranding.companyName.trim() !== "";
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -71,9 +134,30 @@ export default function Home() {
                 Create professional, print-ready pricelists from CSV data
               </p>
             </div>
+            <div className="flex items-center gap-2">
+              <LoadPricelistDropdown onLoad={handleLoadPricelist} />
+              <Button
+                onClick={() => setSaveDialogOpen(true)}
+                disabled={!canSave}
+                data-testid="button-save-pricelist"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {currentPricelistId ? "Update" : "Save"}
+              </Button>
+            </div>
           </div>
         </div>
       </header>
+
+      <SavePricelistDialog
+        open={saveDialogOpen}
+        onOpenChange={setSaveDialogOpen}
+        onSave={async (name, description) => {
+          await saveMutation.mutateAsync({ name, description });
+        }}
+        initialName={currentPricelistName}
+        initialDescription={currentPricelistDescription}
+      />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { pgTable, varchar, text, timestamp, jsonb, serial } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
 
 // Product schema for pricelist items
 export const productSchema = z.object({
@@ -71,3 +73,38 @@ export const csvUploadResponseSchema = z.object({
 });
 
 export type CSVUploadResponse = z.infer<typeof csvUploadResponseSchema>;
+
+// Database Tables
+
+// Saved pricelists table
+export const pricelists = pgTable("pricelists", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Configuration data stored as JSON
+  branding: jsonb("branding").notNull().$type<CompanyBranding>(),
+  salesAgents: jsonb("sales_agents").notNull().$type<SalesAgent[]>(),
+  qrCode: jsonb("qr_code").$type<QRCodeConfig>(),
+  products: jsonb("products").notNull().$type<Product[]>(),
+  fieldMapping: jsonb("field_mapping").$type<FieldMapping>(),
+  
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type Pricelist = typeof pricelists.$inferSelect;
+
+// Hand-crafted insert schema with proper validation
+export const insertPricelistSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+  branding: companyBrandingSchema,
+  salesAgents: z.array(salesAgentSchema).max(2).default([]),
+  qrCode: qrCodeConfigSchema.optional(),
+  products: z.array(productSchema).default([]),
+  fieldMapping: fieldMappingSchema.optional(),
+});
+
+export type InsertPricelist = z.infer<typeof insertPricelistSchema>;
