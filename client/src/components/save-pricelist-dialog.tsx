@@ -46,13 +46,14 @@ export function SavePricelistDialog({
     }
   };
 
-  // Update local state when dialog opens or initial values change
+  // Update local state when dialog opens (not when initial values change while dialog is open)
   useEffect(() => {
     if (open) {
       setName(initialName);
       setDescription(initialDescription);
+      setSaving(false);
     }
-  }, [open, initialName, initialDescription]);
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

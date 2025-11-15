@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CSVUpload } from "@/components/csv-upload";
 import { ConfigurationPanel } from "@/components/configuration-panel";
+import { TemplateSelector } from "@/components/template-selector";
 import { FieldMappingPanel } from "@/components/field-mapping-panel";
 import { PreviewPanel } from "@/components/preview-panel";
 import { SavePricelistDialog } from "@/components/save-pricelist-dialog";
 import { LoadPricelistDropdown } from "@/components/load-pricelist-dropdown";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist } from "@shared/schema";
+import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template } from "@shared/schema";
 
 export default function Home() {
   const { toast } = useToast();
@@ -35,6 +36,7 @@ export default function Home() {
   const [currentPricelistId, setCurrentPricelistId] = useState<number | null>(null);
   const [currentPricelistName, setCurrentPricelistName] = useState<string>("");
   const [currentPricelistDescription, setCurrentPricelistDescription] = useState<string>("");
+  const [template, setTemplate] = useState<Template>("modern");
 
   const handleCSVUpload = (data: any[], headers: string[]) => {
     setCSVData(data);
@@ -79,6 +81,7 @@ export default function Home() {
         qrCode: qrCodeConfig,
         products,
         fieldMapping,
+        template,
       };
 
       if (currentPricelistId) {
@@ -117,6 +120,7 @@ export default function Home() {
     if (pricelist.fieldMapping) {
       setFieldMapping(pricelist.fieldMapping as FieldMapping);
     }
+    setTemplate(pricelist.template as Template);
     setActiveTab("preview");
   };
 
@@ -211,6 +215,7 @@ export default function Home() {
           </TabsContent>
 
           <TabsContent value="config" className="space-y-6">
+            <TemplateSelector value={template} onChange={setTemplate} />
             <ConfigurationPanel
               branding={companyBranding}
               salesAgents={salesAgents}
@@ -228,6 +233,7 @@ export default function Home() {
               branding={companyBranding}
               salesAgents={salesAgents}
               qrCodeConfig={qrCodeConfig}
+              template={template}
             />
           </TabsContent>
         </Tabs>

@@ -54,6 +54,16 @@ export const fieldMappingSchema = z.object({
 
 export type FieldMapping = z.infer<typeof fieldMappingSchema>;
 
+// Template types and configuration
+export const templateSchema = z.enum(["modern", "classic", "minimal"]);
+export type Template = z.infer<typeof templateSchema>;
+
+export const templateConfigSchema = z.object({
+  template: templateSchema.default("modern"),
+});
+
+export type TemplateConfig = z.infer<typeof templateConfigSchema>;
+
 // Complete pricelist configuration
 export const pricelistConfigSchema = z.object({
   branding: companyBrandingSchema,
@@ -61,6 +71,7 @@ export const pricelistConfigSchema = z.object({
   qrCode: qrCodeConfigSchema.optional(),
   products: z.array(productSchema).default([]),
   dateUpdated: z.string().optional(),
+  template: templateSchema.default("modern"),
 });
 
 export type PricelistConfig = z.infer<typeof pricelistConfigSchema>;
@@ -88,6 +99,7 @@ export const pricelists = pgTable("pricelists", {
   qrCode: jsonb("qr_code").$type<QRCodeConfig>(),
   products: jsonb("products").notNull().$type<Product[]>(),
   fieldMapping: jsonb("field_mapping").$type<FieldMapping>(),
+  template: varchar("template", { length: 50 }).notNull().default("modern").$type<Template>(),
   
   // Metadata
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -105,6 +117,7 @@ export const insertPricelistSchema = z.object({
   qrCode: qrCodeConfigSchema.optional(),
   products: z.array(productSchema).default([]),
   fieldMapping: fieldMappingSchema.optional(),
+  template: templateSchema.default("modern"),
 });
 
 export type InsertPricelist = z.infer<typeof insertPricelistSchema>;

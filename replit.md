@@ -1,14 +1,14 @@
 # Product Pricelist Generator
 
 ## Overview
-A professional web application that creates stylish, print-ready pricelists from CSV files exported from Wix websites (and future platform support planned). The application features a clean header with logo, footer with dual sales agent contact info and QR code, category-grouped products, configurable field mapping, and PDF export functionality.
+A professional web application that creates stylish, print-ready pricelists from CSV files exported from Wix websites (and future platform support planned). The application features database persistence, three professional templates (Modern, Classic, Minimal), configurable branding, dual sales agents, QR codes, category-grouped products, field mapping, and PDF export functionality.
 
 **Last Updated**: November 15, 2025
 
 ## Project Architecture
 
-### Client-Side Architecture (No Backend Required)
-The application is built entirely client-side for optimal performance and simplicity:
+### Fullstack Architecture with Database Persistence
+The application uses a PostgreSQL database for persistence and client-side processing for performance:
 - **CSV Parsing**: PapaParse library handles all CSV parsing in-browser
 - **Image Handling**: FileReader API for logo uploads (base64)
 - **PDF Generation**: jsPDF library generates professional PDFs client-side
@@ -33,6 +33,8 @@ The application is built entirely client-side for optimal performance and simpli
 - CompanyBranding: companyName, tagline, logoUrl
 - SalesAgent: name, email, phone, region (max 2 agents)
 - QRCodeConfig: url, size (optional footer QR code)
+- Template: "modern" | "classic" | "minimal"
+- Pricelist (DB table): id, name, description, branding, salesAgents, qrCode, products, fieldMapping, template, createdAt, updatedAt
 ```
 
 ## User Workflow
@@ -48,24 +50,43 @@ The application is built entirely client-side for optimal performance and simpli
    - Live preview of mapped data
    - Validation enforcement before continuing
 
-3. **Configuration** (`configuration-panel.tsx`)
+3. **Configuration** (`configuration-panel.tsx` + `template-selector.tsx`)
+   - Template selection (Modern, Classic, Minimal) with visual preview
    - Company branding (name, tagline, logo upload with preview)
    - Sales agents (up to 2 with name, email, phone, region)
    - QR code (optional URL with live preview)
    - Validation alerts for limits
 
 4. **Preview & Export** (`preview-panel.tsx` + `pricelist-document.tsx`)
-   - Live preview with professional document styling
+   - Live preview with template-specific styling
    - Products grouped by category
    - Print-optimized layout
-   - PDF export via jsPDF
+   - PDF export via jsPDF with template styling
+   
+5. **Save/Load** (`save-pricelist-dialog.tsx` + `load-pricelist-dropdown.tsx`)
+   - Save pricelists to database with name and description
+   - Load saved pricelists with all configuration
+   - Update existing pricelists
+   - Delete pricelists
 
 ## Key Features
 
+### Template System (3 Professional Styles)
+1. **Modern** (Default): Dark category headers (#1a1a1a), zebra striping, Inter font, tabular numbers
+2. **Classic**: Serif fonts (Georgia), full table borders, centered header, traditional layout
+3. **Minimal**: Light font weights (300), list-style layout (no tables), generous spacing, subtle separators
+
+### Database Persistence
+- Save unlimited pricelists with name and description
+- Load saved pricelists with full configuration (branding, agents, QR, template, products)
+- Update existing pricelists
+- Delete pricelists
+- Timestamps for created/updated tracking
+
 ### Professional Document Design
-- **Typography**: Inter font with tabular numbers for prices/SKUs
-- **Layout**: Clean header, category-grouped products, professional footer
-- **Table Design**: Zebra striping, proper spacing, clear hierarchy
+- **Typography**: Template-specific fonts (Inter, Georgia, Helvetica)
+- **Layout**: Template-specific headers, category grouping, professional footers
+- **Table Design**: Varies by template (zebra striping, borders, or list layout)
 - **Print Optimization**: Dedicated print styles, consistent spacing
 
 ### Validation & User Experience
@@ -74,13 +95,14 @@ The application is built entirely client-side for optimal performance and simpli
 - QR code live preview
 - Comprehensive error handling
 - Loading states for all async operations
+- Toast notifications for all user actions
 
 ### Export Quality
-- Professional PDF generation
+- Template-specific PDF generation (Modern, Classic, Minimal)
 - Print-ready output
-- Consistent typography and spacing
+- Consistent typography and spacing per template
 - Header with logo and company info
-- Footer with sales agents and QR code
+- Footer with sales agents (and QR code in preview)
 
 ## File Structure
 
@@ -91,9 +113,12 @@ client/src/
 ├── components/
 │   ├── csv-upload.tsx        # CSV file upload with drag & drop
 │   ├── field-mapping-panel.tsx  # Map CSV headers to fields
+│   ├── template-selector.tsx # Template selection UI with 3 cards
 │   ├── configuration-panel.tsx  # Company info, agents, QR code
 │   ├── preview-panel.tsx     # Preview controls and export
-│   └── pricelist-document.tsx  # Document renderer (preview & print)
+│   ├── pricelist-document.tsx  # Document renderer with template routing
+│   ├── save-pricelist-dialog.tsx  # Save/update pricelist dialog
+│   └── load-pricelist-dropdown.tsx  # Load/delete pricelist dropdown
 ├── lib/
 │   ├── pdf-generator.ts      # jsPDF export logic
 │   └── queryClient.ts        # TanStack Query setup
@@ -101,7 +126,14 @@ client/src/
 └── index.css                 # Global styles, design tokens, print styles
 
 shared/
-└── schema.ts                 # TypeScript types and Zod schemas
+└── schema.ts                 # TypeScript types, Zod schemas, DB tables
+
+server/
+├── routes.ts                 # API routes (GET, POST, PATCH, DELETE /api/pricelists)
+└── storage.ts                # Database storage interface
+
+db/
+└── index.ts                  # Drizzle database connection with Neon WebSocket config
 
 design_guidelines.md          # Design system specification
 ```
@@ -132,20 +164,25 @@ The workflow "Start application" is configured and runs automatically.
 4. **CSV Flexibility**: Field mapping allows any CSV structure to work
 5. **Two-Agent Limit**: Footer layout optimized for maximum 2 sales agents
 
-### Known Limitations & Future Enhancements
+### Recent Enhancements (November 15, 2025)
 
-**MVP Scope**:
-- PDF and preview use different rendering (jsPDF vs React) - both professional but not pixel-perfect matches
-- Client-side only (no backend persistence)
-- Single-page application
+**Completed**:
+1. ✅ Database persistence with PostgreSQL and Drizzle ORM
+2. ✅ Template system with 3 professional styles (Modern, Classic, Minimal)
+3. ✅ Save/load functionality with full configuration
+4. ✅ Template-specific PDF generation
+5. ✅ Neon WebSocket configuration for server-side database access
 
-**Planned Enhancements**:
-1. Consolidate PDF/preview styling for perfect parity
-2. Support for WordPress and other e-commerce platforms
-3. Template system for different pricelist styles
-4. Save/load configuration profiles
-5. Batch processing multiple CSVs
-6. Custom category ordering
+**Planned Future Enhancements**:
+1. Product filtering and sorting options
+2. Custom product badges (NEW, SALE, LIMITED, etc.)
+3. Column customization (add/remove product fields)
+4. Excel (.xlsx) import support
+5. Color scheme customization
+6. Batch CSV processing
+7. Industry-specific templates (wine/spirits, retail, wholesale)
+8. WordPress integration
+9. QR code in PDF exports (currently preview-only)
 
 ## Testing
 

@@ -1,16 +1,23 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import type { Product, SalesAgent, CompanyBranding, QRCodeConfig } from "@shared/schema";
+import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
 
 interface PDFConfig {
   products: Product[];
   branding: CompanyBranding;
   salesAgents: SalesAgent[];
   qrCodeConfig?: QRCodeConfig;
+  template?: Template;
 }
 
 export async function generatePDF(config: PDFConfig): Promise<void> {
-  const { products, branding, salesAgents, qrCodeConfig } = config;
+  const { products, branding, salesAgents, qrCodeConfig, template = "modern" } = config;
+  
+  if (template === "classic") {
+    return generateClassicPDF(config);
+  } else if (template === "minimal") {
+    return generateMinimalPDF(config);
+  }
   
   const doc = new jsPDF({
     orientation: "portrait",
@@ -185,6 +192,261 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   }
 
   // Save the PDF
+  const fileName = `${branding.companyName.replace(/[^a-z0-9]/gi, "_")}_Pricelist_${new Date().toISOString().split("T")[0]}.pdf`;
+  doc.save(fileName);
+}
+
+function generateClassicPDF(config: PDFConfig): void {
+  const { products, branding, salesAgents } = config;
+  
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "pt",
+    format: "letter",
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 48;
+  let yPosition = margin;
+
+  const currentDate = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
+  doc.setFont("times", "bold");
+  doc.setFontSize(30);
+  doc.setTextColor(30, 30, 30);
+  const titleWidth = doc.getTextWidth(branding.companyName);
+  doc.text(branding.companyName, (pageWidth - titleWidth) / 2, yPosition);
+  yPosition += 25;
+
+  if (branding.tagline) {
+    doc.setFont("times", "italic");
+    doc.setFontSize(16);
+    doc.setTextColor(70, 70, 70);
+    const taglineWidth = doc.getTextWidth(branding.tagline);
+    doc.text(branding.tagline, (pageWidth - taglineWidth) / 2, yPosition);
+    yPosition += 20;
+  }
+
+  doc.setFont("times", "normal");
+  doc.setFontSize(12);
+  const dateWidth = doc.getTextWidth(currentDate);
+  doc.text(currentDate, (pageWidth - dateWidth) / 2, yPosition);
+  yPosition += 20;
+
+  doc.setDrawColor(156, 163, 175);
+  doc.setLineWidth(1);
+  doc.line(margin, yPosition, pageWidth - margin, yPosition);
+  yPosition += 30;
+
+  const groupedProducts = products.reduce((acc, product) => {
+    const category = product.category || "Uncategorized";
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(product);
+    return acc;
+  }, {} as Record<string, Product[]>);
+
+  Object.entries(groupedProducts).forEach(([category, categoryProducts], index) => {
+    if (index > 0) {
+      yPosition += 25;
+    }
+
+    doc.setFont("times", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(30, 30, 30);
+    doc.text(category, margin, yPosition);
+    yPosition += 5;
+    doc.setDrawColor(156, 163, 175);
+    doc.setLineWidth(2);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 15;
+
+    const tableData = categoryProducts.map(product => [
+      product.sku,
+      product.product,
+      product.format,
+      product.price,
+      product.notes || "",
+    ]);
+
+    autoTable(doc, {
+      startY: yPosition,
+      head: [["SKU", "Product", "Format", "Price", "Notes"]],
+      body: tableData,
+      theme: "grid",
+      headStyles: {
+        fillColor: [229, 231, 235],
+        textColor: [30, 30, 30],
+        fontSize: 10,
+        fontStyle: "bold",
+        halign: "left",
+        font: "times",
+      },
+      bodyStyles: {
+        fontSize: 10,
+        textColor: [30, 30, 30],
+        font: "times",
+      },
+      columnStyles: {
+        0: { cellWidth: 70 },
+        1: { cellWidth: 200 },
+        2: { cellWidth: 100 },
+        3: { cellWidth: 70, halign: "right" },
+        4: { cellWidth: 100 },
+      },
+      margin: { left: margin, right: margin },
+    });
+
+    yPosition = (doc as any).lastAutoTable.finalY + 10;
+  });
+
+  const footerY = pageHeight - margin - 50;
+  doc.setDrawColor(156, 163, 175);
+  doc.setLineWidth(1);
+  doc.line(margin, footerY, pageWidth - margin, footerY);
+
+  if (salesAgents.length > 0) {
+    let agentX = margin;
+    salesAgents.forEach((agent) => {
+      doc.setDrawColor(156, 163, 175);
+      doc.setLineWidth(1);
+      const boxWidth = 170;
+      doc.setFillColor(249, 250, 251);
+      doc.rect(agentX, footerY + 8, boxWidth, 35, "FD");
+
+      doc.setFont("times", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(30, 30, 30);
+      let textY = footerY + 18;
+      doc.text(agent.name, agentX + 6, textY);
+      textY += 10;
+
+      doc.setFont("times", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(70, 70, 70);
+      doc.text(agent.email, agentX + 6, textY);
+      textY += 8;
+      doc.text(agent.phone, agentX + 6, textY);
+
+      agentX += boxWidth + 12;
+    });
+  }
+
+  const fileName = `${branding.companyName.replace(/[^a-z0-9]/gi, "_")}_Pricelist_${new Date().toISOString().split("T")[0]}.pdf`;
+  doc.save(fileName);
+}
+
+function generateMinimalPDF(config: PDFConfig): void {
+  const { products, branding, salesAgents } = config;
+  
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "pt",
+    format: "letter",
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 60;
+  let yPosition = margin + 20;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(32);
+  doc.setTextColor(30, 30, 30);
+  doc.text(branding.companyName, margin, yPosition);
+  yPosition += 15;
+
+  if (branding.tagline) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(16);
+    doc.setTextColor(120, 120, 120);
+    doc.text(branding.tagline, margin, yPosition);
+    yPosition += 35;
+  } else {
+    yPosition += 25;
+  }
+
+  const groupedProducts = products.reduce((acc, product) => {
+    const category = product.category || "Uncategorized";
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(product);
+    return acc;
+  }, {} as Record<string, Product[]>);
+
+  Object.entries(groupedProducts).forEach(([category, categoryProducts], index) => {
+    if (index > 0) {
+      yPosition += 40;
+    }
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(22);
+    doc.setTextColor(30, 30, 30);
+    doc.text(category, margin, yPosition);
+    yPosition += 25;
+
+    categoryProducts.forEach((product) => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(30, 30, 30);
+      doc.text(product.product, margin, yPosition);
+
+      const priceWidth = doc.getTextWidth(product.price);
+      doc.text(product.price, pageWidth - margin - priceWidth, yPosition);
+      yPosition += 12;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(120, 120, 120);
+      const details = [product.sku, product.format];
+      if (product.notes) {
+        details.push(product.notes);
+      }
+      doc.text(details.join(" • "), margin, yPosition);
+      yPosition += 5;
+
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(0.5);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 15;
+    });
+  });
+
+  const footerY = pageHeight - margin - 30;
+  if (salesAgents.length > 0) {
+    let agentX = margin;
+    salesAgents.forEach((agent) => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(30, 30, 30);
+      doc.text(agent.name, agentX, footerY);
+      let textY = footerY + 12;
+
+      if (agent.region) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(120, 120, 120);
+        doc.text(agent.region, agentX, textY);
+        textY += 10;
+      }
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text(agent.email, agentX, textY);
+      textY += 9;
+      doc.text(agent.phone, agentX, textY);
+
+      agentX += 200;
+    });
+  }
+
   const fileName = `${branding.companyName.replace(/[^a-z0-9]/gi, "_")}_Pricelist_${new Date().toISOString().split("T")[0]}.pdf`;
   doc.save(fileName);
 }

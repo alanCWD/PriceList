@@ -5,13 +5,14 @@ import { Download, Printer } from "lucide-react";
 import { PricelistDocument } from "@/components/pricelist-document";
 import { generatePDF } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
-import type { Product, SalesAgent, CompanyBranding, QRCodeConfig } from "@shared/schema";
+import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
 
 interface PreviewPanelProps {
   products: Product[];
   branding: CompanyBranding;
   salesAgents: SalesAgent[];
   qrCodeConfig?: QRCodeConfig;
+  template?: Template;
 }
 
 export function PreviewPanel({
@@ -19,6 +20,7 @@ export function PreviewPanel({
   branding,
   salesAgents,
   qrCodeConfig,
+  template = "modern",
 }: PreviewPanelProps) {
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -30,6 +32,7 @@ export function PreviewPanel({
         branding,
         salesAgents,
         qrCodeConfig,
+        template,
       });
       toast({
         title: "PDF Downloaded",
@@ -104,6 +107,7 @@ export function PreviewPanel({
             branding={branding}
             salesAgents={salesAgents}
             qrCodeConfig={qrCodeConfig}
+            template={template}
           />
         </div>
       </div>
