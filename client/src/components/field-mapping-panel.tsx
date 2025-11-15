@@ -23,9 +23,11 @@ export function FieldMappingPanel({
   previewData,
 }: FieldMappingPanelProps) {
   const updateMapping = (field: keyof FieldMapping, value: string) => {
+    // Handle "None" selection for optional fields
+    const actualValue = value === "__none__" ? "" : value;
     onMappingChange({
       ...mapping,
-      [field]: value,
+      [field]: actualValue,
     });
   };
 
@@ -42,6 +44,9 @@ export function FieldMappingPanel({
   ];
 
   const allRequiredMapped = requiredFields.every(field => mapping[field.key]);
+
+  // Filter out empty headers to prevent SelectItem value errors
+  const validHeaders = headers.filter(h => h && h.trim() !== "");
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -74,7 +79,7 @@ export function FieldMappingPanel({
                       <SelectValue placeholder="Select CSV column..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {headers.map(header => (
+                      {validHeaders.map(header => (
                         <SelectItem key={header} value={header}>
                           {header}
                         </SelectItem>
@@ -111,8 +116,8 @@ export function FieldMappingPanel({
                       <SelectValue placeholder="Select CSV column (optional)..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
-                      {headers.map(header => (
+                      <SelectItem value="__none__">None</SelectItem>
+                      {validHeaders.map(header => (
                         <SelectItem key={header} value={header}>
                           {header}
                         </SelectItem>
