@@ -197,16 +197,28 @@ The workflow "Start application" is configured and runs automatically.
 6. ✅ Admin system for managing reusable company profiles and sales agent teams
 7. ✅ Profile selection integration in configuration panel
 
+**Recent Enhancements (November 15, 2025)**:
+1. ✅ Product image support added
+   - Optional "Product Image" field in CSV mapping
+   - Displays thumbnail images in all three templates (Modern, Classic, Minimal)
+   - Auto-maps "productimageUrl" or "productImageUrl" columns
+   - Field renamed: "Format/Size" → "Case/Size" (better matches Wix data structure)
+   - Product Name field auto-mapping improved to prefer "Name" over "productimageUrl"
+
+**Known Limitations**:
+- Product images display in preview but are not included in PDF exports (requires complex image conversion)
+
 **Planned Future Enhancements**:
-1. Product filtering and sorting options
-2. Custom product badges (NEW, SALE, LIMITED, etc.)
-3. Column customization (add/remove product fields)
-4. Excel (.xlsx) import support
-5. Color scheme customization
-6. Batch CSV processing
-7. Industry-specific templates (wine/spirits, retail, wholesale)
-8. WordPress integration
-9. QR code in PDF exports (currently preview-only)
+1. Product image support in PDF exports (requires base64 image conversion)
+2. Product filtering and sorting options
+3. Custom product badges (NEW, SALE, LIMITED, etc.)
+4. Column customization (add/remove product fields)
+5. Excel (.xlsx) import support
+6. Color scheme customization
+7. Batch CSV processing
+8. Industry-specific templates (wine/spirits, retail, wholesale)
+9. WordPress integration
+10. QR code in PDF exports (currently preview-only)
 
 ## Testing
 
