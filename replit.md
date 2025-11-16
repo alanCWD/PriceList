@@ -3,7 +3,7 @@
 ## Overview
 A professional web application that creates stylish, print-ready pricelists from CSV files exported from Wix websites (and future platform support planned). The application features database persistence, three professional templates (Modern, Classic, Minimal), configurable branding, dual sales agents, QR codes, category-grouped products, field mapping, and PDF export functionality.
 
-**Last Updated**: November 15, 2025
+**Last Updated**: November 16, 2025
 
 ## Project Architecture
 
@@ -186,9 +186,16 @@ The workflow "Start application" is configured and runs automatically.
 4. **CSV Flexibility**: Field mapping allows any CSV structure to work
 5. **Two-Agent Limit**: Footer layout optimized for maximum 2 sales agents
 
-### Recent Enhancements (November 15, 2025)
+### Recent Enhancements
 
-**Completed**:
+**November 16, 2025**:
+1. ✅ **Fixed "PayloadTooLargeError" for large pricelists**
+   - Increased Express body parser limit from 100KB to 50MB
+   - Enables saving pricelists with 70+ products and base64-encoded logos
+   - Fixes "Failed to save pricelist" error for large datasets
+   - Configuration in `server/index.ts`: `express.json({ limit: '50mb' })`
+
+**November 15, 2025 - Completed**:
 1. ✅ Database persistence with PostgreSQL and Drizzle ORM
 2. ✅ Template system with 3 professional styles (Modern, Classic, Minimal)
 3. ✅ Save/load functionality with full configuration
