@@ -53,10 +53,33 @@ export async function getPaletteFromLogo(
           addColorSample(edgeColors, pixels[i], pixels[i + 1], pixels[i + 2], pixels[i + 3]);
         }
 
-        // Find most common edge color (background)
-        const dominantBgColor = edgeColors.reduce((prev, current) =>
-          current.count > prev.count ? current : prev
-        );
+        // Handle transparent logos - if no edge colors found, sample center area
+        let dominantBgColor: { r: number; g: number; b: number };
+        
+        if (edgeColors.length === 0) {
+          // Transparent logo - sample all non-transparent pixels
+          const allColors: { r: number; g: number; b: number; count: number }[] = [];
+          for (let y = 0; y < canvas.height; y += sampleSize) {
+            for (let x = 0; x < canvas.width; x += sampleSize) {
+              const i = (y * canvas.width + x) * 4;
+              addColorSample(allColors, pixels[i], pixels[i + 1], pixels[i + 2], pixels[i + 3]);
+            }
+          }
+          
+          if (allColors.length > 0) {
+            dominantBgColor = allColors.reduce((prev, current) =>
+              current.count > prev.count ? current : prev
+            );
+          } else {
+            // Completely transparent - use neutral default
+            dominantBgColor = { r: 248, g: 249, b: 250 }; // #f8f9fa
+          }
+        } else {
+          // Normal logo - use edge colors
+          dominantBgColor = edgeColors.reduce((prev, current) =>
+            current.count > prev.count ? current : prev
+          );
+        }
 
         const backgroundColor = rgbToHex(dominantBgColor.r, dominantBgColor.g, dominantBgColor.b);
 

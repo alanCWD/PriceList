@@ -53,21 +53,34 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     }
   }
 
-  // Use extracted text color if available
+  // Use extracted colors if available
   const hexToRgb = (hex: string) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
       r: parseInt(result[1], 16),
       g: parseInt(result[2], 16),
       b: parseInt(result[3], 16)
-    } : { r: 30, g: 30, b: 30 };
+    } : null;
   };
   
   const textColor = branding.headerTextColor 
-    ? hexToRgb(branding.headerTextColor) 
+    ? (hexToRgb(branding.headerTextColor) || { r: 30, g: 30, b: 30 })
     : { r: 30, g: 30, b: 30 };
+  
+  const bgColor = branding.headerBackgroundColor 
+    ? hexToRgb(branding.headerBackgroundColor)
+    : null;
 
-  // Header
+  // Calculate header height (approximate)
+  const headerHeight = 80 + (branding.tagline ? 20 : 0) + (salesAgents.length > 0 ? 50 : 0);
+  
+  // Draw header background if color is specified
+  if (bgColor) {
+    doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
+    doc.rect(0, 0, pageWidth, headerHeight, "F");
+  }
+
+  // Header text
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(textColor.r, textColor.g, textColor.b);
