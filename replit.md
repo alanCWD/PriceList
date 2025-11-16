@@ -213,6 +213,13 @@ The workflow "Start application" is configured and runs automatically.
    - Minimal header height - just enough to fit logo
    - Clean, professional letterhead-style design
 
+10. ✅ Minimal height footer (all templates)
+   - Thin separator line at top
+   - No background color
+   - Displays: "File: Pricelist", "Date: (current date)", "Page: 1", Company Name
+   - QR code positioned at far right (32px size)
+   - Compact 10px text for minimal vertical space
+
 **Known Limitations**:
 - Product images display in preview but are not included in PDF exports (requires complex image conversion)
 

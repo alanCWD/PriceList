@@ -362,89 +362,27 @@ export function PricelistDocument({
         ))}
       </main>
 
-      {/* Footer - Professional Layout */}
+      {/* Footer - Minimal Height */}
       <footer 
-        className="px-12 py-6 border-t-2 border-gray-900 mt-8"
-        style={{ marginTop: '32px', borderTop: '2px solid #1a1a1a' }}
+        className="px-12 py-2 border-t border-gray-300 mt-8"
+        style={{ marginTop: '32px', borderTop: '1px solid #d1d5db', paddingTop: '8px', paddingBottom: '8px' }}
       >
-        <div className="flex items-end justify-between gap-8">
-          {/* Sales Agents Contact Cards */}
-          <div className="flex gap-6 flex-1">
-            {salesAgents.map((agent, index) => (
-              <div
-                key={index}
-                className="border border-gray-300 rounded p-4 bg-gray-50 flex-1"
-                data-testid={`agent-footer-${index}`}
-                style={{
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  padding: '16px',
-                  backgroundColor: '#f9fafb'
-                }}
-              >
-                {agent.region && (
-                  <p 
-                    className="text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide"
-                    style={{ fontSize: '11px', fontWeight: 600, marginBottom: '8px', letterSpacing: '0.025em' }}
-                  >
-                    {agent.region}
-                  </p>
-                )}
-                <p 
-                  className="font-semibold text-sm text-gray-900 mb-2"
-                  style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}
-                >
-                  {agent.name}
-                </p>
-                <div className="space-y-1">
-                  <div 
-                    className="flex items-center gap-2 text-xs text-gray-600"
-                    style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}
-                  >
-                    <Mail className="w-3 h-3" style={{ width: '12px', height: '12px' }} />
-                    <span>{agent.email}</span>
-                  </div>
-                  <div 
-                    className="flex items-center gap-2 text-xs text-gray-600"
-                    style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    <Phone className="w-3 h-3" style={{ width: '12px', height: '12px' }} />
-                    <span>{agent.phone}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
+            <span>File: Pricelist</span>
+            <span>Date: {currentDate}</span>
+            <span>Page: 1</span>
+            <span>{branding.companyName}</span>
           </div>
 
-          {/* Date and Page Info */}
-          <div className="text-center flex-shrink-0" style={{ textAlign: 'center' }}>
-            <p className="text-xs text-gray-600" style={{ fontSize: '12px', color: '#4b5563' }}>
-              Updated: {currentDate}
-            </p>
-            <p className="text-xs text-gray-600 mt-1" style={{ fontSize: '12px', color: '#4b5563', marginTop: '4px' }}>
-              Page 1
-            </p>
-          </div>
-
-          {/* QR Code */}
+          {/* QR Code - Far Right */}
           {qrCodeConfig && (
             <div className="flex-shrink-0">
-              <div 
-                className="border border-gray-300 rounded p-2 bg-white shadow-sm"
-                style={{ 
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  padding: '8px',
-                  backgroundColor: '#ffffff',
-                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                }}
-              >
-                <QRCodeSVG
-                  value={qrCodeConfig.url}
-                  size={qrCodeConfig.size}
-                  data-testid="qr-code"
-                />
-              </div>
+              <QRCodeSVG
+                value={qrCodeConfig.url}
+                size={32}
+                data-testid="qr-code"
+              />
             </div>
           )}
         </div>
@@ -635,38 +573,26 @@ function ClassicTemplate({
         ))}
       </main>
 
-      <footer className="px-12 py-6 border-t border-gray-400 mt-8">
-        <div className="flex gap-6 items-center justify-between">
-          {salesAgents.length > 0 && (
-            <div className="flex gap-8 flex-1">
-              {salesAgents.map((agent, index) => (
-                <div key={index} className="border border-gray-400 rounded p-3 bg-gray-50 flex-1" data-testid={`agent-footer-${index}`}>
-                  <p className="font-semibold text-sm text-gray-900 mb-1" style={{ fontSize: '14px', fontWeight: 600 }}>
-                    {agent.name}
-                  </p>
-                  {agent.region && (
-                    <p className="text-xs text-gray-600" style={{ fontSize: '11px' }}>
-                      {agent.region}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-700 mt-2" style={{ fontSize: '12px' }}>
-                    {agent.email}
-                  </p>
-                  <p className="text-xs text-gray-700" style={{ fontSize: '12px' }}>
-                    {agent.phone}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Footer - Minimal Height */}
+      <footer 
+        className="px-12 py-2 border-t border-gray-300 mt-8"
+        style={{ marginTop: '32px', borderTop: '1px solid #d1d5db', paddingTop: '8px', paddingBottom: '8px' }}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
+            <span>File: Pricelist</span>
+            <span>Date: {currentDate}</span>
+            <span>Page: 1</span>
+            <span>{branding.companyName}</span>
+          </div>
 
+          {/* QR Code - Far Right */}
           {qrCodeConfig && (
             <div className="flex-shrink-0">
               <QRCodeSVG
                 value={qrCodeConfig.url}
-                size={qrCodeConfig.size || 80}
-                level="M"
-                data-testid="qrcode-footer"
+                size={32}
+                data-testid="qr-code"
               />
             </div>
           )}
@@ -826,38 +752,26 @@ function MinimalTemplate({
         ))}
       </main>
 
-      <footer className="px-16 py-10 mt-12">
-        <div className="flex gap-8 items-start">
-          {salesAgents.length > 0 && (
-            <div className="flex gap-12 flex-1">
-              {salesAgents.map((agent, index) => (
-                <div key={index} data-testid={`agent-footer-${index}`}>
-                  <p className="font-medium text-sm text-gray-900 mb-2" style={{ fontSize: '14px', fontWeight: 500 }}>
-                    {agent.name}
-                  </p>
-                  {agent.region && (
-                    <p className="text-xs text-gray-500 mb-3" style={{ fontSize: '12px' }}>
-                      {agent.region}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-600" style={{ fontSize: '12px' }}>
-                    {agent.email}
-                  </p>
-                  <p className="text-xs text-gray-600" style={{ fontSize: '12px' }}>
-                    {agent.phone}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Footer - Minimal Height */}
+      <footer 
+        className="px-16 py-2 border-t border-gray-300 mt-12"
+        style={{ marginTop: '48px', borderTop: '1px solid #d1d5db', paddingTop: '8px', paddingBottom: '8px' }}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
+            <span>File: Pricelist</span>
+            <span>Date: {currentDate}</span>
+            <span>Page: 1</span>
+            <span>{branding.companyName}</span>
+          </div>
 
+          {/* QR Code - Far Right */}
           {qrCodeConfig && (
             <div className="flex-shrink-0">
               <QRCodeSVG
                 value={qrCodeConfig.url}
-                size={qrCodeConfig.size || 80}
-                level="M"
-                data-testid="qrcode-footer"
+                size={32}
+                data-testid="qr-code"
               />
             </div>
           )}
