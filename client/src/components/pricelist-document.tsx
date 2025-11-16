@@ -49,7 +49,7 @@ export function PricelistDocument({
   return (
     <div className="pricelist-document font-sans" id="pricelist-document" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Header - Logo far left, title/tagline at top, sales team at bottom */}
-      <header className="px-12 py-4 border-b-2 border-gray-900" style={{ backgroundColor: '#CCC79A', position: 'relative' }}>
+      <header className="px-12 py-3 border-b-2 border-gray-900" style={{ backgroundColor: '#CCC79A' }}>
         <div className="flex gap-6">
           {/* Logo - Far Left */}
           {branding.logoUrl && (
@@ -59,27 +59,27 @@ export function PricelistDocument({
                 alt={branding.companyName}
                 className="w-auto object-contain"
                 data-testid="img-header-logo"
-                style={{ height: '180px' }}
+                style={{ height: '120px' }}
               />
             </div>
           )}
           
           {/* Content Area */}
-          <div className="flex-1 flex flex-col justify-between" style={{ minHeight: '180px' }}>
+          <div className="flex-1 flex flex-col justify-between" style={{ minHeight: '120px' }}>
             {/* Title and Tagline - Top */}
             <div>
               <h1 
                 className="font-semibold leading-tight tracking-tight" 
                 data-testid="text-company-name"
-                style={{ fontSize: '20px', fontWeight: 600, lineHeight: 1.2, color: '#2d5016' }}
+                style={{ fontSize: '24px', fontWeight: 600, lineHeight: 1.2, color: '#2d5016' }}
               >
                 {branding.companyName}
               </h1>
               {branding.tagline && (
                 <p 
-                  className="mt-0.5" 
+                  className="mt-1" 
                   data-testid="text-tagline"
-                  style={{ fontSize: '11px', marginTop: '2px', color: '#2d5016' }}
+                  style={{ fontSize: '14px', marginTop: '4px', color: '#2d5016' }}
                 >
                   {branding.tagline}
                 </p>
@@ -471,7 +471,7 @@ function ClassicTemplate({
 }: TemplateProps) {
   return (
     <div className="pricelist-document font-serif" id="pricelist-document" style={{ fontFamily: 'Georgia, serif' }}>
-      <header className="px-12 py-4 border-b border-gray-400" style={{ backgroundColor: '#CCC79A', position: 'relative' }}>
+      <header className="px-12 py-3 border-b border-gray-400" style={{ backgroundColor: '#CCC79A' }}>
         <div className="flex gap-6">
           {/* Logo - Far Left */}
           {branding.logoUrl && (
@@ -481,27 +481,27 @@ function ClassicTemplate({
                 alt={branding.companyName}
                 className="w-auto object-contain"
                 data-testid="img-header-logo"
-                style={{ height: '192px' }}
+                style={{ height: '128px' }}
               />
             </div>
           )}
           
           {/* Content Area */}
-          <div className="flex-1 flex flex-col justify-between" style={{ minHeight: '192px' }}>
+          <div className="flex-1 flex flex-col justify-between" style={{ minHeight: '128px' }}>
             {/* Title and Tagline - Top */}
             <div>
               <h1 
                 className="font-bold"
                 data-testid="text-company-name"
-                style={{ fontSize: '20px', fontWeight: 700, color: '#2d5016' }}
+                style={{ fontSize: '24px', fontWeight: 700, color: '#2d5016' }}
               >
                 {branding.companyName}
               </h1>
               {branding.tagline && (
                 <p 
-                  className="italic mt-0.5"
+                  className="italic mt-1"
                   data-testid="text-tagline"
-                  style={{ fontSize: '11px', fontStyle: 'italic', marginTop: '2px', color: '#2d5016' }}
+                  style={{ fontSize: '14px', fontStyle: 'italic', marginTop: '4px', color: '#2d5016' }}
                 >
                   {branding.tagline}
                 </p>
@@ -685,7 +685,7 @@ function MinimalTemplate({
 }: TemplateProps) {
   return (
     <div className="pricelist-document font-sans" id="pricelist-document" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <header className="px-16 py-4" style={{ backgroundColor: '#CCC79A', position: 'relative' }}>
+      <header className="px-16 py-3" style={{ backgroundColor: '#CCC79A' }}>
         <div className="flex gap-6">
           {/* Logo - Far Left */}
           {branding.logoUrl && (
@@ -695,27 +695,27 @@ function MinimalTemplate({
                 alt={branding.companyName}
                 className="w-auto object-contain"
                 data-testid="img-header-logo"
-                style={{ height: '180px' }}
+                style={{ height: '120px' }}
               />
             </div>
           )}
           
           {/* Content Area */}
-          <div className="flex-1 flex flex-col justify-between" style={{ minHeight: '180px' }}>
+          <div className="flex-1 flex flex-col justify-between" style={{ minHeight: '120px' }}>
             {/* Title and Tagline - Top */}
             <div>
               <h1 
                 className="font-light"
                 data-testid="text-company-name"
-                style={{ fontSize: '20px', fontWeight: 300, color: '#2d5016' }}
+                style={{ fontSize: '24px', fontWeight: 300, color: '#2d5016' }}
               >
                 {branding.companyName}
               </h1>
               {branding.tagline && (
                 <p 
-                  className="font-light mt-0.5"
+                  className="font-light mt-1"
                   data-testid="text-tagline"
-                  style={{ fontSize: '11px', fontWeight: 300, marginTop: '2px', color: '#2d5016' }}
+                  style={{ fontSize: '14px', fontWeight: 300, marginTop: '4px', color: '#2d5016' }}
                 >
                   {branding.tagline}
                 </p>

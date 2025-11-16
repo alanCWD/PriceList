@@ -205,8 +205,8 @@ The workflow "Start application" is configured and runs automatically.
    - Product Name field auto-mapping improved to prefer "Name" over "productimageUrl"
    - Case/Size auto-extracts from "Additional info sections" structured data (e.g., "CASE SIZE\n12 x 750 ml" → "12 x 750 ml")
 9. ✅ Redesigned header layout (all templates)
-   - Logo 3x larger (180-192px), positioned at far left
-   - Title and tagline at TOP - straight horizontal lines starting just beyond logo
+   - Logo 2x larger (120-128px), positioned at far left
+   - Title (24px) and tagline (14px) at TOP - straight horizontal lines starting just beyond logo
    - Sales team contact info at BOTTOM right
    - Dark green text (#2d5016) matching wine/spirits branding
    - Background color (#CCC79A) matching wine/spirits branding
