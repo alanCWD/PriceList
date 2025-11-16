@@ -29,7 +29,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 48;
-  const footerHeight = 30;
+  const footerHeight = 40;
   let yPosition = margin;
 
   const currentDate = new Date().toLocaleDateString("en-US", {
@@ -37,6 +37,20 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     year: "numeric",
   });
   const displayName = pricelistName || "Pricelist";
+
+  // Convert QR code to base64 if present
+  let qrCodeBase64: string | null = null;
+  if (qrCodeConfig?.url) {
+    try {
+      const QRCode = (await import('qrcode')).default;
+      qrCodeBase64 = await QRCode.toDataURL(qrCodeConfig.url, { 
+        width: qrCodeConfig.size || 32,
+        margin: 0 
+      });
+    } catch (error) {
+      console.error('Failed to generate QR code for PDF:', error);
+    }
+  }
 
   // Header
   doc.setFontSize(24);
@@ -140,22 +154,28 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       },
       margin: { left: margin, right: margin, bottom: margin + footerHeight },
       didDrawPage: (data) => {
-        // Footer on every page
-        const footerY = pageHeight - margin - 20;
+        // Footer on every page - centered vertically between line and bottom
+        const footerY = pageHeight - margin - 15;
         
         // Thin separator line
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.5);
-        doc.line(margin, footerY - 10, pageWidth - margin, footerY - 10);
+        doc.line(margin, footerY - 20, pageWidth - margin, footerY - 20);
         
-        // Footer text
+        // Footer text - format: Page: X | File: Name | Date: Month Year | Company
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(100, 100, 100);
         
         const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
-        const footerText = `File: ${displayName}    Date: ${currentDate}    Page: ${pageNum}    ${branding.companyName}`;
+        const footerText = `Page: ${pageNum} | File: ${displayName} | Date: ${currentDate} | ${branding.companyName}`;
         doc.text(footerText, margin, footerY);
+        
+        // QR code on the right side
+        if (qrCodeBase64) {
+          const qrSize = qrCodeConfig?.size || 32;
+          doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, footerY - qrSize, qrSize, qrSize);
+        }
       },
     });
 
