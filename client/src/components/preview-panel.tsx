@@ -13,6 +13,7 @@ interface PreviewPanelProps {
   salesAgents: SalesAgent[];
   qrCodeConfig?: QRCodeConfig;
   template?: Template;
+  pricelistName?: string;
 }
 
 export function PreviewPanel({
@@ -21,6 +22,7 @@ export function PreviewPanel({
   salesAgents,
   qrCodeConfig,
   template = "modern",
+  pricelistName,
 }: PreviewPanelProps) {
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -33,6 +35,7 @@ export function PreviewPanel({
         salesAgents,
         qrCodeConfig,
         template,
+        pricelistName,
       });
       toast({
         title: "PDF Downloaded",

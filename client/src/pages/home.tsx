@@ -271,6 +271,7 @@ export default function Home() {
               salesAgents={salesAgents}
               qrCodeConfig={qrCodeConfig}
               template={template}
+              pricelistName={currentPricelistName}
             />
           </TabsContent>
         </Tabs>

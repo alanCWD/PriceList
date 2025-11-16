@@ -8,10 +8,11 @@ interface PDFConfig {
   salesAgents: SalesAgent[];
   qrCodeConfig?: QRCodeConfig;
   template?: Template;
+  pricelistName?: string;
 }
 
 export async function generatePDF(config: PDFConfig): Promise<void> {
-  const { products, branding, salesAgents, qrCodeConfig, template = "modern" } = config;
+  const { products, branding, salesAgents, qrCodeConfig, template = "modern", pricelistName } = config;
   
   if (template === "classic") {
     return generateClassicPDF(config);
@@ -28,7 +29,14 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 48;
+  const footerHeight = 30;
   let yPosition = margin;
+
+  const currentDate = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+  const displayName = pricelistName || "Pricelist";
 
   // Header
   doc.setFontSize(24);
@@ -48,7 +56,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   if (salesAgents.length > 0) {
     doc.setFontSize(10);
     let agentX = pageWidth - margin;
-    salesAgents.reverse().forEach(agent => {
+    salesAgents.slice().reverse().forEach(agent => {
       const lines = [];
       if (agent.region) lines.push(agent.region);
       lines.push(agent.name, agent.email, agent.phone);
@@ -130,74 +138,37 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         3: { cellWidth: 100 },
         4: { cellWidth: 75 },
       },
-      margin: { left: margin, right: margin },
+      margin: { left: margin, right: margin, bottom: margin + footerHeight },
+      didDrawPage: (data) => {
+        // Footer on every page
+        const footerY = pageHeight - margin - 20;
+        
+        // Thin separator line
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.5);
+        doc.line(margin, footerY - 10, pageWidth - margin, footerY - 10);
+        
+        // Footer text
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 100, 100);
+        
+        const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
+        const footerText = `File: ${displayName}    Date: ${currentDate}    Page: ${pageNum}    ${branding.companyName}`;
+        doc.text(footerText, margin, footerY);
+      },
     });
 
     yPosition = (doc as any).lastAutoTable.finalY + 10;
   });
 
-  // Footer
-  const footerY = pageHeight - margin - 60;
-  doc.setDrawColor(30, 30, 30);
-  doc.setLineWidth(2);
-  doc.line(margin, footerY, pageWidth - margin, footerY);
-
-  // Sales agents in footer
-  if (salesAgents.length > 0) {
-    let agentX = margin;
-    salesAgents.forEach((agent, index) => {
-      doc.setFillColor(245, 245, 245);
-      const boxWidth = 180;
-      doc.rect(agentX, footerY + 10, boxWidth, 40, "F");
-      doc.setDrawColor(200, 200, 200);
-      doc.rect(agentX, footerY + 10, boxWidth, 40, "S");
-
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(30, 30, 30);
-      let textY = footerY + 22;
-      if (agent.region) {
-        doc.text(agent.region, agentX + 8, textY);
-        textY += 10;
-      }
-      doc.text(agent.name, agentX + 8, textY);
-      textY += 10;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(80, 80, 80);
-      doc.text(agent.email, agentX + 8, textY);
-      textY += 10;
-      doc.text(agent.phone, agentX + 8, textY);
-
-      agentX += boxWidth + 20;
-    });
-  }
-
-  // Date and page number
-  const currentDate = new Date().toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
-  doc.setFontSize(8);
-  doc.setTextColor(100, 100, 100);
-  const centerX = pageWidth / 2;
-  doc.text(`Updated: ${currentDate}`, centerX, footerY + 25, { align: "center" });
-  doc.text("Page 1", centerX, footerY + 35, { align: "center" });
-
-  // QR Code (if available)
-  if (qrCodeConfig) {
-    // Note: For now, we'll skip QR code in PDF as it requires canvas conversion
-    // This can be enhanced later with QR code image generation
-  }
-
   // Save the PDF
-  const fileName = `${branding.companyName.replace(/[^a-z0-9]/gi, "_")}_Pricelist_${new Date().toISOString().split("T")[0]}.pdf`;
+  const fileName = `${displayName.replace(/[^a-z0-9]/gi, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;
   doc.save(fileName);
 }
 
 function generateClassicPDF(config: PDFConfig): void {
-  const { products, branding, salesAgents } = config;
+  const { products, branding, salesAgents, pricelistName } = config;
   
   const doc = new jsPDF({
     orientation: "portrait",
@@ -208,12 +179,14 @@ function generateClassicPDF(config: PDFConfig): void {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 48;
+  const footerHeight = 30;
   let yPosition = margin;
 
   const currentDate = new Date().toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
   });
+  const displayName = pricelistName || "Pricelist";
 
   doc.setFont("times", "bold");
   doc.setFontSize(30);
@@ -299,50 +272,36 @@ function generateClassicPDF(config: PDFConfig): void {
         3: { cellWidth: 70, halign: "right" },
         4: { cellWidth: 100 },
       },
-      margin: { left: margin, right: margin },
+      margin: { left: margin, right: margin, bottom: margin + footerHeight },
+      didDrawPage: (data) => {
+        // Footer on every page
+        const footerY = pageHeight - margin - 20;
+        
+        // Thin separator line
+        doc.setDrawColor(156, 163, 175);
+        doc.setLineWidth(0.5);
+        doc.line(margin, footerY - 10, pageWidth - margin, footerY - 10);
+        
+        // Footer text
+        doc.setFontSize(10);
+        doc.setFont("times", "normal");
+        doc.setTextColor(100, 100, 100);
+        
+        const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
+        const footerText = `File: ${displayName}    Date: ${currentDate}    Page: ${pageNum}    ${branding.companyName}`;
+        doc.text(footerText, margin, footerY);
+      },
     });
 
     yPosition = (doc as any).lastAutoTable.finalY + 10;
   });
 
-  const footerY = pageHeight - margin - 50;
-  doc.setDrawColor(156, 163, 175);
-  doc.setLineWidth(1);
-  doc.line(margin, footerY, pageWidth - margin, footerY);
-
-  if (salesAgents.length > 0) {
-    let agentX = margin;
-    salesAgents.forEach((agent) => {
-      doc.setDrawColor(156, 163, 175);
-      doc.setLineWidth(1);
-      const boxWidth = 170;
-      doc.setFillColor(249, 250, 251);
-      doc.rect(agentX, footerY + 8, boxWidth, 35, "FD");
-
-      doc.setFont("times", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(30, 30, 30);
-      let textY = footerY + 18;
-      doc.text(agent.name, agentX + 6, textY);
-      textY += 10;
-
-      doc.setFont("times", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(70, 70, 70);
-      doc.text(agent.email, agentX + 6, textY);
-      textY += 8;
-      doc.text(agent.phone, agentX + 6, textY);
-
-      agentX += boxWidth + 12;
-    });
-  }
-
-  const fileName = `${branding.companyName.replace(/[^a-z0-9]/gi, "_")}_Pricelist_${new Date().toISOString().split("T")[0]}.pdf`;
+  const fileName = `${displayName.replace(/[^a-z0-9]/gi, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;
   doc.save(fileName);
 }
 
 function generateMinimalPDF(config: PDFConfig): void {
-  const { products, branding, salesAgents } = config;
+  const { products, branding, salesAgents, pricelistName } = config;
   
   const doc = new jsPDF({
     orientation: "portrait",
@@ -353,7 +312,14 @@ function generateMinimalPDF(config: PDFConfig): void {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 60;
+  const footerHeight = 30;
   let yPosition = margin + 20;
+
+  const currentDate = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+  const displayName = pricelistName || "Pricelist";
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(32);
@@ -380,7 +346,34 @@ function generateMinimalPDF(config: PDFConfig): void {
     return acc;
   }, {} as Record<string, Product[]>);
 
+  let currentPage = 1;
+  const maxY = pageHeight - margin - footerHeight - 20;
+
+  const addFooter = () => {
+    const footerY = pageHeight - margin - 10;
+    
+    // Thin separator line
+    doc.setDrawColor(229, 231, 235);
+    doc.setLineWidth(0.5);
+    doc.line(margin, footerY - 15, pageWidth - margin, footerY - 15);
+    
+    // Footer text
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120, 120, 120);
+    
+    const footerText = `File: ${displayName}    Date: ${currentDate}    Page: ${currentPage}    ${branding.companyName}`;
+    doc.text(footerText, margin, footerY);
+  };
+
   Object.entries(groupedProducts).forEach(([category, categoryProducts], index) => {
+    if (yPosition + 50 > maxY) {
+      addFooter();
+      doc.addPage();
+      currentPage++;
+      yPosition = margin + 20;
+    }
+
     if (index > 0) {
       yPosition += 40;
     }
@@ -392,6 +385,13 @@ function generateMinimalPDF(config: PDFConfig): void {
     yPosition += 25;
 
     categoryProducts.forEach((product) => {
+      if (yPosition + 40 > maxY) {
+        addFooter();
+        doc.addPage();
+        currentPage++;
+        yPosition = margin + 20;
+      }
+
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
       doc.setTextColor(30, 30, 30);
@@ -418,35 +418,8 @@ function generateMinimalPDF(config: PDFConfig): void {
     });
   });
 
-  const footerY = pageHeight - margin - 30;
-  if (salesAgents.length > 0) {
-    let agentX = margin;
-    salesAgents.forEach((agent) => {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(30, 30, 30);
-      doc.text(agent.name, agentX, footerY);
-      let textY = footerY + 12;
+  addFooter();
 
-      if (agent.region) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(120, 120, 120);
-        doc.text(agent.region, agentX, textY);
-        textY += 10;
-      }
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(100, 100, 100);
-      doc.text(agent.email, agentX, textY);
-      textY += 9;
-      doc.text(agent.phone, agentX, textY);
-
-      agentX += 200;
-    });
-  }
-
-  const fileName = `${branding.companyName.replace(/[^a-z0-9]/gi, "_")}_Pricelist_${new Date().toISOString().split("T")[0]}.pdf`;
+  const fileName = `${displayName.replace(/[^a-z0-9]/gi, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;
   doc.save(fileName);
 }
