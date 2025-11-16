@@ -38,13 +38,14 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   });
   const displayName = pricelistName || "Pricelist";
 
-  // Convert QR code to base64 if present
+  // Convert QR code to base64 if present (minimal size for footer)
   let qrCodeBase64: string | null = null;
+  const qrCodeSize = 20; // Minimal size for PDF footer
   if (qrCodeConfig?.url) {
     try {
       const QRCode = (await import('qrcode')).default;
       qrCodeBase64 = await QRCode.toDataURL(qrCodeConfig.url, { 
-        width: qrCodeConfig.size || 32,
+        width: qrCodeSize * 4, // Generate at higher resolution for clarity
         margin: 0 
       });
     } catch (error) {
@@ -154,13 +155,13 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       },
       margin: { left: margin, right: margin, bottom: margin + footerHeight },
       didDrawPage: (data) => {
-        // Footer on every page - centered vertically between line and bottom
-        const footerY = pageHeight - margin - 15;
+        // Minimal footer with text and small QR code aligned
+        const footerY = pageHeight - margin - 12;
         
         // Thin separator line
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.5);
-        doc.line(margin, footerY - 20, pageWidth - margin, footerY - 20);
+        doc.line(margin, footerY - 10, pageWidth - margin, footerY - 10);
         
         // Footer text - format: Page: X | File: Name | Date: Month Year | Company
         doc.setFontSize(10);
@@ -171,10 +172,12 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         const footerText = `Page: ${pageNum} | File: ${displayName} | Date: ${currentDate} | ${branding.companyName}`;
         doc.text(footerText, margin, footerY);
         
-        // QR code on the right side
+        // Small QR code on the right side, vertically centered with text
         if (qrCodeBase64) {
-          const qrSize = qrCodeConfig?.size || 32;
-          doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, footerY - qrSize, qrSize, qrSize);
+          // Position QR code: right-justified, centered vertically with text baseline
+          const qrX = pageWidth - margin - qrCodeSize;
+          const qrY = footerY - (qrCodeSize / 2) - 5; // Center with text (text baseline at footerY)
+          doc.addImage(qrCodeBase64, 'PNG', qrX, qrY, qrCodeSize, qrCodeSize);
         }
       },
     });
