@@ -205,11 +205,11 @@ The workflow "Start application" is configured and runs automatically.
    - Product Name field auto-mapping improved to prefer "Name" over "productimageUrl"
    - Case/Size auto-extracts from "Additional info sections" structured data (e.g., "CASE SIZE\n12 x 750 ml" → "12 x 750 ml")
 9. ✅ Redesigned header layout (all templates)
-   - Reduced height by 50% for more compact design
-   - Title and tagline centered at top
-   - Logo left-justified in bottom row
-   - Sales team contact info at bottom right
-   - Background color (#F5F1E8 cream/beige) matching typical wine/spirits branding
+   - Logo fills header height (60-64px), left-justified
+   - Title and tagline left-aligned next to logo
+   - Sales team contact info at right side
+   - Background color (#CCC79A) matching wine/spirits branding
+   - Clean, professional letterhead-style design
 
 **Known Limitations**:
 - Product images display in preview but are not included in PDF exports (requires complex image conversion)

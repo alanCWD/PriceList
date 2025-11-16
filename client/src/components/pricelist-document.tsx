@@ -48,44 +48,43 @@ export function PricelistDocument({
 
   return (
     <div className="pricelist-document font-sans" id="pricelist-document" style={{ fontFamily: 'Inter, sans-serif' }}>
-      {/* Header - Redesigned with centered title, left logo, bottom sales team */}
-      <header className="px-12 py-3 border-b-2 border-gray-900" style={{ backgroundColor: '#F5F1E8' }}>
-        {/* Title and Tagline - Centered at Top */}
-        <div className="text-center mb-2">
-          <h1 
-            className="text-xl font-semibold text-gray-900 leading-tight tracking-tight" 
-            data-testid="text-company-name"
-            style={{ fontSize: '20px', fontWeight: 600, lineHeight: 1.2 }}
-          >
-            {branding.companyName}
-          </h1>
-          {branding.tagline && (
-            <p 
-              className="text-xs text-gray-700 mt-0.5" 
-              data-testid="text-tagline"
-              style={{ fontSize: '11px', marginTop: '2px' }}
-            >
-              {branding.tagline}
-            </p>
-          )}
-        </div>
-
-        {/* Logo and Sales Team - Bottom Row */}
+      {/* Header - Logo fills height, title/tagline left-aligned */}
+      <header className="px-12 py-3 border-b-2 border-gray-900" style={{ backgroundColor: '#CCC79A' }}>
         <div className="flex items-center justify-between gap-8">
-          {/* Logo - Left Justified */}
-          {branding.logoUrl && (
-            <div className="flex-shrink-0">
-              <img
-                src={branding.logoUrl}
-                alt={branding.companyName}
-                className="max-h-12 w-auto object-contain"
-                data-testid="img-header-logo"
-                style={{ maxHeight: '48px' }}
-              />
+          {/* Logo and Company Info - Left Side */}
+          <div className="flex items-center gap-6 flex-1">
+            {branding.logoUrl && (
+              <div className="flex-shrink-0">
+                <img
+                  src={branding.logoUrl}
+                  alt={branding.companyName}
+                  className="w-auto object-contain"
+                  data-testid="img-header-logo"
+                  style={{ height: '60px' }}
+                />
+              </div>
+            )}
+            <div>
+              <h1 
+                className="text-xl font-semibold text-gray-900 leading-tight tracking-tight" 
+                data-testid="text-company-name"
+                style={{ fontSize: '20px', fontWeight: 600, lineHeight: 1.2 }}
+              >
+                {branding.companyName}
+              </h1>
+              {branding.tagline && (
+                <p 
+                  className="text-xs text-gray-700 mt-0.5" 
+                  data-testid="text-tagline"
+                  style={{ fontSize: '11px', marginTop: '2px' }}
+                >
+                  {branding.tagline}
+                </p>
+              )}
             </div>
-          )}
+          </div>
 
-          {/* Sales Agents - Bottom Right */}
+          {/* Sales Agents - Right Side */}
           {salesAgents.length > 0 && (
             <div className="flex gap-6 flex-shrink-0">
               {salesAgents.map((agent, index) => (
@@ -471,43 +470,42 @@ function ClassicTemplate({
 }: TemplateProps) {
   return (
     <div className="pricelist-document font-serif" id="pricelist-document" style={{ fontFamily: 'Georgia, serif' }}>
-      <header className="px-12 py-4 border-b border-gray-400" style={{ backgroundColor: '#F5F1E8' }}>
-        {/* Title and Tagline - Centered at Top */}
-        <div className="text-center mb-2">
-          <h1 
-            className="text-xl font-bold text-gray-900"
-            data-testid="text-company-name"
-            style={{ fontSize: '20px', fontWeight: 700 }}
-          >
-            {branding.companyName}
-          </h1>
-          {branding.tagline && (
-            <p 
-              className="text-xs text-gray-700 italic mt-0.5"
-              data-testid="text-tagline"
-              style={{ fontSize: '11px', fontStyle: 'italic', marginTop: '2px' }}
-            >
-              {branding.tagline}
-            </p>
-          )}
-        </div>
-
-        {/* Logo and Sales Team - Bottom Row */}
+      <header className="px-12 py-4 border-b border-gray-400" style={{ backgroundColor: '#CCC79A' }}>
         <div className="flex items-center justify-between gap-8">
-          {/* Logo - Left Justified */}
-          {branding.logoUrl && (
-            <div className="flex-shrink-0">
-              <img
-                src={branding.logoUrl}
-                alt={branding.companyName}
-                className="max-h-12 w-auto object-contain"
-                data-testid="img-header-logo"
-                style={{ maxHeight: '48px' }}
-              />
+          {/* Logo and Company Info - Left Side */}
+          <div className="flex items-center gap-6 flex-1">
+            {branding.logoUrl && (
+              <div className="flex-shrink-0">
+                <img
+                  src={branding.logoUrl}
+                  alt={branding.companyName}
+                  className="w-auto object-contain"
+                  data-testid="img-header-logo"
+                  style={{ height: '64px' }}
+                />
+              </div>
+            )}
+            <div>
+              <h1 
+                className="text-xl font-bold text-gray-900"
+                data-testid="text-company-name"
+                style={{ fontSize: '20px', fontWeight: 700 }}
+              >
+                {branding.companyName}
+              </h1>
+              {branding.tagline && (
+                <p 
+                  className="text-xs text-gray-700 italic mt-0.5"
+                  data-testid="text-tagline"
+                  style={{ fontSize: '11px', fontStyle: 'italic', marginTop: '2px' }}
+                >
+                  {branding.tagline}
+                </p>
+              )}
             </div>
-          )}
+          </div>
 
-          {/* Sales Agents - Bottom Right */}
+          {/* Sales Agents - Right Side */}
           {salesAgents.length > 0 && (
             <div className="flex gap-6 flex-shrink-0">
               {salesAgents.map((agent, index) => (
@@ -685,43 +683,42 @@ function MinimalTemplate({
 }: TemplateProps) {
   return (
     <div className="pricelist-document font-sans" id="pricelist-document" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <header className="px-16 py-5" style={{ backgroundColor: '#F5F1E8' }}>
-        {/* Title and Tagline - Centered at Top */}
-        <div className="text-center mb-3">
-          <h1 
-            className="text-xl font-light text-gray-900"
-            data-testid="text-company-name"
-            style={{ fontSize: '20px', fontWeight: 300 }}
-          >
-            {branding.companyName}
-          </h1>
-          {branding.tagline && (
-            <p 
-              className="text-xs text-gray-600 font-light mt-0.5"
-              data-testid="text-tagline"
-              style={{ fontSize: '11px', fontWeight: 300, marginTop: '2px' }}
-            >
-              {branding.tagline}
-            </p>
-          )}
-        </div>
-
-        {/* Logo and Sales Team - Bottom Row */}
+      <header className="px-16 py-5" style={{ backgroundColor: '#CCC79A' }}>
         <div className="flex items-center justify-between gap-8">
-          {/* Logo - Left Justified */}
-          {branding.logoUrl && (
-            <div className="flex-shrink-0">
-              <img
-                src={branding.logoUrl}
-                alt={branding.companyName}
-                className="max-h-12 w-auto object-contain"
-                data-testid="img-header-logo"
-                style={{ maxHeight: '48px' }}
-              />
+          {/* Logo and Company Info - Left Side */}
+          <div className="flex items-center gap-6 flex-1">
+            {branding.logoUrl && (
+              <div className="flex-shrink-0">
+                <img
+                  src={branding.logoUrl}
+                  alt={branding.companyName}
+                  className="w-auto object-contain"
+                  data-testid="img-header-logo"
+                  style={{ height: '60px' }}
+                />
+              </div>
+            )}
+            <div>
+              <h1 
+                className="text-xl font-light text-gray-900"
+                data-testid="text-company-name"
+                style={{ fontSize: '20px', fontWeight: 300 }}
+              >
+                {branding.companyName}
+              </h1>
+              {branding.tagline && (
+                <p 
+                  className="text-xs text-gray-600 font-light mt-0.5"
+                  data-testid="text-tagline"
+                  style={{ fontSize: '11px', fontWeight: 300, marginTop: '2px' }}
+                >
+                  {branding.tagline}
+                </p>
+              )}
             </div>
-          )}
+          </div>
 
-          {/* Sales Agents - Bottom Right */}
+          {/* Sales Agents - Right Side */}
           {salesAgents.length > 0 && (
             <div className="flex gap-6 flex-shrink-0">
               {salesAgents.map((agent, index) => (
