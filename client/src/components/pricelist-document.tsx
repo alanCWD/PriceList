@@ -371,7 +371,7 @@ export function PricelistDocument({
           <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
             <span>File: Pricelist</span>
             <span>Date: {currentDate}</span>
-            <span>Page: 1</span>
+            <span className="page-number">Page: </span>
             <span>{branding.companyName}</span>
           </div>
 
@@ -582,7 +582,7 @@ function ClassicTemplate({
           <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
             <span>File: Pricelist</span>
             <span>Date: {currentDate}</span>
-            <span>Page: 1</span>
+            <span className="page-number">Page: </span>
             <span>{branding.companyName}</span>
           </div>
 
@@ -761,7 +761,7 @@ function MinimalTemplate({
           <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
             <span>File: Pricelist</span>
             <span>Date: {currentDate}</span>
-            <span>Page: 1</span>
+            <span className="page-number">Page: </span>
             <span>{branding.companyName}</span>
           </div>
 

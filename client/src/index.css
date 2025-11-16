@@ -298,17 +298,19 @@
  */
 @media print {
   @page {
-    margin: 0.75in;
+    margin: 0.75in 0.75in 1.25in 0.75in; /* Extra bottom margin for footer */
     size: letter portrait;
   }
 
+  /* Page counter for dynamic page numbers */
   body {
+    counter-reset: page;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
 
-  /* Hide UI elements */
-  header,
+  /* Hide UI elements and screen-only header */
+  header:not(.pricelist-document header),
   .print\\:hidden {
     display: none !important;
   }
@@ -319,6 +321,29 @@
     max-width: none;
     box-shadow: none;
     page-break-after: auto;
+    position: relative;
+  }
+
+  /* Fixed footer that appears on every page */
+  .pricelist-document footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px 0.75in;
+    border-top: 1px solid #d1d5db;
+    background: white;
+  }
+
+  /* Use CSS counter for page numbers */
+  .pricelist-document footer .page-number::after {
+    counter-increment: page;
+    content: counter(page);
+  }
+
+  /* Add bottom padding to main content to avoid footer overlap */
+  .pricelist-document main {
+    padding-bottom: 60px;
   }
 
   /* Prevent page breaks inside important elements */
@@ -328,9 +353,21 @@
     page-break-inside: avoid;
   }
 
+  /* Category sections should try to stay together */
+  .pricelist-document main > div {
+    page-break-inside: auto;
+  }
+
   /* Category headers should stay with their content */
-  .bg-gray-800 {
+  .bg-gray-800,
+  h2,
+  h3 {
     page-break-after: avoid;
+  }
+
+  /* Product rows should stay together */
+  tbody tr {
+    page-break-inside: avoid;
   }
 
   /* Ensure colors print correctly */
