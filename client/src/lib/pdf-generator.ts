@@ -53,16 +53,31 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     }
   }
 
+  // Use extracted text color if available
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : { r: 30, g: 30, b: 30 };
+  };
+  
+  const textColor = branding.headerTextColor 
+    ? hexToRgb(branding.headerTextColor) 
+    : { r: 30, g: 30, b: 30 };
+
   // Header
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
+  doc.setTextColor(textColor.r, textColor.g, textColor.b);
   doc.text(branding.companyName, margin, yPosition);
   yPosition += 20;
 
   if (branding.tagline) {
     doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(textColor.r, textColor.g, textColor.b);
     doc.text(branding.tagline, margin, yPosition);
     yPosition += 20;
   }
@@ -70,6 +85,8 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   // Sales agents in header
   if (salesAgents.length > 0) {
     doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(textColor.r, textColor.g, textColor.b);
     let agentX = pageWidth - margin;
     salesAgents.slice().reverse().forEach(agent => {
       const lines = [];

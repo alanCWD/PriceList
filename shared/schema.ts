@@ -31,6 +31,8 @@ export const companyBrandingSchema = z.object({
   companyName: z.string(),
   tagline: z.string().optional(),
   logoUrl: z.string().optional(),
+  headerBackgroundColor: z.string().optional(), // Extracted from logo or manually set
+  headerTextColor: z.string().optional(), // Extracted from logo or manually set
 });
 
 export type CompanyBranding = z.infer<typeof companyBrandingSchema>;

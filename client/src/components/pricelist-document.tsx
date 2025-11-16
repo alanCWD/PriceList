@@ -46,47 +46,51 @@ export function PricelistDocument({
     />;
   }
 
+  // Use extracted colors from logo, or fallback to neutral defaults
+  const headerBgColor = branding.headerBackgroundColor || '#f8f9fa';
+  const headerTextColor = branding.headerTextColor || '#1a1a1a';
+
   return (
     <div className="pricelist-document font-sans" id="pricelist-document" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Header - Logo far left, title/tagline at top, sales team at bottom */}
-      <header className="px-12 py-3 border-b-2 border-gray-900" style={{ backgroundColor: '#CCC79A' }}>
+      <header className="px-12 border-b-2 border-gray-900" style={{ backgroundColor: headerBgColor }}>
         <div className="flex gap-6">
-          {/* Logo - Far Left */}
+          {/* Logo - Far Left, no vertical padding */}
           {branding.logoUrl && (
             <div className="flex-shrink-0">
               <img
                 src={branding.logoUrl}
                 alt={branding.companyName}
-                className="w-auto object-contain"
+                className="w-auto object-contain block"
                 data-testid="img-header-logo"
-                style={{ height: '120px' }}
+                style={{ maxHeight: '120px' }}
               />
             </div>
           )}
           
-          {/* Content Area */}
-          <div className="flex-1 flex flex-col justify-between" style={{ minHeight: '120px' }}>
-            {/* Title and Tagline - Top */}
-            <div>
+          {/* Content Area - matches logo height, no extra padding */}
+          <div className="flex-1 flex flex-col justify-between py-2" style={{ minHeight: '120px' }}>
+            {/* Title and Tagline - Top with minimal spacing */}
+            <div className="flex flex-col" style={{ gap: '2px' }}>
               <h1 
                 className="font-semibold leading-tight tracking-tight" 
                 data-testid="text-company-name"
-                style={{ fontSize: '24px', fontWeight: 600, lineHeight: 1.2, color: '#2d5016' }}
+                style={{ fontSize: '22px', fontWeight: 600, lineHeight: 1.2, color: headerTextColor }}
               >
                 {branding.companyName}
               </h1>
               {branding.tagline && (
                 <p 
-                  className="mt-1" 
+                  className="italic" 
                   data-testid="text-tagline"
-                  style={{ fontSize: '14px', marginTop: '4px', color: '#2d5016' }}
+                  style={{ fontSize: '13px', fontStyle: 'italic', lineHeight: 1.3, color: headerTextColor }}
                 >
                   {branding.tagline}
                 </p>
               )}
             </div>
             
-            {/* Sales Agents - Bottom Right */}
+            {/* Sales Agents - Bottom Right with visible spacing above */}
             {salesAgents.length > 0 && (
               <div className="flex gap-6 justify-end">
                 {salesAgents.map((agent, index) => (
@@ -94,24 +98,24 @@ export function PricelistDocument({
                     {agent.region && (
                       <p 
                         className="font-semibold uppercase tracking-wide"
-                        style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.025em', color: '#2d5016' }}
+                        style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '0.025em', color: headerTextColor, opacity: 0.8 }}
                       >
                         {agent.region}
                       </p>
                     )}
                     <p 
                       className="font-medium" 
-                      style={{ fontSize: '12px', fontWeight: 500, color: '#2d5016' }}
+                      style={{ fontSize: '11px', fontWeight: 500, color: headerTextColor }}
                     >
                       {agent.name}
                     </p>
                     <p 
-                      style={{ fontSize: '10px', color: '#2d5016' }}
+                      style={{ fontSize: '9px', color: headerTextColor, opacity: 0.8 }}
                     >
                       {agent.email}
                     </p>
                     <p 
-                      style={{ fontSize: '10px', color: '#2d5016' }}
+                      style={{ fontSize: '9px', color: headerTextColor, opacity: 0.8 }}
                     >
                       {agent.phone}
                     </p>

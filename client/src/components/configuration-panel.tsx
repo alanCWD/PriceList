@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2, Upload, ArrowRight, Building2, Users, QrCode, AlertCircle, Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import type { CompanyBranding, SalesAgent, QRCodeConfig, CompanyProfile, SalesAgentProfile } from "@shared/schema";
+import { getPaletteFromLogo } from "@/lib/color-extractor";
 
 interface ConfigurationPanelProps {
   branding: CompanyBranding;
@@ -40,11 +41,27 @@ export function ConfigurationPanel({
     queryKey: ["/api/sales-agent-profiles"],
   });
 
-  const handleLoadCompanyProfile = (profileId: string) => {
+  const handleLoadCompanyProfile = async (profileId: string) => {
     const profile = companyProfiles?.find((p) => p.id === parseInt(profileId));
     if (profile) {
-      onBrandingChange(profile.branding);
       setLogoPreview(profile.branding.logoUrl);
+      
+      // If profile has a logo but no colors, extract them
+      if (profile.branding.logoUrl && (!profile.branding.headerBackgroundColor || !profile.branding.headerTextColor)) {
+        try {
+          const { backgroundColor, textColor } = await getPaletteFromLogo(profile.branding.logoUrl);
+          onBrandingChange({ 
+            ...profile.branding,
+            headerBackgroundColor: backgroundColor,
+            headerTextColor: textColor,
+          });
+        } catch (error) {
+          console.error('Failed to extract colors from logo:', error);
+          onBrandingChange(profile.branding);
+        }
+      } else {
+        onBrandingChange(profile.branding);
+      }
     }
   };
 
@@ -57,14 +74,28 @@ export function ConfigurationPanel({
     }
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const result = reader.result as string;
         setLogoPreview(result);
-        onBrandingChange({ ...branding, logoUrl: result });
+        
+        // Extract colors from logo
+        try {
+          const { backgroundColor, textColor } = await getPaletteFromLogo(result);
+          onBrandingChange({ 
+            ...branding, 
+            logoUrl: result,
+            headerBackgroundColor: backgroundColor,
+            headerTextColor: textColor,
+          });
+        } catch (error) {
+          console.error('Failed to extract colors from logo:', error);
+          // Fallback: set logo without colors
+          onBrandingChange({ ...branding, logoUrl: result });
+        }
       };
       reader.readAsDataURL(file);
     }
