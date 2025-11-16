@@ -48,11 +48,11 @@ export function PricelistDocument({
 
   return (
     <div className="pricelist-document font-sans" id="pricelist-document" style={{ fontFamily: 'Inter, sans-serif' }}>
-      {/* Header - Logo fills height, title/tagline left-aligned */}
-      <header className="px-12 py-3 border-b-2 border-gray-900" style={{ backgroundColor: '#CCC79A' }}>
-        <div className="flex items-center justify-between gap-8">
+      {/* Header - Large logo left, title/tagline top-left aligned next to logo */}
+      <header className="px-12 py-6 border-b-2 border-gray-900" style={{ backgroundColor: '#CCC79A' }}>
+        <div className="flex items-start justify-between gap-8">
           {/* Logo and Company Info - Left Side */}
-          <div className="flex items-center gap-6 flex-1">
+          <div className="flex items-start gap-6 flex-1">
             {branding.logoUrl && (
               <div className="flex-shrink-0">
                 <img
@@ -60,11 +60,11 @@ export function PricelistDocument({
                   alt={branding.companyName}
                   className="w-auto object-contain"
                   data-testid="img-header-logo"
-                  style={{ height: '60px' }}
+                  style={{ height: '180px' }}
                 />
               </div>
             )}
-            <div>
+            <div className="pt-2">
               <h1 
                 className="text-xl font-semibold text-gray-900 leading-tight tracking-tight" 
                 data-testid="text-company-name"
@@ -86,7 +86,7 @@ export function PricelistDocument({
 
           {/* Sales Agents - Right Side */}
           {salesAgents.length > 0 && (
-            <div className="flex gap-6 flex-shrink-0">
+            <div className="flex gap-6 flex-shrink-0 pt-2">
               {salesAgents.map((agent, index) => (
                 <div key={index} className="text-right min-w-0" data-testid={`agent-header-${index}`}>
                   {agent.region && (
@@ -470,10 +470,10 @@ function ClassicTemplate({
 }: TemplateProps) {
   return (
     <div className="pricelist-document font-serif" id="pricelist-document" style={{ fontFamily: 'Georgia, serif' }}>
-      <header className="px-12 py-4 border-b border-gray-400" style={{ backgroundColor: '#CCC79A' }}>
-        <div className="flex items-center justify-between gap-8">
+      <header className="px-12 py-6 border-b border-gray-400" style={{ backgroundColor: '#CCC79A' }}>
+        <div className="flex items-start justify-between gap-8">
           {/* Logo and Company Info - Left Side */}
-          <div className="flex items-center gap-6 flex-1">
+          <div className="flex items-start gap-6 flex-1">
             {branding.logoUrl && (
               <div className="flex-shrink-0">
                 <img
@@ -481,11 +481,11 @@ function ClassicTemplate({
                   alt={branding.companyName}
                   className="w-auto object-contain"
                   data-testid="img-header-logo"
-                  style={{ height: '64px' }}
+                  style={{ height: '192px' }}
                 />
               </div>
             )}
-            <div>
+            <div className="pt-2">
               <h1 
                 className="text-xl font-bold text-gray-900"
                 data-testid="text-company-name"
@@ -507,7 +507,7 @@ function ClassicTemplate({
 
           {/* Sales Agents - Right Side */}
           {salesAgents.length > 0 && (
-            <div className="flex gap-6 flex-shrink-0">
+            <div className="flex gap-6 flex-shrink-0 pt-2">
               {salesAgents.map((agent, index) => (
                 <div key={index} className="text-right min-w-0" data-testid={`agent-header-${index}`}>
                   {agent.region && (
@@ -683,10 +683,10 @@ function MinimalTemplate({
 }: TemplateProps) {
   return (
     <div className="pricelist-document font-sans" id="pricelist-document" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <header className="px-16 py-5" style={{ backgroundColor: '#CCC79A' }}>
-        <div className="flex items-center justify-between gap-8">
+      <header className="px-16 py-8" style={{ backgroundColor: '#CCC79A' }}>
+        <div className="flex items-start justify-between gap-8">
           {/* Logo and Company Info - Left Side */}
-          <div className="flex items-center gap-6 flex-1">
+          <div className="flex items-start gap-6 flex-1">
             {branding.logoUrl && (
               <div className="flex-shrink-0">
                 <img
@@ -694,11 +694,11 @@ function MinimalTemplate({
                   alt={branding.companyName}
                   className="w-auto object-contain"
                   data-testid="img-header-logo"
-                  style={{ height: '60px' }}
+                  style={{ height: '180px' }}
                 />
               </div>
             )}
-            <div>
+            <div className="pt-2">
               <h1 
                 className="text-xl font-light text-gray-900"
                 data-testid="text-company-name"
@@ -720,7 +720,7 @@ function MinimalTemplate({
 
           {/* Sales Agents - Right Side */}
           {salesAgents.length > 0 && (
-            <div className="flex gap-6 flex-shrink-0">
+            <div className="flex gap-6 flex-shrink-0 pt-2">
               {salesAgents.map((agent, index) => (
                 <div key={index} className="text-right min-w-0" data-testid={`agent-header-${index}`}>
                   {agent.region && (
