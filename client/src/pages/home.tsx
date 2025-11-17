@@ -104,6 +104,7 @@ export default function Home() {
 
   const saveMutation = useMutation({
     mutationFn: async ({ name, description }: { name: string; description?: string }) => {
+      console.log("Mutation: Starting mutation with:", { name, description, productsCount: products.length });
       const payload = {
         name,
         description,
@@ -115,12 +116,21 @@ export default function Home() {
         template,
       };
 
+      console.log("Mutation: Payload size:", JSON.stringify(payload).length, "bytes");
+
       if (currentPricelistId) {
+        console.log("Mutation: Updating existing pricelist", currentPricelistId);
         const res = await apiRequest("PATCH", `/api/pricelists/${currentPricelistId}`, payload);
-        return await res.json();
+        const data = await res.json();
+        console.log("Mutation: PATCH response:", data);
+        return data;
       } else {
+        console.log("Mutation: Creating new pricelist");
         const res = await apiRequest("POST", "/api/pricelists", payload);
-        return await res.json();
+        console.log("Mutation: POST response status:", res.status);
+        const data = await res.json();
+        console.log("Mutation: POST response data:", data);
+        return data;
       }
     },
     onSuccess: (data: any, variables) => {

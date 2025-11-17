@@ -37,11 +37,14 @@ export function SavePricelistDialog({
 
     setSaving(true);
     try {
+      console.log("SaveDialog: Starting save...");
       await onSave(name.trim(), description.trim() || undefined);
+      console.log("SaveDialog: Save completed successfully");
       onOpenChange(false);
     } catch (error) {
-      console.error("Failed to save pricelist:", error);
+      console.error("SaveDialog: Failed to save pricelist:", error);
     } finally {
+      console.log("SaveDialog: Resetting saving state");
       setSaving(false);
     }
   };
