@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,8 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog } from "lucide-react";
+import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, LogOut } from "lucide-react";
 import type { 
   CompanyProfile, 
   SalesAgentProfile,
@@ -23,15 +24,60 @@ import type {
 
 export default function AdminPage() {
   const { toast } = useToast();
+  const { user, isAdmin, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("companies");
+
+  // Redirect if not admin
+  useEffect(() => {
+    if (!isLoading && !isAdmin) {
+      toast({
+        title: "Unauthorized",
+        description: "Admin access required",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 500);
+    }
+  }, [isAdmin, isLoading, toast]);
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // Don't render admin page if not admin
+  if (!isAdmin) {
+    return null;
+  }
+
+  const handleLogout = () => {
+    window.location.href = "/api/logout";
+  };
 
   return (
     <div className="container max-w-6xl mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Admin Settings</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage companies, users, profiles, and system settings
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Admin Settings</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage companies, users, profiles, and system settings
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
+            <p className="text-xs text-muted-foreground">{user?.email}</p>
+          </div>
+          <Button variant="outline" onClick={handleLogout} data-testid="button-logout">
+            <LogOut className="w-4 h-4 mr-2" />
+            Log Out
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
