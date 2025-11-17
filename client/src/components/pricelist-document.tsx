@@ -68,10 +68,10 @@ export function PricelistDocument({
             </div>
           )}
           
-          {/* Content Area - matches logo height, no extra padding */}
-          <div className="flex-1 flex flex-col justify-between py-2" style={{ minHeight: '120px' }}>
-            {/* Title and Tagline - Top with minimal spacing */}
-            <div className="flex flex-col" style={{ gap: '2px' }}>
+          {/* Content Area - slightly taller for better spacing */}
+          <div className="flex-1 flex flex-col justify-between py-2" style={{ minHeight: '145px' }}>
+            {/* Title and Tagline - Top with tight spacing */}
+            <div className="flex flex-col">
               <h1 
                 className="font-semibold leading-tight tracking-tight" 
                 data-testid="text-company-name"
@@ -83,7 +83,7 @@ export function PricelistDocument({
                 <p 
                   className="italic" 
                   data-testid="text-tagline"
-                  style={{ fontSize: '13px', fontStyle: 'italic', lineHeight: 1.3, color: headerTextColor }}
+                  style={{ fontSize: '11px', fontStyle: 'italic', lineHeight: 1.3, color: headerTextColor, marginTop: '1px' }}
                 >
                   {branding.tagline}
                 </p>

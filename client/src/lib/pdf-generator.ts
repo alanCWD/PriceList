@@ -71,8 +71,8 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     ? hexToRgb(branding.headerBackgroundColor)
     : null;
 
-  // Calculate header height (approximate)
-  const headerHeight = 80 + (branding.tagline ? 20 : 0) + (salesAgents.length > 0 ? 50 : 0);
+  // Calculate header height (slightly taller for better spacing)
+  const headerHeight = 95 + (branding.tagline ? 15 : 0) + (salesAgents.length > 0 ? 50 : 0);
   
   // Draw header background if color is specified
   if (bgColor) {
@@ -85,14 +85,14 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   doc.setFont("helvetica", "bold");
   doc.setTextColor(textColor.r, textColor.g, textColor.b);
   doc.text(branding.companyName, margin, yPosition);
-  yPosition += 20;
+  yPosition += 16;
 
   if (branding.tagline) {
-    doc.setFontSize(12);
+    doc.setFontSize(10);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
     doc.text(branding.tagline, margin, yPosition);
-    yPosition += 20;
+    yPosition += 24;
   }
 
   // Sales agents in header
