@@ -1,8 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Upload, Settings } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { FileText, Upload, Settings, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function Landing() {
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errorParam = params.get("error");
+    if (errorParam === "unauthorized") {
+      setError("Access denied. Your email domain is not authorized. Please contact your administrator.");
+    }
+  }, []);
+
   const handleLogin = () => {
     window.location.href = "/api/login";
   };
@@ -26,6 +38,14 @@ export default function Landing() {
 
       {/* Hero Section */}
       <main className="max-w-6xl mx-auto px-6 py-16">
+        {/* Error Alert */}
+        {error && (
+          <Alert variant="destructive" className="mb-8" data-testid="alert-login-error">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Login Failed</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <div className="text-center space-y-6 mb-16">
           <h2 className="text-4xl font-bold tracking-tight">
             Create Professional Pricelists
