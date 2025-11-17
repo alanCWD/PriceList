@@ -56,6 +56,59 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     }
   }
 
+  // Helper to extract image format from data URL
+  const getImageFormat = (dataUrl: string): string => {
+    const match = dataUrl.match(/^data:image\/(\w+);base64,/);
+    if (match) {
+      const format = match[1].toUpperCase();
+      // Map common formats to jsPDF-supported formats
+      if (format === 'JPEG' || format === 'JPG') return 'JPEG';
+      if (format === 'PNG') return 'PNG';
+      if (format === 'WEBP') return 'WEBP';
+    }
+    return 'PNG'; // Default fallback
+  };
+
+  // Load logo image if present
+  let logoBase64: string | null = null;
+  let logoFormat: string = 'PNG';
+  const maxLogoHeight = 120;
+  let logoWidth = 0;
+  let logoHeight = 0;
+  
+  if (branding.logoUrl) {
+    try {
+      // Fetch and convert logo to base64
+      const response = await fetch(branding.logoUrl);
+      const blob = await response.blob();
+      logoBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
+      // Detect image format from data URL
+      logoFormat = getImageFormat(logoBase64);
+      
+      // Get logo dimensions to calculate aspect ratio
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = logoBase64!;
+      });
+      
+      // Calculate logo dimensions maintaining aspect ratio
+      const aspectRatio = img.width / img.height;
+      logoHeight = Math.min(img.height, maxLogoHeight);
+      logoWidth = logoHeight * aspectRatio;
+    } catch (error) {
+      console.error('Failed to load logo for PDF:', error);
+      logoBase64 = null;
+    }
+  }
+
   // Use extracted colors if available
   const hexToRgb = (hex: string) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -74,8 +127,9 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     ? hexToRgb(branding.headerBackgroundColor)
     : null;
 
-  // Calculate header height (slightly taller for better spacing)
-  const headerHeight = 95 + (branding.tagline ? 15 : 0) + (salesAgents.length > 0 ? 50 : 0);
+  // Calculate header height accounting for logo, title, tagline, and sales agents
+  const baseHeight = logoBase64 ? Math.max(logoHeight + 10, 95) : 95;
+  const headerHeight = baseHeight + (branding.tagline ? 15 : 0) + (salesAgents.length > 0 ? 50 : 0);
   
   // Draw header background if color is specified
   if (bgColor) {
@@ -83,27 +137,38 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     doc.rect(0, 0, pageWidth, headerHeight, "F");
   }
 
-  // Header text
-  doc.setFontSize(24);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(textColor.r, textColor.g, textColor.b);
-  doc.text(branding.companyName, margin, yPosition);
-  yPosition += 16;
-
-  if (branding.tagline) {
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.text(branding.tagline, margin, yPosition);
-    yPosition += 24;
+  // Draw logo on the left if present
+  let textStartX = margin;
+  if (logoBase64) {
+    doc.addImage(logoBase64, logoFormat, margin, yPosition, logoWidth, logoHeight);
+    textStartX = margin + logoWidth + 20; // Add gap between logo and text
   }
 
-  // Sales agents in header
+  // Header text (company name and tagline) - positioned next to logo
+  const savedY = yPosition; // Save for sales agents positioning
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(textColor.r, textColor.g, textColor.b);
+  doc.text(branding.companyName, textStartX, yPosition + 18);
+
+  if (branding.tagline) {
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(textColor.r, textColor.g, textColor.b);
+    doc.text(branding.tagline, textStartX, yPosition + 32);
+  }
+  
+  // Move yPosition to after the logo/title area
+  yPosition = savedY + (logoBase64 ? logoHeight : 40);
+
+  // Sales agents in header - positioned at bottom right
   if (salesAgents.length > 0) {
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
     let agentX = pageWidth - margin;
+    
+    // Position agents from right to left
     salesAgents.slice().reverse().forEach(agent => {
       const lines = [];
       if (agent.region) lines.push(agent.region);
@@ -112,15 +177,18 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       const textWidth = Math.max(...lines.map(line => doc.getTextWidth(line)));
       agentX -= textWidth + 20;
       
-      let agentY = margin;
+      // Start agents at savedY position (same as logo/title)
+      let agentY = savedY + 12;
       lines.forEach(line => {
         doc.text(line, agentX, agentY, { align: "left" });
-        agentY += 12;
+        agentY += 11;
       });
     });
+    yPosition += 10;
   }
 
-  yPosition += 10;
+  // Thick separator line below header
+  yPosition += 8;
   doc.setDrawColor(30, 30, 30);
   doc.setLineWidth(2);
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
@@ -135,6 +203,28 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     acc[category].push(product);
     return acc;
   }, {} as Record<string, Product[]>);
+
+  // Load product images as base64 in parallel
+  const productImageMap = new Map<string, { data: string; format: string }>();
+  const imagePromises = products
+    .filter(p => p.productImageUrl)
+    .map(async (product) => {
+      try {
+        const response = await fetch(product.productImageUrl!);
+        const blob = await response.blob();
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        const format = getImageFormat(base64);
+        productImageMap.set(product.sku, { data: base64, format });
+      } catch (error) {
+        console.error(`Failed to load image for product ${product.sku}:`, error);
+      }
+    });
+  await Promise.all(imagePromises);
 
   // Render products by category
   Object.entries(groupedProducts).forEach(([category, categoryProducts], index) => {
@@ -151,18 +241,27 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     doc.text(category, margin + 12, yPosition + 16);
     yPosition += 30;
 
-    // Products table
-    const tableData = categoryProducts.map(product => [
-      product.notes || "",
-      product.product,
-      product.sku,
-      product.format,
-      product.price,
-    ]);
+    // Check if this category has any products with images
+    const hasImages = categoryProducts.some(p => p.productImageUrl);
+
+    // Products table - adjust columns based on whether images are present
+    const tableData = categoryProducts.map(product => {
+      const row: any[] = hasImages ? [""] : []; // Empty cell for image if present
+      row.push(
+        product.notes || "",
+        product.product,
+        product.sku,
+        product.format,
+        product.price
+      );
+      return row;
+    });
 
     autoTable(doc, {
       startY: yPosition,
-      head: [["Notes/Order", "Product", "SKU", "Format", "Price"]],
+      head: hasImages 
+        ? [["Image", "Notes/Order", "Product", "SKU", "Format", "Price"]]
+        : [["Notes/Order", "Product", "SKU", "Format", "Price"]],
       body: tableData,
       theme: "plain",
       headStyles: {
@@ -175,11 +274,19 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       bodyStyles: {
         fontSize: 10,
         textColor: [30, 30, 30],
+        minCellHeight: hasImages ? 35 : 15, // Taller rows when images present
       },
       alternateRowStyles: {
         fillColor: [250, 250, 250],
       },
-      columnStyles: {
+      columnStyles: hasImages ? {
+        0: { cellWidth: 40, halign: "center" }, // Image column
+        1: { cellWidth: 70 },  // Notes
+        2: { cellWidth: 150 }, // Product
+        3: { cellWidth: 75 },  // SKU
+        4: { cellWidth: 90 },  // Format
+        5: { cellWidth: 70 },  // Price
+      } : {
         0: { cellWidth: 80 },
         1: { cellWidth: 180 },
         2: { cellWidth: 80 },
@@ -187,14 +294,30 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         4: { cellWidth: 75 },
       },
       margin: { left: margin, right: margin, bottom: margin + footerHeight },
+      didDrawCell: hasImages ? (data) => {
+        // Draw product images in the first column
+        if (data.column.index === 0 && data.section === 'body') {
+          const product = categoryProducts[data.row.index];
+          const imageData = productImageMap.get(product.sku);
+          if (imageData) {
+            const imgSize = 30; // 30pt square thumbnail
+            const cellCenterX = data.cell.x + (data.cell.width / 2);
+            const cellCenterY = data.cell.y + (data.cell.height / 2);
+            const imgX = cellCenterX - (imgSize / 2);
+            const imgY = cellCenterY - (imgSize / 2);
+            doc.addImage(imageData.data, imageData.format, imgX, imgY, imgSize, imgSize);
+          }
+        }
+      } : undefined,
       didDrawPage: (data) => {
-        // Minimal footer with text and small QR code aligned
+        // Minimal footer with text and small QR code
         const footerY = pageHeight - margin - 12;
         
         // Thin separator line
+        const separatorY = footerY - 10;
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.5);
-        doc.line(margin, footerY - 10, pageWidth - margin, footerY - 10);
+        doc.line(margin, separatorY, pageWidth - margin, separatorY);
         
         // Footer text - format: Page: X | Company Pricelist - Day Month Year
         doc.setFontSize(10);
@@ -205,11 +328,10 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         const footerText = `Page: ${pageNum} | ${branding.companyName} Pricelist - ${dayMonthDate}`;
         doc.text(footerText, margin, footerY);
         
-        // Small QR code on the right side, vertically centered with text
+        // QR code on the right side, just below the separator line
         if (qrCodeBase64) {
-          // Position QR code: right-justified, centered vertically with text baseline
           const qrX = pageWidth - margin - qrCodeSize;
-          const qrY = footerY - (qrCodeSize / 2) - 5; // Center with text (text baseline at footerY)
+          const qrY = separatorY + 2; // Position just below the separator line
           doc.addImage(qrCodeBase64, 'PNG', qrX, qrY, qrCodeSize, qrCodeSize);
         }
       },
