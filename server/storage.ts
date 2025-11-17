@@ -8,14 +8,35 @@ import {
   type CompanyProfile,
   salesAgentProfiles,
   type InsertSalesAgentProfile,
-  type SalesAgentProfile
+  type SalesAgentProfile,
+  users,
+  type User,
+  type UpsertUser,
+  companies,
+  type Company,
+  type InsertCompany
 } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
+  // User operations (required by Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  getAllUsers(): Promise<User[]>;
+  updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined>;
+  
+  // Company operations
+  getAllCompanies(): Promise<Company[]>;
+  getCompanyById(id: number): Promise<Company | undefined>;
+  getCompanyByDomain(domain: string): Promise<Company | undefined>;
+  createCompany(company: InsertCompany): Promise<Company>;
+  updateCompany(id: number, updates: Partial<InsertCompany>): Promise<Company | undefined>;
+  deleteCompany(id: number): Promise<boolean>;
+  
   // Pricelist operations
   getAllPricelists(): Promise<Pricelist[]>;
   getPricelistById(id: number): Promise<Pricelist | undefined>;
+  getPricelistsByCompanyId(companyId: number): Promise<Pricelist[]>;
   createPricelist(pricelist: InsertPricelist): Promise<Pricelist>;
   updatePricelist(id: number, pricelist: Partial<InsertPricelist>): Promise<Pricelist | undefined>;
   deletePricelist(id: number): Promise<boolean>;
@@ -36,9 +57,85 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // User operations (required by Replit Auth)
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user!;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    const results = await db.select().from(users).orderBy(desc(users.createdAt));
+    return results;
+  }
+
+  async updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  // Company operations
+  async getAllCompanies(): Promise<Company[]> {
+    const results = await db.select().from(companies).orderBy(desc(companies.createdAt));
+    return results;
+  }
+
+  async getCompanyById(id: number): Promise<Company | undefined> {
+    const [company] = await db.select().from(companies).where(eq(companies.id, id));
+    return company;
+  }
+
+  async getCompanyByDomain(domain: string): Promise<Company | undefined> {
+    const [company] = await db.select().from(companies).where(eq(companies.domain, domain));
+    return company;
+  }
+
+  async createCompany(companyData: InsertCompany): Promise<Company> {
+    const [company] = await db.insert(companies).values(companyData).returning();
+    return company!;
+  }
+
+  async updateCompany(id: number, updates: Partial<InsertCompany>): Promise<Company | undefined> {
+    const [company] = await db
+      .update(companies)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(companies.id, id))
+      .returning();
+    return company;
+  }
+
+  async deleteCompany(id: number): Promise<boolean> {
+    const result = await db.delete(companies).where(eq(companies.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Pricelist operations
   async getAllPricelists(): Promise<Pricelist[]> {
     const results = await db.select().from(pricelists);
     // Sort by most recent first
+    return results.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  }
+  
+  async getPricelistsByCompanyId(companyId: number): Promise<Pricelist[]> {
+    const results = await db.select().from(pricelists).where(eq(pricelists.companyId, companyId));
     return results.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   }
 

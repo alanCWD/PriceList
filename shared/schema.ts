@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { pgTable, varchar, text, timestamp, jsonb, serial } from "drizzle-orm/pg-core";
+import { sql } from 'drizzle-orm';
+import { pgTable, varchar, text, timestamp, jsonb, serial, index, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 
 // Product schema for pricelist items
@@ -91,11 +92,93 @@ export type CSVUploadResponse = z.infer<typeof csvUploadResponseSchema>;
 
 // Database Tables
 
+// ===== AUTH TABLES (Required by Replit Auth) =====
+
+// Session storage table for Replit Auth
+// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// ===== COMPANIES TABLE =====
+
+// Companies table - stores company configuration for client users
+export const companies = pgTable("companies", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  domain: varchar("domain", { length: 255 }).notNull().unique(), // Email domain (e.g., "example.com")
+  
+  // Default configuration for this company
+  defaultTemplate: varchar("default_template", { length: 50 }).notNull().default("modern").$type<Template>(),
+  defaultFieldMapping: jsonb("default_field_mapping").$type<FieldMapping>(),
+  defaultBranding: jsonb("default_branding").$type<CompanyBranding>(),
+  
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type Company = typeof companies.$inferSelect;
+
+export const insertCompanySchema = z.object({
+  name: z.string().min(1, "Company name is required"),
+  domain: z.string().min(1, "Domain is required").regex(/^[a-z0-9.-]+\.[a-z]{2,}$/, "Invalid domain format (e.g., example.com)"),
+  defaultTemplate: templateSchema.default("modern"),
+  defaultFieldMapping: fieldMappingSchema.optional(),
+  defaultBranding: companyBrandingSchema.optional(),
+});
+
+export type InsertCompany = z.infer<typeof insertCompanySchema>;
+
+// ===== USERS TABLE =====
+
+// User storage table for Replit Auth + company association
+// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  
+  // Company association
+  companyId: integer("company_id").references(() => companies.id, { onDelete: 'set null' }),
+  role: varchar("role", { length: 50 }).notNull().default("client"), // "admin" or "client"
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type User = typeof users.$inferSelect;
+
+export type UpsertUser = typeof users.$inferInsert;
+
+// User management schema for admin
+export const updateUserSchema = z.object({
+  email: z.string().email().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  companyId: z.number().optional(),
+  role: z.enum(["admin", "client"]).optional(),
+});
+
+// ===== PRICELISTS TABLE =====
+
 // Saved pricelists table
 export const pricelists = pgTable("pricelists", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
+  
+  // Company association (optional - admin pricelists won't have companyId)
+  companyId: integer("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   
   // Configuration data stored as JSON
   branding: jsonb("branding").notNull().$type<CompanyBranding>(),
