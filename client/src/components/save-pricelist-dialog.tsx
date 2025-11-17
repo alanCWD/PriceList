@@ -12,11 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
+import type { CompanyBranding } from "@shared/schema";
 
 interface SavePricelistDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (name: string, description?: string) => Promise<void>;
+  companyBranding: CompanyBranding;
   initialName?: string;
   initialDescription?: string;
 }
@@ -25,12 +27,21 @@ export function SavePricelistDialog({
   open, 
   onOpenChange, 
   onSave,
+  companyBranding,
   initialName = "",
   initialDescription = "",
 }: SavePricelistDialogProps) {
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
   const [saving, setSaving] = useState(false);
+
+  // Generate auto-name using footer format: "Company Pricelist [Day Month]"
+  const generateAutoName = () => {
+    const now = new Date();
+    const day = now.getDate();
+    const month = now.toLocaleDateString("en-GB", { month: "long" });
+    return `${companyBranding.companyName} Pricelist [${day} ${month}]`;
+  };
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -52,7 +63,8 @@ export function SavePricelistDialog({
   // Update local state when dialog opens (not when initial values change while dialog is open)
   useEffect(() => {
     if (open) {
-      setName(initialName);
+      // Use initialName if provided (editing), otherwise generate auto-name
+      setName(initialName || generateAutoName());
       setDescription(initialDescription);
       setSaving(false);
     }
@@ -69,15 +81,18 @@ export function SavePricelistDialog({
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="pricelist-name">Name</Label>
+            <Label htmlFor="pricelist-name">Name (Optional - auto-generated)</Label>
             <Input
               id="pricelist-name"
               data-testid="input-pricelist-name"
-              placeholder="e.g., December 2025 Wine List"
+              placeholder="Auto-generated from company name and date"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={saving}
             />
+            <p className="text-xs text-muted-foreground">
+              Leave as-is or customize the pricelist name
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="pricelist-description">Description (Optional)</Label>

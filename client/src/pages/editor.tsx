@@ -278,6 +278,7 @@ export default function Editor() {
       <SavePricelistDialog
         open={saveDialogOpen}
         onOpenChange={setSaveDialogOpen}
+        companyBranding={companyBranding}
         onSave={async (name, description) => {
           await saveMutation.mutateAsync({ name, description });
         }}
