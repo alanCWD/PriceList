@@ -186,6 +186,22 @@ This prevents empty normalized branding from overwriting user-entered values and
 - `/admin` → Admin interface (admin role only)
 - `/login` → Login page (unauthenticated users)
 
+### User Profile Menu
+**Component**: `client/src/components/user-profile-menu.tsx`
+
+**Features:**
+- Avatar with initials fallback
+- Dropdown showing user name, email, and role
+- **Admin users only**: "Admin" menu item for quick navigation to /admin
+- Logout functionality with cache invalidation
+- Available on all authenticated pages (Dashboard, Editor, Admin)
+
+**Implementation:**
+- Uses `useAuth()` hook for role detection
+- Conditional rendering: `{isAdmin && <AdminMenuItem />}`
+- Logout clears TanStack Query cache before redirect
+- Integrated in top-right corner of all page headers
+
 ### Save Button Validation
 **Editor Save Button** (`client/src/pages/editor.tsx`):
 ```typescript

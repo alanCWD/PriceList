@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
+import { queryClient } from "@/lib/queryClient";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,9 @@ export function UserProfileMenu() {
   if (!user) return null;
 
   const handleLogout = () => {
+    // Clear all cached queries to prevent stale data
+    queryClient.clear();
+    // Redirect to logout endpoint
     window.location.href = "/api/logout";
   };
 
