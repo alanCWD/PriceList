@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, LogOut } from "lucide-react";
+import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog } from "lucide-react";
+import { UserProfileMenu } from "@/components/user-profile-menu";
 import { CSVUpload } from "@/components/csv-upload";
 import type { 
   CompanyProfile, 
@@ -56,10 +57,6 @@ export default function AdminPage() {
     return null;
   }
 
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
-  };
-
   return (
     <div className="container max-w-6xl mx-auto p-6">
       <div className="mb-6 flex items-center justify-between">
@@ -69,16 +66,7 @@ export default function AdminPage() {
             Manage companies, users, profiles, and system settings
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
-            <p className="text-xs text-muted-foreground">{user?.email}</p>
-          </div>
-          <Button variant="outline" onClick={handleLogout} data-testid="button-logout">
-            <LogOut className="w-4 h-4 mr-2" />
-            Log Out
-          </Button>
-        </div>
+        <UserProfileMenu />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

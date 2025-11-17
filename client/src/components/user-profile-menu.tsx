@@ -61,7 +61,7 @@ export function UserProfileMenu() {
           data-testid="button-user-profile"
         >
           <Avatar className="h-9 w-9">
-            <AvatarImage src={user.profileImage} alt={getDisplayName()} />
+            <AvatarImage src={user.profileImageUrl || undefined} alt={getDisplayName()} />
             <AvatarFallback>{getInitials()}</AvatarFallback>
           </Avatar>
         </Button>
