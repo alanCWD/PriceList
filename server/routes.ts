@@ -44,16 +44,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new pricelist
   app.post("/api/pricelists", async (req, res) => {
     try {
+      console.log("[POST /api/pricelists] Request received, body size:", JSON.stringify(req.body).length, "bytes");
+      console.log("[POST /api/pricelists] Starting validation...");
+      
       const validation = insertPricelistSchema.safeParse(req.body);
       if (!validation.success) {
+        console.log("[POST /api/pricelists] Validation failed:", validation.error);
         const errorMessage = fromZodError(validation.error).message;
         return res.status(400).json({ error: errorMessage });
       }
 
+      console.log("[POST /api/pricelists] Validation passed, creating pricelist...");
       const pricelist = await storage.createPricelist(validation.data);
+      console.log("[POST /api/pricelists] Pricelist created successfully, ID:", pricelist.id);
       res.status(201).json(pricelist);
     } catch (error) {
-      console.error("Error creating pricelist:", error);
+      console.error("[POST /api/pricelists] Error creating pricelist:", error);
       res.status(500).json({ error: "Failed to create pricelist" });
     }
   });
