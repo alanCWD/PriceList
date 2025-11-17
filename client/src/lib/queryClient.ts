@@ -13,11 +13,18 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   try {
-    console.log(`apiRequest: ${method} ${url}`, data ? `(${JSON.stringify(data).length} bytes)` : '(no body)');
+    let bodyString: string | undefined;
+    if (data) {
+      console.log(`apiRequest: Stringifying payload...`);
+      bodyString = JSON.stringify(data);
+      console.log(`apiRequest: Payload stringified (${bodyString.length} bytes)`);
+    }
+    
+    console.log(`apiRequest: Initiating ${method} ${url}`);
     const res = await fetch(url, {
       method,
       headers: data ? { "Content-Type": "application/json" } : {},
-      body: data ? JSON.stringify(data) : undefined,
+      body: bodyString,
       credentials: "include",
     });
 
