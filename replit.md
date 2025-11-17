@@ -107,3 +107,100 @@ Clients create pricelists with company defaults pre-applied:
 -   **jsPDF**: Client-side PDF generation library.
 -   **qrcode.react**: Client-side QR code generation.
 -   **React Hook Form & Zod**: For form management and validation.
+
+## Critical Implementation Details
+
+### Server-Side Data Normalization
+All company defaults are normalized server-side to ensure clients receive complete, valid data structures:
+
+**Branding Normalization (per-field):**
+```typescript
+companyBranding: {
+  companyName: branding.companyName ?? "",
+  tagline: branding.tagline ?? "",
+  // ... all fields individually normalized
+}
+```
+
+**Template Fallback:**
+```typescript
+defaultTemplate: company.defaultTemplate || "modern"
+```
+
+**Field Mapping Normalization:**
+All field mappings always include complete key set with empty string defaults for unmapped fields.
+
+### CSV Upload Guards (Admin Interface)
+Two critical guards prevent data corruption when uploading CSV files for field mapping configuration:
+
+1. **Empty CSV Guard**: Rejects files with no headers or data
+   - Toast: "Invalid CSV file" 
+   - Preserves existing mappings
+   
+2. **Non-Matching Headers Guard**: Rejects files where no headers match expected fields
+   - Toast: "No field matches found in CSV"
+   - Preserves existing mappings
+   - Check: `Object.values(autoMapping).every(v => !v)`
+
+### SelectItem Component Pattern
+**Critical Bug Fix**: Radix UI SelectItem components throw errors when value prop is empty string.
+
+**Solution**: Use placeholder value and convert:
+```typescript
+// In Select component
+<SelectItem value="__none__">None</SelectItem>
+
+// In onChange handler
+onChange={(value) => setField(value === "__none__" ? "" : value)}
+```
+
+### Auto-Generated Pricelist Names
+**Fallback Chain** (ensures Save button always enabled):
+```typescript
+const finalName = initialName || autoName || initialDescription || "Untitled Pricelist";
+```
+
+Where:
+- `initialName`: Existing pricelist name (when editing)
+- `autoName`: "{Company} Pricelist [Day Month]" (when branding valid)
+- `initialDescription`: Use description as name fallback
+- `"Untitled Pricelist"`: Final fallback
+
+**Auto-Name Format**: "{Company} Pricelist [Day Month]"
+- Guards against placeholder value "Your Company Name"
+- Returns empty string if branding invalid (fallback chain handles)
+
+### Branding Application Pattern
+**Client-Side Guard**: Only apply company branding if it contains actual values:
+```typescript
+if (companyBranding.companyName.trim() !== "") {
+  // Apply branding
+}
+```
+This prevents empty normalized branding from overwriting user-entered values and disabling the Save button.
+
+### Routing Structure
+- `/` → Dashboard (authenticated users)
+- `/dashboard` → Dashboard (alias for better UX)
+- `/editor` → Pricelist editor
+- `/admin` → Admin interface (admin role only)
+- `/login` → Login page (unauthenticated users)
+
+### Save Button Validation
+**Editor Save Button** (`client/src/pages/editor.tsx`):
+```typescript
+const canSave = products.length > 0;
+```
+
+**Key Principle**: Save button enabled when products exist, regardless of branding completeness. The dialog's fallback chain ensures a valid name is always generated.
+
+### UpsertUser Implementation
+**Database Upsert** (`server/storage.ts`):
+```typescript
+onConflictDoUpdate({
+  target: users.email, // Handle conflicts on email unique constraint
+  set: { ...userData, updatedAt: new Date() }
+})
+```
+
+**Key Principle**: OAuth login uses email as conflict resolution key, ensuring existing users are updated rather than causing duplicate key violations.

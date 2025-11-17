@@ -240,7 +240,8 @@ export default function Editor() {
     },
   });
 
-  const canSave = products.length > 0 && companyBranding.companyName.trim() !== "";
+  // Allow saving as long as products exist - fallback chain in dialog will handle name generation
+  const canSave = products.length > 0;
 
   return (
     <div className="min-h-screen bg-background">

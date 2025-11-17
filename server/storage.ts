@@ -70,7 +70,7 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.id,
+        target: users.email, // Handle conflicts on email unique constraint
         set: {
           ...userData,
           updatedAt: new Date(),
