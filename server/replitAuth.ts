@@ -55,13 +55,61 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
-  await storage.upsertUser({
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
-  });
+  const email = claims["email"];
+  if (!email) {
+    throw new Error("Email is required for authentication");
+  }
+  
+  // Check if user already exists
+  const existingUser = await storage.getUser(claims["sub"]);
+  
+  if (existingUser) {
+    // SECURITY: Validate that user's company still exists
+    if (existingUser.companyId) {
+      const company = await storage.getCompanyById(existingUser.companyId);
+      if (!company) {
+        // Company was deleted - reject login and require admin intervention
+        throw new Error("Your company account has been deleted. Please contact your administrator.");
+      }
+    }
+    
+    // User exists - just update their profile info (keep existing role and company)
+    await storage.upsertUser({
+      id: claims["sub"],
+      email,
+      firstName: claims["first_name"],
+      lastName: claims["last_name"],
+      profileImageUrl: claims["profile_image_url"],
+      role: existingUser.role, // Preserve existing role
+      companyId: existingUser.companyId, // Preserve existing company
+    });
+  } else {
+    // New user - validate domain and auto-assign to company
+    const emailDomain = email.split('@')[1]?.toLowerCase();
+    if (!emailDomain) {
+      throw new Error("Invalid email format");
+    }
+    
+    // Look up company by email domain
+    const company = await storage.getCompanyByDomain(emailDomain);
+    
+    if (!company) {
+      // Domain not recognized - reject login for security
+      // Only admins can manually add users from unrecognized domains
+      throw new Error(`Access denied: Email domain '${emailDomain}' is not authorized. Please contact your administrator.`);
+    }
+    
+    // Auto-assign new user to company with client role
+    await storage.upsertUser({
+      id: claims["sub"],
+      email,
+      firstName: claims["first_name"],
+      lastName: claims["last_name"],
+      profileImageUrl: claims["profile_image_url"],
+      role: "client", // New users default to client role
+      companyId: company.id, // Auto-assign to company based on domain
+    });
+  }
 }
 
 export async function setupAuth(app: Express) {

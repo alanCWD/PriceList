@@ -109,14 +109,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCompany(companyData: InsertCompany): Promise<Company> {
-    const [company] = await db.insert(companies).values(companyData).returning();
+    // SECURITY: Normalize domain to lowercase to prevent case sensitivity issues
+    const normalizedData = {
+      ...companyData,
+      domain: companyData.domain.toLowerCase(),
+    };
+    const [company] = await db.insert(companies).values(normalizedData as any).returning();
     return company!;
   }
 
   async updateCompany(id: number, updates: Partial<InsertCompany>): Promise<Company | undefined> {
+    // SECURITY: Normalize domain to lowercase if being updated
+    const normalizedUpdates: any = {
+      ...updates,
+      updatedAt: new Date(),
+    };
+    if (updates.domain) {
+      normalizedUpdates.domain = updates.domain.toLowerCase();
+    }
     const [company] = await db
       .update(companies)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(normalizedUpdates)
       .where(eq(companies.id, id))
       .returning();
     return company;

@@ -126,15 +126,17 @@ export const companies = pgTable("companies", {
 
 export type Company = typeof companies.$inferSelect;
 
-export const insertCompanySchema = z.object({
+export const insertCompanySchema = createInsertSchema(companies, {
   name: z.string().min(1, "Company name is required"),
-  domain: z.string().min(1, "Domain is required").regex(/^[a-z0-9.-]+\.[a-z]{2,}$/, "Invalid domain format (e.g., example.com)"),
-  defaultTemplate: templateSchema.default("modern"),
-  defaultFieldMapping: fieldMappingSchema.optional(),
-  defaultBranding: companyBrandingSchema.optional(),
-});
+  domain: z.string().min(1, "Domain is required").regex(/^[a-z0-9.-]+\.[a-z]{2,}$/i, "Invalid domain format (e.g., example.com)"),
+  defaultTemplate: templateSchema,
+}).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
+
+export const updateCompanySchema = insertCompanySchema.partial().extend({
+  domain: z.string().min(1).regex(/^[a-z0-9.-]+\.[a-z]{2,}$/i, "Invalid domain format").optional(),
+});
 
 // ===== USERS TABLE =====
 
@@ -142,7 +144,7 @@ export type InsertCompany = z.infer<typeof insertCompanySchema>;
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
+  email: varchar("email").notNull().unique(), // Email is required
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -157,15 +159,22 @@ export const users = pgTable("users", {
 });
 
 export type User = typeof users.$inferSelect;
-
 export type UpsertUser = typeof users.$inferInsert;
+
+// Schemas for user operations
+export const insertUserSchema = createInsertSchema(users, {
+  email: z.string().email("Valid email is required"),
+  role: z.enum(["admin", "client"]),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
 
 // User management schema for admin
 export const updateUserSchema = z.object({
   email: z.string().email().optional(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
-  companyId: z.number().optional(),
+  companyId: z.number().nullable().optional(),
   role: z.enum(["admin", "client"]).optional(),
 });
 
