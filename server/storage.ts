@@ -24,6 +24,8 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
   updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined>;
+  createUser(user: { email: string; firstName: string; lastName: string; role: "admin" | "client"; companyId: number | null }): Promise<User>;
+  deleteUser(id: string): Promise<boolean>;
   
   // Company operations
   getAllCompanies(): Promise<Company[]>;
@@ -84,12 +86,76 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined> {
+    // Normalize email if being updated
+    const normalizedUpdates = { ...updates };
+    if (normalizedUpdates.email) {
+      normalizedUpdates.email = normalizedUpdates.email.trim().toLowerCase();
+      
+      // Check for duplicate email
+      const existing = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, normalizedUpdates.email))
+        .limit(1);
+      
+      if (existing.length > 0 && existing[0].id !== id) {
+        throw new Error("A user with this email already exists");
+      }
+    }
+    
+    // Trim firstName and lastName if being updated
+    if (normalizedUpdates.firstName) {
+      normalizedUpdates.firstName = normalizedUpdates.firstName.trim();
+    }
+    if (normalizedUpdates.lastName) {
+      normalizedUpdates.lastName = normalizedUpdates.lastName.trim();
+    }
+    
     const [user] = await db
       .update(users)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...normalizedUpdates, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async createUser(user: { email: string; firstName: string; lastName: string; role: "admin" | "client"; companyId: number | null }): Promise<User> {
+    // Normalize email (trim and lowercase) to ensure consistency
+    const normalizedEmail = user.email.trim().toLowerCase();
+    
+    // Check for duplicate email
+    const existing = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, normalizedEmail))
+      .limit(1);
+    
+    if (existing.length > 0) {
+      throw new Error("A user with this email already exists");
+    }
+    
+    // Let database generate UUID via default(sql`gen_random_uuid()`)
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        email: normalizedEmail,
+        firstName: user.firstName.trim(),
+        lastName: user.lastName.trim(),
+        role: user.role,
+        companyId: user.companyId,
+      })
+      .returning();
+    
+    return newUser;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db
+      .delete(users)
+      .where(eq(users.id, id))
+      .returning();
+    
+    return result.length > 0;
   }
 
   // Company operations

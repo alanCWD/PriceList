@@ -80,7 +80,7 @@ export default function Home() {
       let format = fieldMapping.format ? row[fieldMapping.format] || "" : "";
       if (format && format.includes('CASE SIZE')) {
         const lines = format.split('\n');
-        const caseSizeIndex = lines.findIndex(line => line.trim().toUpperCase() === 'CASE SIZE');
+        const caseSizeIndex = lines.findIndex((line: string) => line.trim().toUpperCase() === 'CASE SIZE');
         if (caseSizeIndex !== -1 && caseSizeIndex + 1 < lines.length) {
           format = lines[caseSizeIndex + 1].trim();
         }

@@ -7,39 +7,60 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload } from "lucide-react";
+import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog } from "lucide-react";
 import type { 
   CompanyProfile, 
   SalesAgentProfile,
   CompanyBranding,
-  SalesAgent
+  SalesAgent,
+  Company,
+  User,
+  Template,
+  FieldMapping
 } from "@shared/schema";
 
 export default function AdminPage() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("company");
+  const [activeTab, setActiveTab] = useState("companies");
 
   return (
     <div className="container max-w-6xl mx-auto p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Admin Settings</h1>
         <p className="text-muted-foreground mt-2">
-          Manage reusable company profiles and sales agent teams
+          Manage companies, users, profiles, and system settings
         </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="companies" data-testid="tab-companies">
+            <Building className="w-4 h-4 mr-2" />
+            Companies
+          </TabsTrigger>
+          <TabsTrigger value="users" data-testid="tab-users">
+            <UserCog className="w-4 h-4 mr-2" />
+            Users
+          </TabsTrigger>
           <TabsTrigger value="company" data-testid="tab-company-profiles">
             <Building2 className="w-4 h-4 mr-2" />
-            Company Profiles
+            Branding Profiles
           </TabsTrigger>
           <TabsTrigger value="agents" data-testid="tab-agent-profiles">
             <Users className="w-4 h-4 mr-2" />
             Sales Agent Teams
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="companies" className="mt-6">
+          <CompaniesManager />
+        </TabsContent>
+
+        <TabsContent value="users" className="mt-6">
+          <UsersManager />
+        </TabsContent>
 
         <TabsContent value="company" className="mt-6">
           <CompanyProfilesManager />
@@ -49,6 +70,728 @@ export default function AdminPage() {
           <SalesAgentProfilesManager />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function CompaniesManager() {
+  const { toast } = useToast();
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [name, setName] = useState("");
+  const [domain, setDomain] = useState("");
+  const [defaultTemplate, setDefaultTemplate] = useState<Template>("modern");
+  const [defaultFieldMapping, setDefaultFieldMapping] = useState<FieldMapping>({
+    product: "",
+    sku: "",
+    format: "",
+    price: "",
+    category: "",
+    notes: "",
+    productImageUrl: "",
+  });
+
+  const { data: companies, isLoading } = useQuery<Company[]>({
+    queryKey: ["/api/companies"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { name: string; domain: string; defaultTemplate: Template; defaultFieldMapping: FieldMapping }) => {
+      const res = await apiRequest("POST", "/api/companies", data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      toast({ title: "Company created successfully" });
+      resetForm();
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create company", variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: { name: string; domain: string; defaultTemplate: Template; defaultFieldMapping: FieldMapping } }) => {
+      const res = await apiRequest("PATCH", `/api/companies/${id}`, data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      toast({ title: "Company updated successfully" });
+      resetForm();
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update company", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/companies/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Company deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete company", variant: "destructive" });
+    },
+  });
+
+  const resetForm = () => {
+    setEditingId(null);
+    setName("");
+    setDomain("");
+    setDefaultTemplate("modern");
+    setDefaultFieldMapping({
+      product: "",
+      sku: "",
+      format: "",
+      price: "",
+      category: "",
+      notes: "",
+      productImageUrl: "",
+    });
+  };
+
+  const handleEdit = (company: Company) => {
+    setEditingId(company.id);
+    setName(company.name);
+    setDomain(company.domain);
+    setDefaultTemplate(company.defaultTemplate as Template);
+    if (company.defaultFieldMapping) {
+      setDefaultFieldMapping(company.defaultFieldMapping as FieldMapping);
+    } else {
+      setDefaultFieldMapping({
+        product: "",
+        sku: "",
+        format: "",
+        price: "",
+        category: "",
+        notes: "",
+        productImageUrl: "",
+      });
+    }
+  };
+
+  const handleSave = () => {
+    if (!name.trim() || !domain.trim()) {
+      toast({
+        title: "Validation error",
+        description: "Company name and domain are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate domain format (simple email domain validation)
+    const domainRegex = /^[a-z0-9.-]+\.[a-z]{2,}$/i;
+    if (!domainRegex.test(domain.trim())) {
+      toast({
+        title: "Validation error",
+        description: "Please enter a valid domain (e.g., example.com)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const data = {
+      name: name.trim(),
+      domain: domain.trim().toLowerCase(),
+      defaultTemplate,
+      defaultFieldMapping,
+    };
+
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, data });
+    } else {
+      createMutation.mutate(data);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{editingId ? "Edit" : "Create"} Company</CardTitle>
+          <CardDescription>
+            Manage multi-tenant companies. Users will be auto-assigned based on email domain.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="company-name">Company Name</Label>
+            <Input
+              id="company-name"
+              data-testid="input-company-name"
+              placeholder="Acme Corp"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="domain">Email Domain</Label>
+            <Input
+              id="domain"
+              data-testid="input-domain"
+              placeholder="example.com"
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Users with this email domain will be auto-assigned to this company
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="template">Default Template</Label>
+            <Select value={defaultTemplate} onValueChange={(val) => setDefaultTemplate(val as Template)}>
+              <SelectTrigger id="template" data-testid="select-template">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="modern">Modern</SelectItem>
+                <SelectItem value="classic">Classic</SelectItem>
+                <SelectItem value="minimal">Minimal</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="pt-4 border-t">
+            <h4 className="text-sm font-semibold mb-3">Default Field Mapping</h4>
+            <p className="text-xs text-muted-foreground mb-4">
+              Configure default CSV column mappings for this company's users
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="field-product">Product Column</Label>
+                <Input
+                  id="field-product"
+                  data-testid="input-field-product"
+                  placeholder="e.g., name, product"
+                  value={defaultFieldMapping.product}
+                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, product: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="field-sku">SKU Column</Label>
+                <Input
+                  id="field-sku"
+                  data-testid="input-field-sku"
+                  placeholder="e.g., sku, id"
+                  value={defaultFieldMapping.sku}
+                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, sku: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="field-format">Format Column</Label>
+                <Input
+                  id="field-format"
+                  data-testid="input-field-format"
+                  placeholder="e.g., size, format"
+                  value={defaultFieldMapping.format}
+                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, format: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="field-price">Price Column</Label>
+                <Input
+                  id="field-price"
+                  data-testid="input-field-price"
+                  placeholder="e.g., price, cost"
+                  value={defaultFieldMapping.price}
+                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, price: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="field-category">Category Column (Optional)</Label>
+                <Input
+                  id="field-category"
+                  data-testid="input-field-category"
+                  placeholder="e.g., category, type"
+                  value={defaultFieldMapping.category || ""}
+                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, category: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="field-notes">Notes Column (Optional)</Label>
+                <Input
+                  id="field-notes"
+                  data-testid="input-field-notes"
+                  placeholder="e.g., notes, description"
+                  value={defaultFieldMapping.notes || ""}
+                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, notes: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1 col-span-2">
+                <Label htmlFor="field-image">Product Image URL Column (Optional)</Label>
+                <Input
+                  id="field-image"
+                  data-testid="input-field-image-url"
+                  placeholder="e.g., productImageUrl, image"
+                  value={defaultFieldMapping.productImageUrl || ""}
+                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, productImageUrl: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          {editingId && (
+            <Button variant="outline" onClick={resetForm} data-testid="button-cancel-company-edit">
+              Cancel
+            </Button>
+          )}
+          <Button
+            onClick={handleSave}
+            disabled={createMutation.isPending || updateMutation.isPending}
+            className={!editingId ? "ml-auto" : ""}
+            data-testid="button-save-company"
+          >
+            {(createMutation.isPending || updateMutation.isPending) && (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            )}
+            {editingId ? "Update Company" : "Create Company"}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Companies</h3>
+        {isLoading ? (
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <Loader2 className="w-6 h-6 mx-auto animate-spin" />
+            </CardContent>
+          </Card>
+        ) : !companies || companies.length === 0 ? (
+          <Alert>
+            <AlertDescription>No companies yet. Create one above.</AlertDescription>
+          </Alert>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {companies.map((company) => (
+              <Card key={company.id} data-testid={`company-card-${company.id}`}>
+                <CardHeader>
+                  <CardTitle className="text-base">{company.name}</CardTitle>
+                  <CardDescription>@{company.domain}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Template: <span className="font-medium capitalize">{company.defaultTemplate}</span>
+                  </p>
+                  {company.defaultFieldMapping && (
+                    <div className="text-xs text-muted-foreground border-t pt-2">
+                      <p className="font-medium mb-1">Field Mapping Defaults:</p>
+                      <div className="grid grid-cols-2 gap-x-2">
+                        {(company.defaultFieldMapping as FieldMapping).product && (
+                          <p>Product: {(company.defaultFieldMapping as FieldMapping).product}</p>
+                        )}
+                        {(company.defaultFieldMapping as FieldMapping).sku && (
+                          <p>SKU: {(company.defaultFieldMapping as FieldMapping).sku}</p>
+                        )}
+                        {(company.defaultFieldMapping as FieldMapping).price && (
+                          <p>Price: {(company.defaultFieldMapping as FieldMapping).price}</p>
+                        )}
+                        {(company.defaultFieldMapping as FieldMapping).format && (
+                          <p>Format: {(company.defaultFieldMapping as FieldMapping).format}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+                <CardFooter className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(company)}
+                    data-testid={`button-edit-company-${company.id}`}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => deleteMutation.mutate(company.id)}
+                    disabled={deleteMutation.isPending}
+                    data-testid={`button-delete-company-${company.id}`}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function UsersManager() {
+  const { toast } = useToast();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [role, setRole] = useState<"admin" | "client">("client");
+  const [companyId, setCompanyId] = useState<number | null>(null);
+
+  const { data: users, isLoading: usersLoading } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+  });
+
+  const { data: companies, isLoading: companiesLoading } = useQuery<Company[]>({
+    queryKey: ["/api/companies"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { email: string; firstName: string; lastName: string; role: "admin" | "client"; companyId: number | null }) => {
+      const res = await apiRequest("POST", "/api/users", data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "User created successfully" });
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to create user", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/users/${id}`, data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "User updated successfully" });
+      resetForm();
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update user", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/users/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "User deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete user", variant: "destructive" });
+    },
+  });
+
+  const resetForm = () => {
+    setEditingId(null);
+    setShowCreateForm(false);
+    setEmail("");
+    setFirstName("");
+    setLastName("");
+    setRole("client");
+    setCompanyId(null);
+  };
+
+  const handleEdit = (user: User) => {
+    setEditingId(user.id);
+    setRole(user.role as "admin" | "client");
+    setCompanyId(user.companyId);
+  };
+
+  const handleCreate = () => {
+    if (!email.trim() || !firstName.trim() || !lastName.trim()) {
+      toast({
+        title: "Validation error",
+        description: "Email, first name, and last name are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email domain matches company if company is selected
+    if (companyId && companies) {
+      const company = companies.find((c) => c.id === companyId);
+      if (company) {
+        const emailDomain = email.split('@')[1]?.toLowerCase();
+        if (emailDomain !== company.domain.toLowerCase()) {
+          toast({
+            title: "Validation error",
+            description: `Email domain must match company domain: @${company.domain}`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    }
+
+    createMutation.mutate({
+      email: email.trim(),
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      role,
+      companyId,
+    });
+  };
+
+  const handleSave = () => {
+    if (!editingId) return;
+
+    // CRITICAL: Must send companyId: null explicitly to clear assignment (not undefined)
+    const data = {
+      role,
+      companyId,  // Keeps null value, allowing backend to clear the assignment
+    };
+
+    updateMutation.mutate({ id: editingId, data });
+  };
+
+  const getCompanyName = (companyId: number | null) => {
+    if (!companyId || !companies) return "None";
+    const company = companies.find((c) => c.id === companyId);
+    return company ? company.name : "Unknown";
+  };
+
+  return (
+    <div className="space-y-6">
+      {!editingId && !showCreateForm && (
+        <div className="flex justify-end">
+          <Button onClick={() => setShowCreateForm(true)} data-testid="button-show-create-user">
+            <Plus className="w-4 h-4 mr-2" />
+            Create User
+          </Button>
+        </div>
+      )}
+
+      {showCreateForm && !editingId && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Create User</CardTitle>
+            <CardDescription>
+              Create a new user account with domain validation
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="create-email">Email</Label>
+              <Input
+                id="create-email"
+                type="email"
+                data-testid="input-create-email"
+                placeholder="user@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="create-first-name">First Name</Label>
+                <Input
+                  id="create-first-name"
+                  data-testid="input-create-first-name"
+                  placeholder="John"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-last-name">Last Name</Label>
+                <Input
+                  id="create-last-name"
+                  data-testid="input-create-last-name"
+                  placeholder="Doe"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="create-role">Role</Label>
+              <Select value={role} onValueChange={(val) => setRole(val as "admin" | "client")}>
+                <SelectTrigger id="create-role" data-testid="select-create-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="create-company">Company</Label>
+              <Select 
+                value={companyId?.toString() || "none"} 
+                onValueChange={(val) => setCompanyId(val === "none" ? null : parseInt(val))}
+                disabled={companiesLoading}
+              >
+                <SelectTrigger id="create-company" data-testid="select-create-company">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {companies?.map((company) => (
+                    <SelectItem key={company.id} value={company.id.toString()}>
+                      {company.name} (@{company.domain})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Email domain must match company domain for validation
+              </p>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <Button variant="outline" onClick={resetForm} data-testid="button-cancel-create-user">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={createMutation.isPending}
+              data-testid="button-create-user"
+            >
+              {createMutation.isPending && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
+              Create User
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+
+      {editingId && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit User</CardTitle>
+            <CardDescription>
+              Update user role and company assignment
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select value={role} onValueChange={(val) => setRole(val as "admin" | "client")}>
+                <SelectTrigger id="role" data-testid="select-user-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="user-company">Company</Label>
+              <Select 
+                value={companyId?.toString() || "none"} 
+                onValueChange={(val) => setCompanyId(val === "none" ? null : parseInt(val))}
+                disabled={companiesLoading}
+              >
+                <SelectTrigger id="user-company" data-testid="select-user-company">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {companies?.map((company) => (
+                    <SelectItem key={company.id} value={company.id.toString()}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <Button variant="outline" onClick={resetForm} data-testid="button-cancel-user-edit">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={updateMutation.isPending}
+              data-testid="button-save-user"
+            >
+              {updateMutation.isPending && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
+              Update User
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Users</h3>
+        {usersLoading ? (
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <Loader2 className="w-6 h-6 mx-auto animate-spin" />
+            </CardContent>
+          </Card>
+        ) : !users || users.length === 0 ? (
+          <Alert>
+            <AlertDescription>No users yet. Users will appear here after first login.</AlertDescription>
+          </Alert>
+        ) : (
+          <div className="grid gap-4">
+            {users.map((user) => (
+              <Card key={user.id} data-testid={`user-card-${user.id}`}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">
+                        {user.firstName} {user.lastName}
+                      </CardTitle>
+                      <CardDescription>{user.email}</CardDescription>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium capitalize">{user.role}</p>
+                      <p className="text-xs text-muted-foreground">{getCompanyName(user.companyId)}</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardFooter className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(user)}
+                    data-testid={`button-edit-user-${user.id}`}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => deleteMutation.mutate(user.id)}
+                    disabled={deleteMutation.isPending}
+                    data-testid={`button-delete-user-${user.id}`}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

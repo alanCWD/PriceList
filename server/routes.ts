@@ -2,12 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
+import { z } from "zod";
 import { 
   insertPricelistSchema, 
   insertCompanyProfileSchema,
   updateCompanyProfileSchema,
   insertSalesAgentProfileSchema,
   insertCompanySchema,
+  insertUserSchema,
   updateUserSchema,
   type Pricelist
 } from "@shared/schema";
@@ -132,6 +134,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/users", isAdmin, async (req, res) => {
+    try {
+      // Extend insertUserSchema to require firstName and lastName for admin creation
+      const adminCreateUserSchema = insertUserSchema.extend({
+        firstName: z.string().min(1, "First name is required"),
+        lastName: z.string().min(1, "Last name is required"),
+      });
+
+      // Validate request body using Zod schema
+      const validation = adminCreateUserSchema.safeParse(req.body);
+      if (!validation.success) {
+        const errorMessage = fromZodError(validation.error).message;
+        return res.status(400).json({ error: errorMessage });
+      }
+
+      const { email, firstName, lastName, role, companyId } = validation.data;
+
+      // Normalize email for domain comparison (storage will also normalize)
+      const normalizedEmail = email.trim().toLowerCase();
+      
+      // Validate email domain matches company if company is selected
+      if (companyId) {
+        const company = await storage.getCompanyById(companyId);
+        if (!company) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+
+        const emailDomain = normalizedEmail.split('@')[1];
+        if (!emailDomain || emailDomain !== company.domain.toLowerCase()) {
+          return res.status(400).json({ error: `Email domain must match company domain: @${company.domain}` });
+        }
+      }
+
+      const user = await storage.createUser({
+        email: normalizedEmail,
+        firstName,
+        lastName,
+        role,
+        companyId: companyId ?? null,
+      });
+
+      res.status(201).json(user);
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      
+      // Handle duplicate email error with specific message
+      if (error.message?.includes("already exists")) {
+        return res.status(409).json({ error: error.message });
+      }
+      
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+
   app.patch("/api/users/:id", isAdmin, async (req, res) => {
     try {
       const id = req.params.id;
@@ -142,15 +198,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: errorMessage });
       }
 
-      const user = await storage.updateUser(id, validation.data);
+      const updates = { ...validation.data };
+
+      // Normalize email if being updated
+      if (updates.email) {
+        updates.email = updates.email.trim().toLowerCase();
+      }
+
+      // Get current user for domain validation
+      const currentUser = await storage.getUser(id);
+      if (!currentUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Determine the final role and companyId after update
+      const finalRole = updates.role || currentUser.role;
+      const finalCompanyId = updates.companyId !== undefined ? updates.companyId : currentUser.companyId;
+      
+      // Normalize finalEmail to ensure consistent domain validation
+      const finalEmail = updates.email || currentUser.email.trim().toLowerCase();
+
+      // Business rule: client users must have a company assignment
+      if (finalRole === "client" && !finalCompanyId) {
+        return res.status(400).json({ error: "Client users must be assigned to a company. Change role to admin or assign a company." });
+      }
+
+      // Validate domain if company is being set or user has/will have a company
+      if (finalCompanyId) {
+        const company = await storage.getCompanyById(finalCompanyId);
+        if (!company) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+
+        const emailDomain = finalEmail.split('@')[1]?.toLowerCase();
+        if (!emailDomain || emailDomain !== company.domain.toLowerCase()) {
+          return res.status(400).json({ error: `Email domain must match company domain: @${company.domain}` });
+        }
+      }
+
+      // Duplicate email check is handled by storage layer's unique constraint
+      // If email is being updated to an existing one, database will reject it
+
+      const user = await storage.updateUser(id, updates);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
 
       res.json(user);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating user:", error);
+      
+      // Handle duplicate email error
+      if (error.message?.includes("already exists")) {
+        return res.status(409).json({ error: error.message });
+      }
+      
       res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+
+  app.delete("/api/users/:id", isAdmin, async (req, res) => {
+    try {
+      const id = req.params.id;
+
+      const success = await storage.deleteUser(id);
+      if (!success) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ error: "Failed to delete user" });
     }
   });
 
