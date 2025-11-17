@@ -116,9 +116,11 @@ export default function Home() {
       };
 
       if (currentPricelistId) {
-        return await apiRequest("PATCH", `/api/pricelists/${currentPricelistId}`, payload);
+        const res = await apiRequest("PATCH", `/api/pricelists/${currentPricelistId}`, payload);
+        return await res.json();
       } else {
-        return await apiRequest("POST", "/api/pricelists", payload);
+        const res = await apiRequest("POST", "/api/pricelists", payload);
+        return await res.json();
       }
     },
     onSuccess: (data: any, variables) => {
