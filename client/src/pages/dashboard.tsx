@@ -7,7 +7,8 @@ import { z } from "zod";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, FileText, Trash2, Edit, LogOut, Calendar } from "lucide-react";
+import { Loader2, Plus, FileText, Trash2, Edit, Calendar } from "lucide-react";
+import { UserProfileMenu } from "@/components/user-profile-menu";
 import { format } from "date-fns";
 import type { Pricelist, Company, Product, CompanyBranding } from "@shared/schema";
 import { productSchema, companyBrandingSchema } from "@shared/schema";
@@ -50,10 +51,6 @@ export default function Dashboard() {
       });
     },
   });
-
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
-  };
 
   const handleCreateNew = () => {
     setLocation("/editor");
@@ -131,10 +128,7 @@ export default function Dashboard() {
                 {user?.firstName} {user?.lastName} • {user?.email}
               </p>
             </div>
-            <Button variant="outline" onClick={handleLogout} data-testid="button-logout">
-              <LogOut className="w-4 h-4 mr-2" />
-              Log Out
-            </Button>
+            <UserProfileMenu />
           </div>
         </div>
       </header>
