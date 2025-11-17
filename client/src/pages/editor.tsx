@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Link } from "wouter";
-import { useMutation } from "@tanstack/react-query";
-import { Upload, FileText, Settings, Eye, Save, Lock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "wouter";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Upload, FileText, Settings, Eye, Save, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CSVUpload } from "@/components/csv-upload";
@@ -10,12 +10,14 @@ import { TemplateSelector } from "@/components/template-selector";
 import { FieldMappingPanel } from "@/components/field-mapping-panel";
 import { PreviewPanel } from "@/components/preview-panel";
 import { SavePricelistDialog } from "@/components/save-pricelist-dialog";
-import { LoadPricelistDropdown } from "@/components/load-pricelist-dropdown";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template } from "@shared/schema";
 
-export default function Home() {
+export default function Editor() {
+  const [location] = useLocation();
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const pricelistId = urlParams.get('id') ? parseInt(urlParams.get('id')!) : null;
   const { toast } = useToast();
   const [csvData, setCSVData] = useState<any[]>([]);
   const [csvHeaders, setCSVHeaders] = useState<string[]>([]);
@@ -38,6 +40,30 @@ export default function Home() {
   const [currentPricelistName, setCurrentPricelistName] = useState<string>("");
   const [currentPricelistDescription, setCurrentPricelistDescription] = useState<string>("");
   const [template, setTemplate] = useState<Template>("modern");
+
+  // Load pricelist from query params (for editing)
+  const { data: loadedPricelist } = useQuery<Pricelist>({
+    queryKey: pricelistId ? ['/api/pricelists', pricelistId] : [],
+    enabled: !!pricelistId,
+  });
+
+  // Effect to populate form when pricelist is loaded
+  useEffect(() => {
+    if (loadedPricelist) {
+      setCurrentPricelistId(loadedPricelist.id);
+      setCurrentPricelistName(loadedPricelist.name);
+      setCurrentPricelistDescription(loadedPricelist.description || "");
+      setCompanyBranding(loadedPricelist.branding);
+      setSalesAgents(loadedPricelist.salesAgents as SalesAgent[]);
+      setQRCodeConfig(loadedPricelist.qrCode as QRCodeConfig | undefined);
+      setProducts(loadedPricelist.products as Product[]);
+      if (loadedPricelist.fieldMapping) {
+        setFieldMapping(loadedPricelist.fieldMapping as FieldMapping);
+      }
+      setTemplate(loadedPricelist.template as Template);
+      setActiveTab("preview");
+    }
+  }, [loadedPricelist]);
 
   const handleCSVUpload = (data: any[], headers: string[]) => {
     setCSVData(data);
@@ -152,21 +178,6 @@ export default function Home() {
     },
   });
 
-  const handleLoadPricelist = (pricelist: Pricelist) => {
-    setCurrentPricelistId(pricelist.id);
-    setCurrentPricelistName(pricelist.name);
-    setCurrentPricelistDescription(pricelist.description || "");
-    setCompanyBranding(pricelist.branding);
-    setSalesAgents(pricelist.salesAgents as SalesAgent[]);
-    setQRCodeConfig(pricelist.qrCode as QRCodeConfig | undefined);
-    setProducts(pricelist.products as Product[]);
-    if (pricelist.fieldMapping) {
-      setFieldMapping(pricelist.fieldMapping as FieldMapping);
-    }
-    setTemplate(pricelist.template as Template);
-    setActiveTab("preview");
-  };
-
   const canSave = products.length > 0 && companyBranding.companyName.trim() !== "";
 
   return (
@@ -175,20 +186,20 @@ export default function Home() {
       <header className="border-b bg-card">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground">Pricelist Generator</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Create professional, print-ready pricelists from CSV data
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link href="/admin">
-                <Button variant="outline" data-testid="button-admin">
-                  <Lock className="w-4 h-4 mr-2" />
-                  Admin
+            <div className="flex items-center gap-4">
+              <Link href="/">
+                <Button variant="ghost" size="icon" data-testid="button-back">
+                  <ArrowLeft className="w-4 h-4" />
                 </Button>
               </Link>
-              <LoadPricelistDropdown onLoad={handleLoadPricelist} />
+              <div>
+                <h1 className="text-2xl font-semibold text-foreground">Pricelist Editor</h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {currentPricelistId ? `Editing: ${currentPricelistName}` : "Create a new pricelist"}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               <Button
                 onClick={() => setSaveDialogOpen(true)}
                 disabled={!canSave}
