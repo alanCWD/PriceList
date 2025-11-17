@@ -31,6 +31,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== CLIENT COMPANY ROUTES (Authenticated Users) =====
+  
+  app.get("/api/companies/defaults", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(404).json({ error: "User company not found" });
+      }
+      
+      const company = await storage.getCompanyById(user.companyId);
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      
+      // Return only default settings (not full company data)
+      res.json({
+        defaultTemplate: company.defaultTemplate,
+        defaultFieldMapping: company.defaultFieldMapping,
+        defaultBranding: company.defaultBranding,
+      });
+    } catch (error) {
+      console.error("Error fetching company defaults:", error);
+      res.status(500).json({ error: "Failed to fetch company defaults" });
+    }
+  });
+
   // ===== COMPANY MANAGEMENT ROUTES (Admin Only) =====
   
   app.get("/api/companies", isAdmin, async (req, res) => {

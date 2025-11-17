@@ -26,6 +26,9 @@ export default function Editor() {
     sku: "",
     format: "",
     price: "",
+    category: "",
+    notes: "",
+    productImageUrl: "",
   });
   const [products, setProducts] = useState<Product[]>([]);
   const [companyBranding, setCompanyBranding] = useState<CompanyBranding>({
@@ -41,13 +44,23 @@ export default function Editor() {
   const [currentPricelistDescription, setCurrentPricelistDescription] = useState<string>("");
   const [template, setTemplate] = useState<Template>("modern");
 
+  // Load company defaults for new pricelists
+  const { data: companyDefaults, isLoading: isLoadingDefaults, error: defaultsError } = useQuery<{
+    defaultTemplate: Template;
+    defaultFieldMapping: FieldMapping | null;
+    defaultBranding: CompanyBranding | null;
+  }>({
+    queryKey: ['/api/companies/defaults'],
+    enabled: pricelistId === null, // Only fetch for new pricelists (not editing)
+  });
+
   // Load pricelist from query params (for editing)
   const { data: loadedPricelist } = useQuery<Pricelist>({
     queryKey: pricelistId ? ['/api/pricelists', pricelistId] : [],
     enabled: !!pricelistId,
   });
 
-  // Effect to populate form when pricelist is loaded
+  // Effect to populate form when pricelist is loaded (editing mode)
   useEffect(() => {
     if (loadedPricelist) {
       setCurrentPricelistId(loadedPricelist.id);
@@ -65,31 +78,77 @@ export default function Editor() {
     }
   }, [loadedPricelist]);
 
+  // Effect to apply company defaults for new pricelists
+  useEffect(() => {
+    if (companyDefaults && !pricelistId) {
+      // Apply default template
+      if (companyDefaults.defaultTemplate) {
+        setTemplate(companyDefaults.defaultTemplate);
+      }
+      
+      // Apply default branding
+      if (companyDefaults.defaultBranding) {
+        setCompanyBranding(companyDefaults.defaultBranding);
+      }
+    }
+  }, [companyDefaults, pricelistId]);
+
+  // Effect to handle company defaults error
+  useEffect(() => {
+    if (defaultsError) {
+      toast({
+        title: "Failed to load company defaults",
+        description: "Using auto-detection for field mapping",
+        variant: "destructive",
+      });
+    }
+  }, [defaultsError, toast]);
+
   const handleCSVUpload = (data: any[], headers: string[]) => {
     setCSVData(data);
     setCSVHeaders(headers);
     
-    // Auto-detect common field mappings
-    const autoMapping: FieldMapping = {
-      product: headers.find(h => {
-        const lower = h.toLowerCase();
-        return lower === "name" || (lower.includes("product") && !lower.includes("image"));
-      }) || "",
-      sku: headers.find(h => h.toLowerCase().includes("sku")) || "",
-      format: headers.find(h => {
-        const lower = h.toLowerCase();
-        return lower.includes("additional info") || lower.includes("case") || lower.includes("format") || lower.includes("size");
-      }) || "",
-      price: headers.find(h => h.toLowerCase().includes("price")) || "",
-      category: headers.find(h => h.toLowerCase().includes("category") || h.toLowerCase().includes("producer") || h.toLowerCase().includes("winery")) || "",
-      notes: headers.find(h => h.toLowerCase().includes("note")) || "",
-      productImageUrl: headers.find(h => {
-        const lower = h.toLowerCase();
-        return lower.includes("productimage") || lower === "productimageurl";
-      }) || "",
-    };
+    // Use company default field mapping if available, otherwise auto-detect
+    let mappingToUse: FieldMapping;
     
-    setFieldMapping(autoMapping);
+    if (companyDefaults?.defaultFieldMapping) {
+      // Use company's saved field mapping
+      mappingToUse = {
+        product: companyDefaults.defaultFieldMapping.product || "",
+        sku: companyDefaults.defaultFieldMapping.sku || "",
+        format: companyDefaults.defaultFieldMapping.format || "",
+        price: companyDefaults.defaultFieldMapping.price || "",
+        category: companyDefaults.defaultFieldMapping.category || "",
+        notes: companyDefaults.defaultFieldMapping.notes || "",
+        productImageUrl: companyDefaults.defaultFieldMapping.productImageUrl || "",
+      };
+      toast({
+        title: "Company field mapping applied",
+        description: "Using your company's default CSV field mapping",
+      });
+    } else {
+      // Auto-detect common field mappings
+      mappingToUse = {
+        product: headers.find(h => {
+          const lower = h.toLowerCase();
+          return lower === "name" || (lower.includes("product") && !lower.includes("image"));
+        }) || "",
+        sku: headers.find(h => h.toLowerCase().includes("sku")) || "",
+        format: headers.find(h => {
+          const lower = h.toLowerCase();
+          return lower.includes("additional info") || lower.includes("case") || lower.includes("format") || lower.includes("size");
+        }) || "",
+        price: headers.find(h => h.toLowerCase().includes("price")) || "",
+        category: headers.find(h => h.toLowerCase().includes("category") || h.toLowerCase().includes("producer") || h.toLowerCase().includes("winery")) || "",
+        notes: headers.find(h => h.toLowerCase().includes("note")) || "",
+        productImageUrl: headers.find(h => {
+          const lower = h.toLowerCase();
+          return lower.includes("productimage") || lower === "productimageurl";
+        }) || "",
+      };
+    }
+    
+    setFieldMapping(mappingToUse);
     setActiveTab("mapping");
   };
 
@@ -261,7 +320,13 @@ export default function Editor() {
           </TabsList>
 
           <TabsContent value="upload" className="space-y-6">
-            <CSVUpload onUpload={handleCSVUpload} />
+            {isLoadingDefaults && pricelistId === null ? (
+              <div className="text-center py-12" data-testid="loading-company-defaults">
+                <p className="text-sm text-muted-foreground">Loading company defaults...</p>
+              </div>
+            ) : (
+              <CSVUpload onUpload={handleCSVUpload} />
+            )}
           </TabsContent>
 
           <TabsContent value="mapping" className="space-y-6">
