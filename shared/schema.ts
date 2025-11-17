@@ -196,6 +196,7 @@ export const pricelists = pgTable("pricelists", {
   products: jsonb("products").notNull().$type<Product[]>(),
   fieldMapping: jsonb("field_mapping").$type<FieldMapping>(),
   template: varchar("template", { length: 50 }).notNull().default("modern").$type<Template>(),
+  categoryFilter: varchar("category_filter", { length: 255 }), // null = ALL categories, otherwise filter to specific category
   
   // Metadata
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -214,6 +215,7 @@ export const insertPricelistSchema = z.object({
   products: z.array(productSchema).default([]),
   fieldMapping: fieldMappingSchema.optional(),
   template: templateSchema.default("modern"),
+  categoryFilter: z.string().nullable().optional(), // null = ALL categories, otherwise filter to specific category
 });
 
 export type InsertPricelist = z.infer<typeof insertPricelistSchema>;

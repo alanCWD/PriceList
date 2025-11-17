@@ -43,6 +43,7 @@ export default function Editor() {
   const [currentPricelistName, setCurrentPricelistName] = useState<string>("");
   const [currentPricelistDescription, setCurrentPricelistDescription] = useState<string>("");
   const [template, setTemplate] = useState<Template>("modern");
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null); // null = ALL categories
 
   // Load company defaults for new pricelists
   const { data: companyDefaults, isLoading: isLoadingDefaults, error: defaultsError } = useQuery<{
@@ -74,6 +75,7 @@ export default function Editor() {
         setFieldMapping(loadedPricelist.fieldMapping as FieldMapping);
       }
       setTemplate(loadedPricelist.template as Template);
+      setCategoryFilter(loadedPricelist.categoryFilter || null);
       setActiveTab("preview");
     }
   }, [loadedPricelist]);
@@ -199,6 +201,7 @@ export default function Editor() {
         products,
         fieldMapping,
         template,
+        categoryFilter: categoryFilter ?? null, // Explicitly send null instead of undefined
       };
 
       console.log("Mutation: Payload size:", JSON.stringify(payload).length, "bytes");
@@ -345,9 +348,12 @@ export default function Editor() {
               branding={companyBranding}
               salesAgents={salesAgents}
               qrCodeConfig={qrCodeConfig}
+              products={products}
+              categoryFilter={categoryFilter}
               onBrandingChange={setCompanyBranding}
               onSalesAgentsChange={setSalesAgents}
               onQRCodeChange={setQRCodeConfig}
+              onCategoryFilterChange={setCategoryFilter}
               onContinue={() => setActiveTab("preview")}
             />
           </TabsContent>
@@ -360,6 +366,7 @@ export default function Editor() {
               qrCodeConfig={qrCodeConfig}
               template={template}
               pricelistName={currentPricelistName}
+              categoryFilter={categoryFilter}
             />
           </TabsContent>
         </Tabs>

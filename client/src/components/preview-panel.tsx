@@ -14,6 +14,7 @@ interface PreviewPanelProps {
   qrCodeConfig?: QRCodeConfig;
   template?: Template;
   pricelistName?: string;
+  categoryFilter?: string | null;
 }
 
 export function PreviewPanel({
@@ -23,14 +24,20 @@ export function PreviewPanel({
   qrCodeConfig,
   template = "modern",
   pricelistName,
+  categoryFilter,
 }: PreviewPanelProps) {
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Filter products by category if filter is set
+  const filteredProducts = categoryFilter
+    ? products.filter((p) => p.category === categoryFilter)
+    : products;
+
   const handleDownloadPDF = async () => {
     try {
       await generatePDF({
-        products,
+        products: filteredProducts,
         branding,
         salesAgents,
         qrCodeConfig,
@@ -54,8 +61,8 @@ export function PreviewPanel({
     window.print();
   };
 
-  // Group products by category
-  const groupedProducts = products.reduce((acc, product) => {
+  // Group filtered products by category
+  const groupedProducts = filteredProducts.reduce((acc, product) => {
     const category = product.category || "Uncategorized";
     if (!acc[category]) {
       acc[category] = [];
@@ -105,7 +112,7 @@ export function PreviewPanel({
           style={{ maxWidth: "8.5in" }}
         >
           <PricelistDocument
-            products={products}
+            products={filteredProducts}
             groupedProducts={groupedProducts}
             branding={branding}
             salesAgents={salesAgents}

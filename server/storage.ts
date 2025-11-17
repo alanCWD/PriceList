@@ -227,6 +227,7 @@ export class DatabaseStorage implements IStorage {
     console.log("[Storage] createPricelist: Starting database insert...");
     console.log("[Storage] createPricelist: Pricelist data size:", JSON.stringify(pricelist).length, "bytes");
     console.log("[Storage] createPricelist: Products count:", pricelist.products?.length || 0);
+    console.log("[Storage] createPricelist: categoryFilter value:", pricelist.categoryFilter);
     
     try {
       const result = await Promise.race([
@@ -237,6 +238,7 @@ export class DatabaseStorage implements IStorage {
       ]) as Pricelist[];
       
       console.log("[Storage] createPricelist: Insert completed successfully");
+      console.log("[Storage] createPricelist: Returned categoryFilter:", result[0]?.categoryFilter);
       return result[0]!;
     } catch (error) {
       console.error("[Storage] createPricelist: Insert failed with error:", error);
@@ -245,11 +247,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePricelist(id: number, updates: Partial<InsertPricelist>): Promise<Pricelist | undefined> {
+    console.log("[Storage] updatePricelist: categoryFilter in updates:", updates.categoryFilter);
     const result = await db
       .update(pricelists)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(pricelists.id, id))
       .returning();
+    console.log("[Storage] updatePricelist: Returned categoryFilter:", result[0]?.categoryFilter);
     return result[0];
   }
 

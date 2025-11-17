@@ -7,18 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Upload, ArrowRight, Building2, Users, QrCode, AlertCircle, Download } from "lucide-react";
+import { Plus, Trash2, Upload, ArrowRight, Building2, Users, QrCode, AlertCircle, Download, Filter } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import type { CompanyBranding, SalesAgent, QRCodeConfig, CompanyProfile, SalesAgentProfile } from "@shared/schema";
+import type { CompanyBranding, SalesAgent, QRCodeConfig, CompanyProfile, SalesAgentProfile, Product } from "@shared/schema";
 import { getPaletteFromLogo } from "@/lib/color-extractor";
 
 interface ConfigurationPanelProps {
   branding: CompanyBranding;
   salesAgents: SalesAgent[];
   qrCodeConfig?: QRCodeConfig;
+  products: Product[];
+  categoryFilter: string | null;
   onBrandingChange: (branding: CompanyBranding) => void;
   onSalesAgentsChange: (agents: SalesAgent[]) => void;
   onQRCodeChange: (config?: QRCodeConfig) => void;
+  onCategoryFilterChange: (category: string | null) => void;
   onContinue: () => void;
 }
 
@@ -26,9 +29,12 @@ export function ConfigurationPanel({
   branding,
   salesAgents,
   qrCodeConfig,
+  products,
+  categoryFilter,
   onBrandingChange,
   onSalesAgentsChange,
   onQRCodeChange,
+  onCategoryFilterChange,
   onContinue,
 }: ConfigurationPanelProps) {
   const [logoPreview, setLogoPreview] = useState<string | undefined>(branding.logoUrl);
@@ -127,6 +133,11 @@ export function ConfigurationPanel({
       onQRCodeChange(undefined);
     }
   };
+
+  // Extract unique categories from products
+  const uniqueCategories = Array.from(
+    new Set(products.map((p) => p.category).filter(Boolean))
+  ).sort();
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -395,6 +406,51 @@ export function ConfigurationPanel({
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Category Filter */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-muted-foreground" />
+            <CardTitle>Brand Filter (Optional)</CardTitle>
+          </div>
+          <CardDescription>
+            Filter products by brand/category or show all brands
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="category-filter">Select Brand/Category</Label>
+            <Select
+              value={categoryFilter || "ALL"}
+              onValueChange={(value) => onCategoryFilterChange(value === "ALL" ? null : value)}
+            >
+              <SelectTrigger id="category-filter" data-testid="select-category-filter">
+                <SelectValue placeholder="All Brands" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL" data-testid="option-category-all">
+                  All Brands
+                </SelectItem>
+                {uniqueCategories.map((category) => (
+                  <SelectItem 
+                    key={category} 
+                    value={category}
+                    data-testid={`option-category-${category.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {categoryFilter 
+                ? `Showing only products from: ${categoryFilter}`
+                : "Showing all brands/categories"}
+            </p>
+          </div>
         </CardContent>
       </Card>
 

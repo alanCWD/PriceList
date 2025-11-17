@@ -396,7 +396,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       console.log("[POST /api/pricelists] Validation passed, creating pricelist...");
+      console.log("[POST /api/pricelists] categoryFilter in validation.data:", validation.data.categoryFilter);
+      console.log("[POST /api/pricelists] categoryFilter in pricelistData:", pricelistData.categoryFilter);
       const pricelist = await storage.createPricelist(pricelistData);
+      console.log("[POST /api/pricelists] categoryFilter in created pricelist:", pricelist.categoryFilter);
       console.log("[POST /api/pricelists] Pricelist created successfully, ID:", pricelist.id);
       res.status(201).json(pricelist);
     } catch (error) {
@@ -445,7 +448,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         delete updateData.companyId; // Force remove - clients cannot change company
       }
 
+      console.log("[PATCH /api/pricelists] categoryFilter in validation.data:", validation.data.categoryFilter);
+      console.log("[PATCH /api/pricelists] categoryFilter in updateData:", updateData.categoryFilter);
       const pricelist = await storage.updatePricelist(id, updateData);
+      console.log("[PATCH /api/pricelists] categoryFilter in updated pricelist:", pricelist?.categoryFilter);
       if (!pricelist) {
         return res.status(500).json({ error: "Failed to update pricelist" });
       }
