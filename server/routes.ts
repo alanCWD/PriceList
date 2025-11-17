@@ -47,11 +47,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Company not found" });
       }
       
-      // Return only default settings (not full company data)
+      // Always normalize all defaults to ensure complete data (handles legacy/null data)
+      const normalizedFieldMapping = {
+        product: (company.defaultFieldMapping as any)?.product || "",
+        sku: (company.defaultFieldMapping as any)?.sku || "",
+        format: (company.defaultFieldMapping as any)?.format || "",
+        price: (company.defaultFieldMapping as any)?.price || "",
+        category: (company.defaultFieldMapping as any)?.category || "",
+        notes: (company.defaultFieldMapping as any)?.notes || "",
+        productImageUrl: (company.defaultFieldMapping as any)?.productImageUrl || "",
+      };
+      
+      // Normalize branding to full CompanyBranding shape with per-field coalescing
+      const branding = company.defaultBranding ?? {};
+      const normalizedBranding = {
+        companyName: branding.companyName ?? "",
+        tagline: branding.tagline ?? "",
+      };
+      
+      // Return only default settings (not full company data), with fallbacks
       res.json({
-        defaultTemplate: company.defaultTemplate,
-        defaultFieldMapping: company.defaultFieldMapping,
-        defaultBranding: company.defaultBranding,
+        defaultTemplate: company.defaultTemplate || "modern",
+        defaultFieldMapping: normalizedFieldMapping,
+        defaultBranding: normalizedBranding,
       });
     } catch (error) {
       console.error("Error fetching company defaults:", error);

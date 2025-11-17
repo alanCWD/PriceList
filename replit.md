@@ -71,18 +71,28 @@ Authentication and user management are handled via `sessions`, `users`, and `com
 - Pre-configured company branding and settings
 
 ### User Workflow
-The application guides users through a clear workflow:
-1.  **Admin Setup**: Optional setup of reusable Company Profiles and Sales Agent Teams.
-2.  **CSV Upload**: Drag & drop or file picker for CSV files with real-time validation.
-3.  **Field Mapping**: Mapping CSV headers to product fields with live data preview.
-4.  **Configuration**: Template selection, branding setup (manual or from profiles), sales agent details, and QR code configuration.
-5.  **Preview & Export**: Live preview of the pricelist and PDF export functionality.
-6.  **Save/Load**: Persistence of pricelists and configurations to the database.
+
+#### Admin Workflow (Company Configuration)
+Admins configure company defaults for streamlined user experience:
+1.  **Company Setup**: Create companies with unique email domains for user auto-assignment
+2.  **CSV Upload & Field Mapping**: Upload a sample CSV to auto-detect and configure default field mappings
+3.  **Template Selection**: Choose default template (Modern, Classic, or Minimal) for the company
+4.  **Save Configuration**: Field mappings and template saved as company defaults
+
+#### Client Workflow (Pricelist Generation)
+Clients create pricelists with company defaults pre-applied:
+1.  **CSV Upload**: Drag & drop or file picker with auto-applied company field mappings
+2.  **Field Mapping Review**: Review and adjust auto-populated field mappings if needed
+3.  **Configuration**: Branding setup (manual or from profiles), sales agent details, and QR code configuration
+4.  **Preview & Export**: Live preview of the pricelist and PDF export functionality
+5.  **Save/Load**: Persistence of pricelists with auto-generated names using "{Company} Pricelist [Day Month]" format
 
 ### Key Features
--   **Admin System**: For managing reusable company branding and sales agent teams.
--   **Template System**: Three professional, print-optimized templates (Modern, Classic, Minimal).
--   **Database Persistence**: Save, load, update, and delete pricelists and profiles.
+-   **Admin System**: For managing companies, users, reusable company branding and sales agent teams.
+-   **CSV-Based Field Mapping**: Admins upload sample CSVs to auto-detect and save default field mappings per company; clients inherit these mappings automatically.
+-   **Auto-Generated Pricelist Names**: Save dialog pre-fills with "{Company} Pricelist [Day Month]" format (e.g., "Test Company Pricelist [17 November]"), customizable before saving.
+-   **Template System**: Three professional, print-optimized templates (Modern, Classic, Minimal) with company defaults.
+-   **Database Persistence**: Save, load, update, and delete pricelists and profiles with full company isolation.
 -   **Professional Document Design**: Template-specific typography, layout, and print optimization.
 -   **Auto-Generated Footer**: Automatic footer format: "{Company} Pricelist [Day Month]" (e.g., "TechCorp Pricelist [15 January]") for consistent, professional appearance across all templates.
 -   **Brand/Category Filtering**: Dynamic dropdown to filter pricelists by "ALL brands" or a specific category, with persistence across save/load operations.

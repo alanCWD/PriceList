@@ -37,6 +37,13 @@ export function SavePricelistDialog({
 
   // Generate auto-name using footer format: "Company Pricelist [Day Month]"
   const generateAutoName = () => {
+    // Guard against placeholder/default values
+    if (!companyBranding.companyName || 
+        companyBranding.companyName === "Your Company Name" ||
+        companyBranding.companyName.trim() === "") {
+      return "";
+    }
+    
     const now = new Date();
     const day = now.getDate();
     const month = now.toLocaleDateString("en-GB", { month: "long" });
@@ -60,15 +67,17 @@ export function SavePricelistDialog({
     }
   };
 
-  // Update local state when dialog opens (not when initial values change while dialog is open)
+  // Update local state when dialog opens or when values change
   useEffect(() => {
     if (open) {
-      // Use initialName if provided (editing), otherwise generate auto-name
-      setName(initialName || generateAutoName());
+      // Fallback chain: initialName → autoName → initialDescription → "Untitled Pricelist"
+      const autoName = generateAutoName();
+      const finalName = initialName || autoName || initialDescription || "Untitled Pricelist";
+      setName(finalName);
       setDescription(initialDescription);
       setSaving(false);
     }
-  }, [open]);
+  }, [open, initialName, initialDescription, companyBranding.companyName]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

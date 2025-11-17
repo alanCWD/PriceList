@@ -88,8 +88,8 @@ export default function Editor() {
         setTemplate(companyDefaults.defaultTemplate);
       }
       
-      // Apply default branding
-      if (companyDefaults.defaultBranding) {
+      // Apply default branding only if it has actual values (not just normalized empty strings)
+      if (companyDefaults.defaultBranding && companyDefaults.defaultBranding.companyName) {
         setCompanyBranding(companyDefaults.defaultBranding);
       }
     }

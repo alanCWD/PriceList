@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, LogOut } from "lucide-react";
+import { CSVUpload } from "@/components/csv-upload";
 import type { 
   CompanyProfile, 
   SalesAgentProfile,
@@ -135,6 +136,7 @@ function CompaniesManager() {
     notes: "",
     productImageUrl: "",
   });
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
 
   const { data: companies, isLoading } = useQuery<Company[]>({
     queryKey: ["/api/companies"],
@@ -198,6 +200,58 @@ function CompaniesManager() {
       notes: "",
       productImageUrl: "",
     });
+    setCsvHeaders([]);
+  };
+
+  const handleCSVUpload = (data: any[], headers: string[]) => {
+    // Guard against empty CSV files (preserve existing mappings)
+    if (!headers || headers.length === 0) {
+      toast({
+        title: "Invalid CSV",
+        description: "CSV file has no headers. Please upload a valid file.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setCsvHeaders(headers);
+    
+    // Auto-detect mappings from CSV headers
+    const autoMapping: FieldMapping = {
+      product: headers.find(h => {
+        const lower = h.toLowerCase();
+        return lower === "name" || (lower.includes("product") && !lower.includes("image"));
+      }) || "",
+      sku: headers.find(h => h.toLowerCase().includes("sku")) || "",
+      format: headers.find(h => {
+        const lower = h.toLowerCase();
+        return lower.includes("additional info") || lower.includes("case") || lower.includes("format") || lower.includes("size");
+      }) || "",
+      price: headers.find(h => h.toLowerCase().includes("price")) || "",
+      category: headers.find(h => h.toLowerCase().includes("category") || h.toLowerCase().includes("producer") || h.toLowerCase().includes("winery")) || "",
+      notes: headers.find(h => h.toLowerCase().includes("note")) || "",
+      productImageUrl: headers.find(h => {
+        const lower = h.toLowerCase();
+        return lower.includes("productimage") || lower === "productimageurl";
+      }) || "",
+    };
+    
+    // Guard against CSV files with no matching headers (preserve existing mappings)
+    if (Object.values(autoMapping).every(v => !v)) {
+      toast({
+        title: "No field matches found",
+        description: "CSV headers don't match expected product fields. Please check your CSV format.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setDefaultFieldMapping(autoMapping);
+    
+    toast({
+      title: "CSV uploaded",
+      description: "Field mappings auto-detected from CSV headers",
+    });
   };
 
   const handleEdit = (company: Company) => {
@@ -205,19 +259,18 @@ function CompaniesManager() {
     setName(company.name);
     setDomain(company.domain);
     setDefaultTemplate(company.defaultTemplate as Template);
-    if (company.defaultFieldMapping) {
-      setDefaultFieldMapping(company.defaultFieldMapping as FieldMapping);
-    } else {
-      setDefaultFieldMapping({
-        product: "",
-        sku: "",
-        format: "",
-        price: "",
-        category: "",
-        notes: "",
-        productImageUrl: "",
-      });
-    }
+    
+    // Normalize field mapping to ensure all keys exist (prevents undefined in controlled inputs)
+    const normalized: FieldMapping = {
+      product: (company.defaultFieldMapping as any)?.product || "",
+      sku: (company.defaultFieldMapping as any)?.sku || "",
+      format: (company.defaultFieldMapping as any)?.format || "",
+      price: (company.defaultFieldMapping as any)?.price || "",
+      category: (company.defaultFieldMapping as any)?.category || "",
+      notes: (company.defaultFieldMapping as any)?.notes || "",
+      productImageUrl: (company.defaultFieldMapping as any)?.productImageUrl || "",
+    };
+    setDefaultFieldMapping(normalized);
   };
 
   const handleSave = () => {
@@ -241,11 +294,23 @@ function CompaniesManager() {
       return;
     }
 
+    // Always send full FieldMapping with empty strings for unmapped fields
+    // This keeps the UI stable and lets client auto-detection handle empty values
+    const cleanedFieldMapping: FieldMapping = {
+      product: defaultFieldMapping.product?.trim() || "",
+      sku: defaultFieldMapping.sku?.trim() || "",
+      format: defaultFieldMapping.format?.trim() || "",
+      price: defaultFieldMapping.price?.trim() || "",
+      category: defaultFieldMapping.category?.trim() || "",
+      notes: defaultFieldMapping.notes?.trim() || "",
+      productImageUrl: defaultFieldMapping.productImageUrl?.trim() || "",
+    };
+
     const data = {
       name: name.trim(),
       domain: domain.trim().toLowerCase(),
       defaultTemplate,
-      defaultFieldMapping,
+      defaultFieldMapping: cleanedFieldMapping,
     };
 
     if (editingId) {
@@ -307,78 +372,217 @@ function CompaniesManager() {
           <div className="pt-4 border-t">
             <h4 className="text-sm font-semibold mb-3">Default Field Mapping</h4>
             <p className="text-xs text-muted-foreground mb-4">
-              Configure default CSV column mappings for this company's users
+              Upload a sample CSV to auto-detect field mappings, or manually enter column names
             </p>
+            
+            {/* CSV Upload Section */}
+            <div className="mb-6">
+              <CSVUpload onUpload={handleCSVUpload} />
+            </div>
+
+            {csvHeaders.length > 0 && (
+              <Alert className="mb-4">
+                <AlertDescription>
+                  <strong>CSV Headers Detected:</strong> {csvHeaders.join(", ")}
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="field-product">Product Column</Label>
-                <Input
-                  id="field-product"
-                  data-testid="input-field-product"
-                  placeholder="e.g., name, product"
-                  value={defaultFieldMapping.product}
-                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, product: e.target.value })}
-                />
+                {csvHeaders.length > 0 ? (
+                  <Select 
+                    value={defaultFieldMapping.product || "__none__"} 
+                    onValueChange={(val) => setDefaultFieldMapping({ ...defaultFieldMapping, product: val === "__none__" ? "" : val })}
+                  >
+                    <SelectTrigger id="field-product" data-testid="select-field-product">
+                      <SelectValue placeholder="Select column" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {csvHeaders.map(h => (
+                        <SelectItem key={h} value={h}>{h}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="field-product"
+                    data-testid="input-field-product"
+                    placeholder="e.g., name, product"
+                    value={defaultFieldMapping.product}
+                    onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, product: e.target.value })}
+                  />
+                )}
               </div>
+              
               <div className="space-y-1">
                 <Label htmlFor="field-sku">SKU Column</Label>
-                <Input
-                  id="field-sku"
-                  data-testid="input-field-sku"
-                  placeholder="e.g., sku, id"
-                  value={defaultFieldMapping.sku}
-                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, sku: e.target.value })}
-                />
+                {csvHeaders.length > 0 ? (
+                  <Select 
+                    value={defaultFieldMapping.sku || "__none__"} 
+                    onValueChange={(val) => setDefaultFieldMapping({ ...defaultFieldMapping, sku: val === "__none__" ? "" : val })}
+                  >
+                    <SelectTrigger id="field-sku" data-testid="select-field-sku">
+                      <SelectValue placeholder="Select column" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {csvHeaders.map(h => (
+                        <SelectItem key={h} value={h}>{h}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="field-sku"
+                    data-testid="input-field-sku"
+                    placeholder="e.g., sku, id"
+                    value={defaultFieldMapping.sku}
+                    onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, sku: e.target.value })}
+                  />
+                )}
               </div>
+
               <div className="space-y-1">
                 <Label htmlFor="field-format">Format Column</Label>
-                <Input
-                  id="field-format"
-                  data-testid="input-field-format"
-                  placeholder="e.g., size, format"
-                  value={defaultFieldMapping.format}
-                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, format: e.target.value })}
-                />
+                {csvHeaders.length > 0 ? (
+                  <Select 
+                    value={defaultFieldMapping.format || "__none__"} 
+                    onValueChange={(val) => setDefaultFieldMapping({ ...defaultFieldMapping, format: val === "__none__" ? "" : val })}
+                  >
+                    <SelectTrigger id="field-format" data-testid="select-field-format">
+                      <SelectValue placeholder="Select column" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {csvHeaders.map(h => (
+                        <SelectItem key={h} value={h}>{h}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="field-format"
+                    data-testid="input-field-format"
+                    placeholder="e.g., size, format"
+                    value={defaultFieldMapping.format}
+                    onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, format: e.target.value })}
+                  />
+                )}
               </div>
+
               <div className="space-y-1">
                 <Label htmlFor="field-price">Price Column</Label>
-                <Input
-                  id="field-price"
-                  data-testid="input-field-price"
-                  placeholder="e.g., price, cost"
-                  value={defaultFieldMapping.price}
-                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, price: e.target.value })}
-                />
+                {csvHeaders.length > 0 ? (
+                  <Select 
+                    value={defaultFieldMapping.price || "__none__"} 
+                    onValueChange={(val) => setDefaultFieldMapping({ ...defaultFieldMapping, price: val === "__none__" ? "" : val })}
+                  >
+                    <SelectTrigger id="field-price" data-testid="select-field-price">
+                      <SelectValue placeholder="Select column" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {csvHeaders.map(h => (
+                        <SelectItem key={h} value={h}>{h}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="field-price"
+                    data-testid="input-field-price"
+                    placeholder="e.g., price, cost"
+                    value={defaultFieldMapping.price}
+                    onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, price: e.target.value })}
+                  />
+                )}
               </div>
+
               <div className="space-y-1">
                 <Label htmlFor="field-category">Category Column (Optional)</Label>
-                <Input
-                  id="field-category"
-                  data-testid="input-field-category"
-                  placeholder="e.g., category, type"
-                  value={defaultFieldMapping.category || ""}
-                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, category: e.target.value })}
-                />
+                {csvHeaders.length > 0 ? (
+                  <Select 
+                    value={defaultFieldMapping.category || "__none__"} 
+                    onValueChange={(val) => setDefaultFieldMapping({ ...defaultFieldMapping, category: val === "__none__" ? "" : val })}
+                  >
+                    <SelectTrigger id="field-category" data-testid="select-field-category">
+                      <SelectValue placeholder="Select column" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {csvHeaders.map(h => (
+                        <SelectItem key={h} value={h}>{h}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="field-category"
+                    data-testid="input-field-category"
+                    placeholder="e.g., category, type"
+                    value={defaultFieldMapping.category || ""}
+                    onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, category: e.target.value })}
+                  />
+                )}
               </div>
+
               <div className="space-y-1">
                 <Label htmlFor="field-notes">Notes Column (Optional)</Label>
-                <Input
-                  id="field-notes"
-                  data-testid="input-field-notes"
-                  placeholder="e.g., notes, description"
-                  value={defaultFieldMapping.notes || ""}
-                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, notes: e.target.value })}
-                />
+                {csvHeaders.length > 0 ? (
+                  <Select 
+                    value={defaultFieldMapping.notes || "__none__"} 
+                    onValueChange={(val) => setDefaultFieldMapping({ ...defaultFieldMapping, notes: val === "__none__" ? "" : val })}
+                  >
+                    <SelectTrigger id="field-notes" data-testid="select-field-notes">
+                      <SelectValue placeholder="Select column" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {csvHeaders.map(h => (
+                        <SelectItem key={h} value={h}>{h}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="field-notes"
+                    data-testid="input-field-notes"
+                    placeholder="e.g., notes, description"
+                    value={defaultFieldMapping.notes || ""}
+                    onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, notes: e.target.value })}
+                  />
+                )}
               </div>
+
               <div className="space-y-1 col-span-2">
                 <Label htmlFor="field-image">Product Image URL Column (Optional)</Label>
-                <Input
-                  id="field-image"
-                  data-testid="input-field-image-url"
-                  placeholder="e.g., productImageUrl, image"
-                  value={defaultFieldMapping.productImageUrl || ""}
-                  onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, productImageUrl: e.target.value })}
-                />
+                {csvHeaders.length > 0 ? (
+                  <Select 
+                    value={defaultFieldMapping.productImageUrl || "__none__"} 
+                    onValueChange={(val) => setDefaultFieldMapping({ ...defaultFieldMapping, productImageUrl: val === "__none__" ? "" : val })}
+                  >
+                    <SelectTrigger id="field-image" data-testid="select-field-image-url">
+                      <SelectValue placeholder="Select column" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {csvHeaders.map(h => (
+                        <SelectItem key={h} value={h}>{h}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="field-image"
+                    data-testid="input-field-image-url"
+                    placeholder="e.g., productImageUrl, image"
+                    value={defaultFieldMapping.productImageUrl || ""}
+                    onChange={(e) => setDefaultFieldMapping({ ...defaultFieldMapping, productImageUrl: e.target.value })}
+                  />
+                )}
               </div>
             </div>
           </div>
