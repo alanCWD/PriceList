@@ -19,10 +19,11 @@ export function PricelistDocument({
   qrCodeConfig,
   template = "modern",
 }: PricelistDocumentProps) {
-  // Format date as "Day Month" (e.g., "15 January")
+  // Format date as "Day Month Year" (e.g., "15 January 2025")
   const dayMonthDate = new Date().toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
+    year: "numeric",
   });
 
   if (template === "classic") {
@@ -375,7 +376,7 @@ export function PricelistDocument({
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
             <span className="page-number">Page: </span>
-            <span>{branding.companyName} Pricelist [{dayMonthDate}]</span>
+            <span>{branding.companyName} Pricelist - {dayMonthDate}</span>
           </div>
 
           {/* QR Code - Far Right */}
@@ -584,7 +585,7 @@ function ClassicTemplate({
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
             <span className="page-number">Page: </span>
-            <span>{branding.companyName} Pricelist [{currentDate}]</span>
+            <span>{branding.companyName} Pricelist - {currentDate}</span>
           </div>
 
           {/* QR Code - Far Right */}
@@ -761,7 +762,7 @@ function MinimalTemplate({
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
             <span className="page-number">Page: </span>
-            <span>{branding.companyName} Pricelist [{currentDate}]</span>
+            <span>{branding.companyName} Pricelist - {currentDate}</span>
           </div>
 
           {/* QR Code - Far Right */}

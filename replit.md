@@ -85,16 +85,16 @@ Clients create pricelists with company defaults pre-applied:
 2.  **Field Mapping Review**: Review and adjust auto-populated field mappings if needed
 3.  **Configuration**: Branding setup (manual or from profiles), sales agent details, and QR code configuration
 4.  **Preview & Export**: Live preview of the pricelist and PDF export functionality
-5.  **Save/Load**: Persistence of pricelists with auto-generated names using "{Company} Pricelist [Day Month]" format
+5.  **Save/Load**: Persistence of pricelists with auto-generated names using "{Company} Pricelist - Day Month Year" format
 
 ### Key Features
 -   **Admin System**: For managing companies, users, reusable company branding and sales agent teams.
 -   **CSV-Based Field Mapping**: Admins upload sample CSVs to auto-detect and save default field mappings per company; clients inherit these mappings automatically.
--   **Auto-Generated Pricelist Names**: Save dialog pre-fills with "{Company} Pricelist [Day Month]" format (e.g., "Test Company Pricelist [17 November]"), customizable before saving.
+-   **Auto-Generated Pricelist Names**: Save dialog pre-fills with "{Company} Pricelist - Day Month Year" format (e.g., "Test Company Pricelist - 17 November 2025"), customizable before saving.
 -   **Template System**: Three professional, print-optimized templates (Modern, Classic, Minimal) with company defaults.
 -   **Database Persistence**: Save, load, update, and delete pricelists and profiles with full company isolation.
 -   **Professional Document Design**: Template-specific typography, layout, and print optimization.
--   **Auto-Generated Footer**: Automatic footer format: "{Company} Pricelist [Day Month]" (e.g., "TechCorp Pricelist [15 January]") for consistent, professional appearance across all templates.
+-   **Auto-Generated Footer**: Automatic footer format: "{Company} Pricelist - Day Month Year" (e.g., "TechCorp Pricelist - 15 January 2025") for consistent, professional appearance across all templates.
 -   **Brand/Category Filtering**: Dynamic dropdown to filter pricelists by "ALL brands" or a specific category, with persistence across save/load operations.
 -   **Validation & UX**: Comprehensive validation, error handling, loading states, and toast notifications.
 -   **Export Quality**: High-quality, print-ready PDF exports with template-specific styling and pagination.

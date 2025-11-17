@@ -32,11 +32,12 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   const footerHeight = 40;
   let yPosition = margin;
 
-  // Format date as "Day Month" (e.g., "15 January")
+  // Format date as "Day Month Year" (e.g., "15 January 2025")
   const currentDate = new Date();
   const dayMonthDate = currentDate.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
+    year: "numeric",
   });
   const displayName = pricelistName || "Pricelist";
 
@@ -195,13 +196,13 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         doc.setLineWidth(0.5);
         doc.line(margin, footerY - 10, pageWidth - margin, footerY - 10);
         
-        // Footer text - format: Page: X | Company Pricelist [Day Month]
+        // Footer text - format: Page: X | Company Pricelist - Day Month Year
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(100, 100, 100);
         
         const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
-        const footerText = `Page: ${pageNum} | ${branding.companyName} Pricelist [${dayMonthDate}]`;
+        const footerText = `Page: ${pageNum} | ${branding.companyName} Pricelist - ${dayMonthDate}`;
         doc.text(footerText, margin, footerY);
         
         // Small QR code on the right side, vertically centered with text
@@ -237,11 +238,12 @@ function generateClassicPDF(config: PDFConfig): void {
   const footerHeight = 30;
   let yPosition = margin;
 
-  // Format date as "Day Month" (e.g., "15 January")
+  // Format date as "Day Month Year" (e.g., "15 January 2025")
   const currentDate = new Date();
   const dayMonthDate = currentDate.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
+    year: "numeric",
   });
   const displayName = pricelistName || "Pricelist";
 
@@ -345,7 +347,7 @@ function generateClassicPDF(config: PDFConfig): void {
         doc.setTextColor(100, 100, 100);
         
         const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
-        const footerText = `Page: ${pageNum}    ${branding.companyName} Pricelist [${dayMonthDate}]`;
+        const footerText = `Page: ${pageNum}    ${branding.companyName} Pricelist - ${dayMonthDate}`;
         doc.text(footerText, margin, footerY);
       },
     });
@@ -372,11 +374,12 @@ function generateMinimalPDF(config: PDFConfig): void {
   const footerHeight = 30;
   let yPosition = margin + 20;
 
-  // Format date as "Day Month" (e.g., "15 January")
+  // Format date as "Day Month Year" (e.g., "15 January 2025")
   const currentDate = new Date();
   const dayMonthDate = currentDate.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
+    year: "numeric",
   });
   const displayName = pricelistName || "Pricelist";
 

@@ -35,7 +35,7 @@ export function SavePricelistDialog({
   const [description, setDescription] = useState(initialDescription);
   const [saving, setSaving] = useState(false);
 
-  // Generate auto-name using footer format: "Company Pricelist [Day Month]"
+  // Generate auto-name using footer format: "Company Pricelist - Day Month Year"
   const generateAutoName = () => {
     // Guard against placeholder/default values
     if (!companyBranding.companyName || 
@@ -47,7 +47,8 @@ export function SavePricelistDialog({
     const now = new Date();
     const day = now.getDate();
     const month = now.toLocaleDateString("en-GB", { month: "long" });
-    return `${companyBranding.companyName} Pricelist [${day} ${month}]`;
+    const year = now.getFullYear();
+    return `${companyBranding.companyName} Pricelist - ${day} ${month} ${year}`;
   };
 
   const handleSave = async () => {
