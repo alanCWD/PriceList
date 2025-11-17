@@ -84,6 +84,8 @@ The application guides users through a clear workflow:
 -   **Template System**: Three professional, print-optimized templates (Modern, Classic, Minimal).
 -   **Database Persistence**: Save, load, update, and delete pricelists and profiles.
 -   **Professional Document Design**: Template-specific typography, layout, and print optimization.
+-   **Auto-Generated Footer**: Automatic footer format: "{Company} Pricelist [Day Month]" (e.g., "TechCorp Pricelist [15 January]") for consistent, professional appearance across all templates.
+-   **Brand/Category Filtering**: Dynamic dropdown to filter pricelists by "ALL brands" or a specific category, with persistence across save/load operations.
 -   **Validation & UX**: Comprehensive validation, error handling, loading states, and toast notifications.
 -   **Export Quality**: High-quality, print-ready PDF exports with template-specific styling and pagination.
 

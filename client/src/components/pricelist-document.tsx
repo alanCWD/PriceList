@@ -19,9 +19,10 @@ export function PricelistDocument({
   qrCodeConfig,
   template = "modern",
 }: PricelistDocumentProps) {
-  const currentDate = new Date().toLocaleDateString("en-US", {
+  // Format date as "Day Month" (e.g., "15 January")
+  const dayMonthDate = new Date().toLocaleDateString("en-GB", {
+    day: "numeric",
     month: "long",
-    year: "numeric",
   });
 
   if (template === "classic") {
@@ -31,7 +32,7 @@ export function PricelistDocument({
       branding={branding}
       salesAgents={salesAgents}
       qrCodeConfig={qrCodeConfig}
-      currentDate={currentDate}
+      currentDate={dayMonthDate}
     />;
   }
 
@@ -42,7 +43,7 @@ export function PricelistDocument({
       branding={branding}
       salesAgents={salesAgents}
       qrCodeConfig={qrCodeConfig}
-      currentDate={currentDate}
+      currentDate={dayMonthDate}
     />;
   }
 
@@ -373,10 +374,8 @@ export function PricelistDocument({
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
-            <span>File: Pricelist</span>
-            <span>Date: {currentDate}</span>
             <span className="page-number">Page: </span>
-            <span>{branding.companyName}</span>
+            <span>{branding.companyName} Pricelist [{dayMonthDate}]</span>
           </div>
 
           {/* QR Code - Far Right */}
@@ -584,10 +583,8 @@ function ClassicTemplate({
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
-            <span>File: Pricelist</span>
-            <span>Date: {currentDate}</span>
             <span className="page-number">Page: </span>
-            <span>{branding.companyName}</span>
+            <span>{branding.companyName} Pricelist [{currentDate}]</span>
           </div>
 
           {/* QR Code - Far Right */}
@@ -763,10 +760,8 @@ function MinimalTemplate({
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
-            <span>File: Pricelist</span>
-            <span>Date: {currentDate}</span>
             <span className="page-number">Page: </span>
-            <span>{branding.companyName}</span>
+            <span>{branding.companyName} Pricelist [{currentDate}]</span>
           </div>
 
           {/* QR Code - Far Right */}
