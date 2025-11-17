@@ -48,8 +48,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPricelist(pricelist: InsertPricelist): Promise<Pricelist> {
-    const result = await db.insert(pricelists).values(pricelist).returning();
-    return result[0]!;
+    console.log("[Storage] createPricelist: Starting database insert...");
+    console.log("[Storage] createPricelist: Pricelist data size:", JSON.stringify(pricelist).length, "bytes");
+    console.log("[Storage] createPricelist: Products count:", pricelist.products?.length || 0);
+    
+    try {
+      const result = await Promise.race([
+        db.insert(pricelists).values(pricelist).returning(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database insert timeout after 30 seconds')), 30000)
+        )
+      ]) as Pricelist[];
+      
+      console.log("[Storage] createPricelist: Insert completed successfully");
+      return result[0]!;
+    } catch (error) {
+      console.error("[Storage] createPricelist: Insert failed with error:", error);
+      throw error;
+    }
   }
 
   async updatePricelist(id: number, updates: Partial<InsertPricelist>): Promise<Pricelist | undefined> {
