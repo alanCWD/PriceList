@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Upload, FileText, Settings, Eye, Save, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UserProfileMenu } from "@/components/user-profile-menu";
 import { CSVUpload } from "@/components/csv-upload";
 import { ConfigurationPanel } from "@/components/configuration-panel";
 import { TemplateSelector } from "@/components/template-selector";
@@ -271,6 +272,7 @@ export default function Editor() {
                 <Save className="w-4 h-4 mr-2" />
                 {currentPricelistId ? "Update" : "Save"}
               </Button>
+              <UserProfileMenu />
             </div>
           </div>
         </div>
