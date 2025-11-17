@@ -49,9 +49,10 @@ export function PreviewPanel({
         description: "Your pricelist has been downloaded successfully.",
       });
     } catch (error) {
+      console.error('PDF generation error:', error);
       toast({
         title: "Download Failed",
-        description: "Failed to generate PDF. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to generate PDF. Please try again.",
         variant: "destructive",
       });
     }

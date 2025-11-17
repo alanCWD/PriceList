@@ -15,9 +15,9 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   const { products, branding, salesAgents, qrCodeConfig, template = "modern", pricelistName } = config;
   
   if (template === "classic") {
-    return generateClassicPDF(config);
+    return await generateClassicPDF(config);
   } else if (template === "minimal") {
-    return generateMinimalPDF(config);
+    return await generateMinimalPDF(config);
   }
   
   const doc = new jsPDF({
@@ -140,8 +140,13 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   // Draw logo on the left if present
   let textStartX = margin;
   if (logoBase64) {
-    doc.addImage(logoBase64, logoFormat, margin, yPosition, logoWidth, logoHeight);
-    textStartX = margin + logoWidth + 20; // Add gap between logo and text
+    try {
+      doc.addImage(logoBase64, logoFormat, margin, yPosition, logoWidth, logoHeight);
+      textStartX = margin + logoWidth + 20; // Add gap between logo and text
+    } catch (error) {
+      console.error('Failed to add logo to PDF:', error);
+      // Continue without logo
+    }
   }
 
   // Header text (company name and tagline) - positioned next to logo
@@ -300,12 +305,17 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
           const product = categoryProducts[data.row.index];
           const imageData = productImageMap.get(product.sku);
           if (imageData) {
-            const imgSize = 30; // 30pt square thumbnail
-            const cellCenterX = data.cell.x + (data.cell.width / 2);
-            const cellCenterY = data.cell.y + (data.cell.height / 2);
-            const imgX = cellCenterX - (imgSize / 2);
-            const imgY = cellCenterY - (imgSize / 2);
-            doc.addImage(imageData.data, imageData.format, imgX, imgY, imgSize, imgSize);
+            try {
+              const imgSize = 30; // 30pt square thumbnail
+              const cellCenterX = data.cell.x + (data.cell.width / 2);
+              const cellCenterY = data.cell.y + (data.cell.height / 2);
+              const imgX = cellCenterX - (imgSize / 2);
+              const imgY = cellCenterY - (imgSize / 2);
+              doc.addImage(imageData.data, imageData.format, imgX, imgY, imgSize, imgSize);
+            } catch (error) {
+              console.error(`Failed to add product image ${product.sku} to PDF:`, error);
+              // Continue without this image
+            }
           }
         }
       } : undefined,
@@ -330,9 +340,14 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         
         // QR code on the right side, just below the separator line
         if (qrCodeBase64) {
-          const qrX = pageWidth - margin - qrCodeSize;
-          const qrY = separatorY + 2; // Position just below the separator line
-          doc.addImage(qrCodeBase64, 'PNG', qrX, qrY, qrCodeSize, qrCodeSize);
+          try {
+            const qrX = pageWidth - margin - qrCodeSize;
+            const qrY = separatorY + 2; // Position just below the separator line
+            doc.addImage(qrCodeBase64, 'PNG', qrX, qrY, qrCodeSize, qrCodeSize);
+          } catch (error) {
+            console.error('Failed to add QR code to PDF:', error);
+            // Continue without QR code
+          }
         }
       },
     });
@@ -345,7 +360,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   doc.save(fileName);
 }
 
-function generateClassicPDF(config: PDFConfig): void {
+async function generateClassicPDF(config: PDFConfig): Promise<void> {
   const { products, branding, salesAgents, pricelistName } = config;
   
   const doc = new jsPDF({
@@ -481,7 +496,7 @@ function generateClassicPDF(config: PDFConfig): void {
   doc.save(fileName);
 }
 
-function generateMinimalPDF(config: PDFConfig): void {
+async function generateMinimalPDF(config: PDFConfig): Promise<void> {
   const { products, branding, salesAgents, pricelistName } = config;
   
   const doc = new jsPDF({
