@@ -164,7 +164,7 @@ export type UpsertUser = typeof users.$inferInsert;
 // Schemas for user operations
 export const insertUserSchema = createInsertSchema(users, {
   email: z.string().email("Valid email is required"),
-  role: z.enum(["admin", "client"]),
+  role: z.enum(["superAdmin", "admin", "client"]),
 }).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -175,7 +175,7 @@ export const updateUserSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   companyId: z.number().nullable().optional(),
-  role: z.enum(["admin", "client"]).optional(),
+  role: z.enum(["superAdmin", "admin", "client"]).optional(),
 });
 
 // ===== PRICELISTS TABLE =====
