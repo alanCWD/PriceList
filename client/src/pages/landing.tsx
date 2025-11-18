@@ -13,6 +13,7 @@ import Papa from "papaparse";
 import type { Pricelist, CompanyBranding, Product, SalesAgent, QRCodeConfig, Template } from "@shared/schema";
 import { generatePDF } from "@/lib/pdf-generator";
 import { UserProfileMenu } from "@/components/user-profile-menu";
+import { CompanySelector } from "@/components/company-selector";
 import { useViewMode } from "@/contexts/ViewModeContext";
 
 export default function Landing() {
@@ -271,18 +272,24 @@ export default function Landing() {
       {/* Header */}
       <header className="border-b bg-card/80 backdrop-blur">
         <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-semibold text-foreground">Pricelist Generator</h1>
               <p className="text-sm text-muted-foreground">Professional pricelists from CSV data</p>
             </div>
-            {user ? (
-              <UserProfileMenu />
-            ) : (
-              <Button onClick={handleLogin} data-testid="button-login">
-                Log In with Google
-              </Button>
-            )}
+            <div className="flex items-center gap-4">
+              {/* Company Selector - Only for Super Admin in client view */}
+              {user?.role === "superAdmin" && viewMode === "client" && (
+                <CompanySelector />
+              )}
+              {user ? (
+                <UserProfileMenu />
+              ) : (
+                <Button onClick={handleLogin} data-testid="button-login">
+                  Log In with Google
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
