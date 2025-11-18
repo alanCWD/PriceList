@@ -746,6 +746,9 @@ function UsersManager() {
 
   const handleEdit = (user: User) => {
     setEditingId(user.id);
+    setEmail(user.email);
+    setFirstName(user.firstName || "");
+    setLastName(user.lastName || "");
     setRole(user.role as "admin" | "client");
     setCompanyId(user.companyId);
   };
@@ -788,8 +791,20 @@ function UsersManager() {
   const handleSave = () => {
     if (!editingId) return;
 
+    if (!email.trim()) {
+      toast({
+        title: "Validation error",
+        description: "Email is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // CRITICAL: Must send companyId: null explicitly to clear assignment (not undefined)
     const data = {
+      email: email.trim(),
+      firstName: firstName.trim() || undefined,
+      lastName: lastName.trim() || undefined,
       role,
       companyId,  // Keeps null value, allowing backend to clear the assignment
     };
@@ -918,10 +933,45 @@ function UsersManager() {
           <CardHeader>
             <CardTitle>Edit User</CardTitle>
             <CardDescription>
-              Update user role and company assignment
+              Update user profile, role, and company assignment
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                data-testid="input-edit-email"
+                placeholder="user@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="edit-first-name">First Name</Label>
+                <Input
+                  id="edit-first-name"
+                  data-testid="input-edit-first-name"
+                  placeholder="John"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-last-name">Last Name</Label>
+                <Input
+                  id="edit-last-name"
+                  data-testid="input-edit-last-name"
+                  placeholder="Doe"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <Select value={role} onValueChange={(val) => setRole(val as "admin" | "client")}>
