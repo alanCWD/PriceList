@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
+import { useViewMode } from "@/contexts/ViewModeContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,11 +12,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { User, Settings, LogOut } from "lucide-react";
+import { User, Settings, LogOut, Eye, LayoutDashboard } from "lucide-react";
 
 export function UserProfileMenu() {
   const { user, isAdmin } = useAuth();
   const [, setLocation] = useLocation();
+  const { viewMode, setViewMode } = useViewMode();
 
   if (!user) return null;
 
@@ -28,6 +30,17 @@ export function UserProfileMenu() {
 
   const handleAdminClick = () => {
     setLocation("/admin");
+  };
+
+  const handleViewToggle = () => {
+    const newViewMode = viewMode === "admin" ? "client" : "admin";
+    setViewMode(newViewMode);
+    // Navigate to appropriate view
+    if (newViewMode === "admin") {
+      setLocation("/dashboard");
+    } else {
+      setLocation("/");
+    }
   };
 
   // Get user initials for avatar fallback
@@ -89,11 +102,27 @@ export function UserProfileMenu() {
         {isAdmin && (
           <>
             <DropdownMenuItem 
+              onClick={handleViewToggle}
+              data-testid="menu-item-view-toggle"
+            >
+              {viewMode === "admin" ? (
+                <>
+                  <Eye className="mr-2 h-4 w-4" />
+                  <span>View as Client</span>
+                </>
+              ) : (
+                <>
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  <span>View as Admin</span>
+                </>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem 
               onClick={handleAdminClick}
               data-testid="menu-item-admin"
             >
               <Settings className="mr-2 h-4 w-4" />
-              <span>Admin</span>
+              <span>Admin Settings</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>

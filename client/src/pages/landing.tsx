@@ -8,9 +8,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useDropzone } from "react-dropzone";
+import { useLocation } from "wouter";
 import Papa from "papaparse";
 import type { Pricelist, CompanyBranding, Product, SalesAgent, QRCodeConfig, Template } from "@shared/schema";
 import { generatePDF } from "@/lib/pdf-generator";
+import { UserProfileMenu } from "@/components/user-profile-menu";
+import { useViewMode } from "@/contexts/ViewModeContext";
 
 export default function Landing() {
   const [error, setError] = useState<string | null>(null);
@@ -18,11 +21,16 @@ export default function Landing() {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [, setLocation] = useLocation();
+  const { viewMode } = useViewMode();
 
-  // Only fetch latest pricelist if user is logged in as client
+  // Check if we should show client view (for actual clients or admins in client view mode)
+  const showClientView = user?.role === 'client' || (user?.role === 'admin' && viewMode === 'client');
+
+  // Only fetch latest pricelist if user is logged in and viewing as client
   const { data: latestPricelist, isLoading: pricelistLoading } = useQuery<Pricelist>({
     queryKey: ['/api/pricelists/latest'],
-    enabled: !!user && user.role === 'client',
+    enabled: !!user && showClientView,
   });
 
   // Fetch company defaults for creating new pricelists
@@ -32,9 +40,10 @@ export default function Landing() {
     defaultFieldMapping: Record<string, string>;
   }>({
     queryKey: ['/api/companies/defaults'],
-    enabled: !!user && user.role === 'client',
+    enabled: !!user && showClientView,
   });
 
+  // Handle error parameter from URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const errorParam = params.get("error");
@@ -42,6 +51,13 @@ export default function Landing() {
       setError("Access denied. Your email domain is not authorized. Please contact your administrator.");
     }
   }, []);
+
+  // Handle admin redirect based on viewMode
+  useEffect(() => {
+    if (user?.role === 'admin' && viewMode === 'admin') {
+      setLocation('/dashboard');
+    }
+  }, [user?.role, viewMode, setLocation]);
 
   const handleLogin = () => {
     window.location.href = "/api/login";
@@ -237,7 +253,7 @@ export default function Landing() {
   };
 
   // Show loading state while checking auth
-  if (authLoading || (user?.role === 'client' && pricelistLoading)) {
+  if (authLoading || (showClientView && pricelistLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -245,9 +261,8 @@ export default function Landing() {
     );
   }
 
-  // Redirect admins to dashboard
-  if (user?.role === 'admin') {
-    window.location.href = '/dashboard';
+  // Don't render if admin is being redirected to dashboard
+  if (user?.role === 'admin' && viewMode === 'admin') {
     return null;
   }
 
@@ -261,7 +276,9 @@ export default function Landing() {
               <h1 className="text-2xl font-semibold text-foreground">Pricelist Generator</h1>
               <p className="text-sm text-muted-foreground">Professional pricelists from CSV data</p>
             </div>
-            {!user && (
+            {user ? (
+              <UserProfileMenu />
+            ) : (
               <Button onClick={handleLogin} data-testid="button-login">
                 Log In with Google
               </Button>
