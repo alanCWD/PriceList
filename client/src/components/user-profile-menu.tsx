@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { User, Settings, LogOut, Eye, LayoutDashboard } from "lucide-react";
 
 export function UserProfileMenu() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isSuperAdmin } = useAuth();
   const [, setLocation] = useLocation();
   const { viewMode, setViewMode } = useViewMode();
 
@@ -99,7 +99,7 @@ export function UserProfileMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        {isAdmin && (
+        {isSuperAdmin && (
           <>
             <DropdownMenuItem 
               onClick={handleViewToggle}
@@ -117,6 +117,12 @@ export function UserProfileMenu() {
                 </>
               )}
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        
+        {isAdmin && (
+          <>
             <DropdownMenuItem 
               onClick={handleAdminClick}
               data-testid="menu-item-admin"
