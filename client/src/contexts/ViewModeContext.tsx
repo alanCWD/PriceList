@@ -1,10 +1,12 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode } from "react";
 
 type ViewMode = "admin" | "client";
 
 interface ViewModeContextType {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
+  impersonatedCompanyId: number | null;
+  setImpersonatedCompanyId: (companyId: number | null) => void;
 }
 
 const ViewModeContext = createContext<ViewModeContextType | undefined>(undefined);
@@ -21,6 +23,18 @@ export function ViewModeProvider({ children }: { children: ReactNode }) {
     return "admin";
   });
 
+  const [impersonatedCompanyId, setImpersonatedCompanyIdState] = useState<number | null>(() => {
+    // Lazy initializer runs once on mount (SSR-safe)
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("impersonatedCompanyId");
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        return isNaN(parsed) ? null : parsed;
+      }
+    }
+    return null;
+  });
+
   const setViewMode = (mode: ViewMode) => {
     setViewModeState(mode);
     if (typeof window !== "undefined") {
@@ -28,8 +42,19 @@ export function ViewModeProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setImpersonatedCompanyId = (companyId: number | null) => {
+    setImpersonatedCompanyIdState(companyId);
+    if (typeof window !== "undefined") {
+      if (companyId === null) {
+        localStorage.removeItem("impersonatedCompanyId");
+      } else {
+        localStorage.setItem("impersonatedCompanyId", companyId.toString());
+      }
+    }
+  };
+
   return (
-    <ViewModeContext.Provider value={{ viewMode, setViewMode }}>
+    <ViewModeContext.Provider value={{ viewMode, setViewMode, impersonatedCompanyId, setImpersonatedCompanyId }}>
       {children}
     </ViewModeContext.Provider>
   );
