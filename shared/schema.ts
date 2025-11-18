@@ -34,6 +34,11 @@ export const companyBrandingSchema = z.object({
   logoUrl: z.string().optional(),
   headerBackgroundColor: z.string().optional(), // Extracted from logo or manually set
   headerTextColor: z.string().optional(), // Extracted from logo or manually set
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().optional(),
+  website: z.string().optional(),
+  footerText: z.string().optional(),
 });
 
 export type CompanyBranding = z.infer<typeof companyBrandingSchema>;
@@ -118,6 +123,7 @@ export const companies = pgTable("companies", {
   defaultTemplate: varchar("default_template", { length: 50 }).notNull().default("modern").$type<Template>(),
   defaultFieldMapping: jsonb("default_field_mapping").$type<FieldMapping>(),
   defaultBranding: jsonb("default_branding").$type<CompanyBranding>(),
+  defaultSalesAgents: jsonb("default_sales_agents").$type<SalesAgent[]>().default([]),
   
   // Metadata
   createdAt: timestamp("created_at").notNull().defaultNow(),

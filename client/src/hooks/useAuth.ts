@@ -13,7 +13,9 @@ export function useAuth() {
     user,
     isLoading,
     isAuthenticated: !!user,
-    isAdmin: user?.role === "admin",
+    isSuperAdmin: user?.role === "superAdmin",
+    isAdmin: user?.role === "admin" || user?.role === "superAdmin", // Both admin and superAdmin
+    isCompanyAdmin: user?.role === "admin", // Company-scoped admin only
     isClient: user?.role === "client",
   };
 }

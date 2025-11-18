@@ -26,8 +26,15 @@ import type {
 
 export default function AdminPage() {
   const { toast } = useToast();
-  const { user, isAdmin, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("companies");
+  const { user, isAdmin, isSuperAdmin, isCompanyAdmin, isLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState("branding");
+
+  // Set default tab when role loads
+  useEffect(() => {
+    if (user && isSuperAdmin) {
+      setActiveTab("companies");
+    }
+  }, [user, isSuperAdmin]);
 
   // Redirect if not admin
   useEffect(() => {
@@ -70,40 +77,67 @@ export default function AdminPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="companies" data-testid="tab-companies">
-            <Building className="w-4 h-4 mr-2" />
-            Companies
-          </TabsTrigger>
-          <TabsTrigger value="users" data-testid="tab-users">
-            <UserCog className="w-4 h-4 mr-2" />
-            Users
-          </TabsTrigger>
-          <TabsTrigger value="company" data-testid="tab-company-profiles">
-            <Building2 className="w-4 h-4 mr-2" />
-            Branding Profiles
-          </TabsTrigger>
-          <TabsTrigger value="agents" data-testid="tab-agent-profiles">
-            <Users className="w-4 h-4 mr-2" />
-            Sales Agent Teams
-          </TabsTrigger>
-        </TabsList>
+        {isSuperAdmin ? (
+          <>
+            {/* Super Admin Tabs */}
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="companies" data-testid="tab-companies">
+                <Building className="w-4 h-4 mr-2" />
+                Companies
+              </TabsTrigger>
+              <TabsTrigger value="users" data-testid="tab-users">
+                <UserCog className="w-4 h-4 mr-2" />
+                Users
+              </TabsTrigger>
+              <TabsTrigger value="company" data-testid="tab-company-profiles">
+                <Building2 className="w-4 h-4 mr-2" />
+                Branding Profiles
+              </TabsTrigger>
+              <TabsTrigger value="agents" data-testid="tab-agent-profiles">
+                <Users className="w-4 h-4 mr-2" />
+                Sales Agent Teams
+              </TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="companies" className="mt-6">
-          <CompaniesManager />
-        </TabsContent>
+            <TabsContent value="companies" className="mt-6">
+              <CompaniesManager />
+            </TabsContent>
 
-        <TabsContent value="users" className="mt-6">
-          <UsersManager />
-        </TabsContent>
+            <TabsContent value="users" className="mt-6">
+              <UsersManager />
+            </TabsContent>
 
-        <TabsContent value="company" className="mt-6">
-          <CompanyProfilesManager />
-        </TabsContent>
+            <TabsContent value="company" className="mt-6">
+              <CompanyProfilesManager />
+            </TabsContent>
 
-        <TabsContent value="agents" className="mt-6">
-          <SalesAgentProfilesManager />
-        </TabsContent>
+            <TabsContent value="agents" className="mt-6">
+              <SalesAgentProfilesManager />
+            </TabsContent>
+          </>
+        ) : (
+          <>
+            {/* Company Admin Tabs */}
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="branding" data-testid="tab-company-branding">
+                <Building2 className="w-4 h-4 mr-2" />
+                Company Branding
+              </TabsTrigger>
+              <TabsTrigger value="sales-agents" data-testid="tab-company-sales-agents">
+                <Users className="w-4 h-4 mr-2" />
+                Sales Agents
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="branding" className="mt-6">
+              <CompanyBrandingManager />
+            </TabsContent>
+
+            <TabsContent value="sales-agents" className="mt-6">
+              <CompanySalesAgentsManager />
+            </TabsContent>
+          </>
+        )}
       </Tabs>
     </div>
   );
@@ -1626,6 +1660,339 @@ function SalesAgentProfilesManager() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Company Branding Manager (for Company Admins)
+function CompanyBrandingManager() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [branding, setBranding] = useState<CompanyBranding>({
+    companyName: "",
+    tagline: "",
+    address: "",
+    phone: "",
+    email: "",
+    website: "",
+    logoUrl: "",
+    footerText: "",
+  });
+
+  // Fetch company data
+  const { data: company, isLoading } = useQuery<Company>({
+    queryKey: ['/api/companies', user?.companyId],
+    enabled: !!user?.companyId,
+  });
+
+  // Load branding when company data is fetched
+  useEffect(() => {
+    if (company?.defaultBranding) {
+      setBranding(company.defaultBranding as CompanyBranding);
+    }
+  }, [company]);
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: { defaultBranding: CompanyBranding }) => {
+      return await apiRequest("PATCH", `/api/companies/${user?.companyId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/companies', user?.companyId] });
+      toast({ title: "Company branding updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update branding", variant: "destructive" });
+    },
+  });
+
+  const handleSave = () => {
+    if (!user?.companyId) {
+      toast({ title: "Error", description: "Company not found", variant: "destructive" });
+      return;
+    }
+    updateMutation.mutate({ defaultBranding: branding });
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center">
+          <Loader2 className="w-6 h-6 mx-auto animate-spin" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Company Branding</CardTitle>
+          <CardDescription>
+            Configure your company's default branding for pricelists
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="companyName">Company Name</Label>
+              <Input
+                id="companyName"
+                value={branding.companyName}
+                onChange={(e) => setBranding({ ...branding, companyName: e.target.value })}
+                placeholder="Your Company Name"
+                data-testid="input-company-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tagline">Tagline</Label>
+              <Input
+                id="tagline"
+                value={branding.tagline}
+                onChange={(e) => setBranding({ ...branding, tagline: e.target.value })}
+                placeholder="Your company tagline"
+                data-testid="input-tagline"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={branding.email}
+                onChange={(e) => setBranding({ ...branding, email: e.target.value })}
+                placeholder="contact@company.com"
+                data-testid="input-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={branding.phone}
+                onChange={(e) => setBranding({ ...branding, phone: e.target.value })}
+                placeholder="+1 (555) 123-4567"
+                data-testid="input-phone"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="website">Website</Label>
+              <Input
+                id="website"
+                value={branding.website}
+                onChange={(e) => setBranding({ ...branding, website: e.target.value })}
+                placeholder="www.company.com"
+                data-testid="input-website"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="logoUrl">Logo URL</Label>
+              <Input
+                id="logoUrl"
+                value={branding.logoUrl}
+                onChange={(e) => setBranding({ ...branding, logoUrl: e.target.value })}
+                placeholder="https://..."
+                data-testid="input-logo-url"
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                value={branding.address}
+                onChange={(e) => setBranding({ ...branding, address: e.target.value })}
+                placeholder="123 Main St, City, State 12345"
+                data-testid="input-address"
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="footerText">Footer Text</Label>
+              <Input
+                id="footerText"
+                value={branding.footerText}
+                onChange={(e) => setBranding({ ...branding, footerText: e.target.value })}
+                placeholder="Thank you for your business!"
+                data-testid="input-footer-text"
+              />
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button 
+            onClick={handleSave} 
+            disabled={updateMutation.isPending}
+            data-testid="button-save-branding"
+          >
+            {updateMutation.isPending ? "Saving..." : "Save Branding"}
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}
+
+// Company Sales Agents Manager (for Company Admins)
+function CompanySalesAgentsManager() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [agents, setAgents] = useState<SalesAgent[]>([
+    { name: "", email: "", phone: "", region: "" },
+  ]);
+
+  // Fetch company data
+  const { data: company, isLoading } = useQuery<Company>({
+    queryKey: ['/api/companies', user?.companyId],
+    enabled: !!user?.companyId,
+  });
+
+  // Load agents when company data is fetched
+  useEffect(() => {
+    if (company?.defaultSalesAgents && company.defaultSalesAgents.length > 0) {
+      setAgents(company.defaultSalesAgents as SalesAgent[]);
+    }
+  }, [company]);
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: { defaultSalesAgents: SalesAgent[] }) => {
+      return await apiRequest("PATCH", `/api/companies/${user?.companyId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/companies', user?.companyId] });
+      toast({ title: "Sales agents updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update sales agents", variant: "destructive" });
+    },
+  });
+
+  const handleSave = () => {
+    if (!user?.companyId) {
+      toast({ title: "Error", description: "Company not found", variant: "destructive" });
+      return;
+    }
+    
+    // Filter out empty agents
+    const validAgents = agents.filter(a => a.name.trim() !== "" || a.email.trim() !== "");
+    updateMutation.mutate({ defaultSalesAgents: validAgents });
+  };
+
+  const addAgent = () => {
+    if (agents.length < 2) {
+      setAgents([...agents, { name: "", email: "", phone: "", region: "" }]);
+    }
+  };
+
+  const removeAgent = (index: number) => {
+    setAgents(agents.filter((_, i) => i !== index));
+  };
+
+  const updateAgent = (index: number, field: keyof SalesAgent, value: string) => {
+    const newAgents = [...agents];
+    newAgents[index] = { ...newAgents[index], [field]: value };
+    setAgents(newAgents);
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center">
+          <Loader2 className="w-6 h-6 mx-auto animate-spin" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Sales Agents</CardTitle>
+          <CardDescription>
+            Configure your company's sales agents (maximum 2)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {agents.map((agent, index) => (
+            <div key={index} className="space-y-4 p-4 border rounded-lg" data-testid={`agent-form-${index}`}>
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold">Agent {index + 1}</h4>
+                {agents.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeAgent(index)}
+                    data-testid={`button-remove-agent-${index}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor={`name-${index}`}>Name</Label>
+                  <Input
+                    id={`name-${index}`}
+                    value={agent.name}
+                    onChange={(e) => updateAgent(index, 'name', e.target.value)}
+                    placeholder="John Doe"
+                    data-testid={`input-agent-name-${index}`}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`email-${index}`}>Email</Label>
+                  <Input
+                    id={`email-${index}`}
+                    type="email"
+                    value={agent.email}
+                    onChange={(e) => updateAgent(index, 'email', e.target.value)}
+                    placeholder="john@company.com"
+                    data-testid={`input-agent-email-${index}`}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`phone-${index}`}>Phone</Label>
+                  <Input
+                    id={`phone-${index}`}
+                    value={agent.phone}
+                    onChange={(e) => updateAgent(index, 'phone', e.target.value)}
+                    placeholder="+1 (555) 123-4567"
+                    data-testid={`input-agent-phone-${index}`}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`region-${index}`}>Region</Label>
+                  <Input
+                    id={`region-${index}`}
+                    value={agent.region}
+                    onChange={(e) => updateAgent(index, 'region', e.target.value)}
+                    placeholder="North America"
+                    data-testid={`input-agent-region-${index}`}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+        <CardFooter className="flex gap-2">
+          {agents.length < 2 && (
+            <Button 
+              variant="outline" 
+              onClick={addAgent}
+              data-testid="button-add-agent"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Agent
+            </Button>
+          )}
+          <Button 
+            onClick={handleSave} 
+            disabled={updateMutation.isPending}
+            data-testid="button-save-agents"
+          >
+            {updateMutation.isPending ? "Saving..." : "Save Agents"}
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
