@@ -347,164 +347,140 @@ export default function ClientLanding() {
 
   // Main state - pricelist exists
   const products = latestPricelist.products as Product[];
-  const branding = latestPricelist.branding as CompanyBranding;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b print:hidden">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText className="w-6 h-6 text-primary" />
-            <h1 className="text-xl font-semibold">Price List Generator</h1>
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+      {/* Header */}
+      <header className="border-b bg-card/80 backdrop-blur">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold text-foreground">Pricelist Generator</h1>
+              <p className="text-sm text-muted-foreground">Professional pricelists from CSV data</p>
+            </div>
+            <UserProfileMenu />
           </div>
-          <UserProfileMenu />
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left column - Actions */}
-          <div className="lg:col-span-1 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Current Price List</CardTitle>
-                <CardDescription>{latestPricelist.name}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Products:</span>
-                    <span className="font-medium" data-testid="text-product-count">{products.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Last Updated:</span>
-                    <span className="font-medium text-xs">
-                      {new Date(latestPricelist.updatedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
+      {/* Hero Section */}
+      <main className="max-w-6xl mx-auto px-6 py-16">
+        <div className="text-center space-y-6 mb-16">
+          <h2 className="text-4xl font-bold tracking-tight">
+            Create Professional Pricelists
+            <br />
+            <span className="text-primary">In Minutes</span>
+          </h2>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Transform your CSV data into beautiful, print-ready pricelists with customizable templates,
+            company branding, and sales agent information.
+          </p>
+        </div>
 
-                <div className="space-y-2 pt-4 border-t">
-                  <Button
-                    onClick={handleDownloadPDF}
-                    disabled={isGeneratingPDF}
-                    className="w-full"
-                    data-testid="button-download-pdf"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    {isGeneratingPDF ? "Generating..." : "Download PDF"}
-                  </Button>
-                  
-                  <Button
-                    onClick={handlePrint}
-                    variant="outline"
-                    className="w-full"
-                    data-testid="button-print"
-                  >
-                    <Printer className="w-4 h-4 mr-2" />
-                    Print
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Features Grid */}
+        <div className="grid md:grid-cols-3 gap-8 mb-16">
+          <Card>
+            <CardHeader>
+              <Upload className="w-12 h-12 mb-4 text-primary" />
+              <CardTitle>Upload CSV</CardTitle>
+              <CardDescription>
+                Import your product data from CSV files. Auto-detect field mappings for quick setup.
+              </CardDescription>
+            </CardHeader>
+          </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Update Price List</CardTitle>
-                <CardDescription>Upload a new CSV to replace current data</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-muted/50 rounded-md p-3 border">
-                  <p className="text-xs text-muted-foreground mb-1">Current file:</p>
-                  <p className="text-sm font-medium truncate" data-testid="text-current-filename">
-                    {latestPricelist.name}
+          <Card>
+            <CardHeader>
+              <FileText className="w-12 h-12 mb-4 text-primary" />
+              <CardTitle>Professional Output</CardTitle>
+              <CardDescription>
+                Your company branding and formatting are automatically applied to every pricelist.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Download className="w-12 h-12 mb-4 text-primary" />
+              <CardTitle>Export PDF</CardTitle>
+              <CardDescription>
+                Generate professional, print-ready PDFs instantly with your latest product data.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+
+        {/* Pricelist Actions */}
+        <div className="text-center bg-card border rounded-lg p-12">
+          <div className="space-y-6 max-w-md mx-auto">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Current price list</p>
+              <p className="text-lg font-semibold" data-testid="text-current-filename">
+                {latestPricelist.name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {products.length} products · Last updated {new Date(latestPricelist.updatedAt).toLocaleDateString()}
+              </p>
+            </div>
+
+            <Button
+              size="lg"
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPDF}
+              className="w-full"
+              data-testid="button-download-pdf"
+            >
+              <Download className="mr-2 h-5 w-5" />
+              {isGeneratingPDF ? "Generating..." : "Download PDF"}
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+
+            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 hover-elevate">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+                className="hidden"
+                id="csv-update-input"
+                data-testid="input-csv-update"
+              />
+              <label
+                htmlFor="csv-update-input"
+                className="cursor-pointer flex flex-col items-center gap-3"
+              >
+                <Upload className="w-10 h-10 text-muted-foreground" />
+                <div>
+                  <p className="text-base font-medium mb-1">
+                    {isUploading ? "Uploading..." : "Upload New CSV"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Replaces current price list
                   </p>
                 </div>
-                
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover-elevate">
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileUpload}
-                    disabled={isUploading}
-                    className="hidden"
-                    id="csv-update-input"
-                    data-testid="input-csv-update"
-                  />
-                  <label
-                    htmlFor="csv-update-input"
-                    className="cursor-pointer flex flex-col items-center gap-3"
-                  >
-                    <Upload className="w-8 h-8 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium mb-1">
-                        {isUploading ? "Uploading..." : "Upload New CSV"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Replaces current price list
-                      </p>
-                    </div>
-                    {isUploading && (
-                      <RefreshCw className="w-5 h-5 text-primary animate-spin" />
-                    )}
-                  </label>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right column - Preview */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Preview</CardTitle>
-                <CardDescription>This is how your price list will appear</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="border rounded-lg p-6 bg-white" id="pricelist-preview">
-                  {/* Simple preview of products */}
-                  <div className="space-y-4">
-                    <div className="text-center border-b pb-4">
-                      <h2 className="text-2xl font-bold">{branding.companyName}</h2>
-                      {branding.tagline && (
-                        <p className="text-muted-foreground">{branding.tagline}</p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <h3 className="font-semibold text-sm text-muted-foreground">
-                        Products ({products.length})
-                      </h3>
-                      <div className="space-y-1 max-h-[600px] overflow-y-auto">
-                        {products.slice(0, 10).map((product) => (
-                          <div
-                            key={product.id}
-                            className="flex justify-between items-center p-2 border-b text-sm"
-                            data-testid={`preview-product-${product.id}`}
-                          >
-                            <div className="flex-1">
-                              <p className="font-medium">{product.product}</p>
-                              {product.format && (
-                                <p className="text-xs text-muted-foreground">{product.format}</p>
-                              )}
-                            </div>
-                            <p className="font-medium">{product.price}</p>
-                          </div>
-                        ))}
-                        {products.length > 10 && (
-                          <p className="text-xs text-muted-foreground text-center py-2">
-                            ... and {products.length - 10} more products
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                {isUploading && (
+                  <RefreshCw className="w-6 h-6 text-primary animate-spin" />
+                )}
+              </label>
+            </div>
           </div>
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="border-t mt-16">
+        <div className="max-w-6xl mx-auto px-6 py-8 text-center text-sm text-muted-foreground">
+          <p>© 2024 Pricelist Generator. Professional pricelists made simple.</p>
+        </div>
+      </footer>
     </div>
   );
 }
