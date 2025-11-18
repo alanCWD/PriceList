@@ -249,8 +249,11 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     // Check if this category has any products with images
     const hasImages = categoryProducts.some(p => p.productImageUrl);
 
+    // Capture the current categoryProducts for this table (avoid closure issues)
+    const currentCategoryProducts = [...categoryProducts];
+
     // Products table - adjust columns based on whether images are present
-    const tableData = categoryProducts.map(product => {
+    const tableData = currentCategoryProducts.map(product => {
       const row: any[] = hasImages ? [""] : []; // Empty cell for image if present
       row.push(
         product.notes || "",
@@ -302,7 +305,11 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       didDrawCell: hasImages ? (data) => {
         // Draw product images in the first column
         if (data.column.index === 0 && data.section === 'body') {
-          const product = categoryProducts[data.row.index];
+          const product = currentCategoryProducts[data.row.index];
+          if (!product) {
+            console.error(`Product not found at index ${data.row.index} in category ${category}`);
+            return;
+          }
           const imageData = productImageMap.get(product.id);
           if (imageData) {
             try {
