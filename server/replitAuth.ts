@@ -52,6 +52,53 @@ function updateUserSession(
   user.expires_at = user.claims?.exp;
 }
 
+// Cache for super admin allowlist (loaded once at startup)
+let superAdminEmails: Set<string> | null = null;
+let superAdminFallbackDomain: string | null = null;
+
+function getSuperAdminAllowlist(): Set<string> {
+  if (superAdminEmails === null) {
+    const emailsEnv = process.env.SUPER_ADMIN_EMAILS || "";
+    superAdminEmails = new Set(
+      emailsEnv.split(',')
+        .map(e => e.trim().toLowerCase())
+        .filter(e => e.length > 0)
+    );
+    
+    // Development fallback domain (only in non-production)
+    if (process.env.NODE_ENV !== 'production') {
+      // Allow replit.com for development/testing
+      superAdminFallbackDomain = 'replit.com';
+      console.log(`[Auth] Development mode: allowing super admin domain '${superAdminFallbackDomain}'`);
+    }
+    
+    if (superAdminEmails.size > 0) {
+      console.log(`[Auth] Loaded ${superAdminEmails.size} super admin email(s) from allowlist`);
+    }
+  }
+  return superAdminEmails;
+}
+
+function isSuperAdminEmail(email: string): boolean {
+  const normalizedEmail = email.toLowerCase();
+  const allowlist = getSuperAdminAllowlist();
+  
+  // Check explicit allowlist first
+  if (allowlist.has(normalizedEmail)) {
+    return true;
+  }
+  
+  // Check fallback domain (development only)
+  if (superAdminFallbackDomain) {
+    const emailDomain = normalizedEmail.split('@')[1];
+    if (emailDomain === superAdminFallbackDomain) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 async function upsertUser(
   claims: any,
 ) {
@@ -64,7 +111,7 @@ async function upsertUser(
   const existingUser = await storage.getUser(claims["sub"]);
   
   if (existingUser) {
-    // SECURITY: Validate that user's company still exists
+    // SECURITY: Validate that user's company still exists (unless super admin with no company)
     if (existingUser.companyId) {
       const company = await storage.getCompanyById(existingUser.companyId);
       if (!company) {
@@ -84,31 +131,46 @@ async function upsertUser(
       companyId: existingUser.companyId, // Preserve existing company
     });
   } else {
-    // New user - validate domain and auto-assign to company
-    const emailDomain = email.split('@')[1]?.toLowerCase();
-    if (!emailDomain) {
-      throw new Error("Invalid email format");
+    // New user - check if super admin first
+    if (isSuperAdminEmail(email)) {
+      // Super admin - bypass domain check, no company assignment
+      console.log(`[Auth] Super admin login: ${email}`);
+      await storage.upsertUser({
+        id: claims["sub"],
+        email,
+        firstName: claims["first_name"],
+        lastName: claims["last_name"],
+        profileImageUrl: claims["profile_image_url"],
+        role: "superAdmin",
+        companyId: null, // Super admins have no company
+      });
+    } else {
+      // Regular user - validate domain and auto-assign to company
+      const emailDomain = email.split('@')[1]?.toLowerCase();
+      if (!emailDomain) {
+        throw new Error("Invalid email format");
+      }
+      
+      // Look up company by email domain
+      const company = await storage.getCompanyByDomain(emailDomain);
+      
+      if (!company) {
+        // Domain not recognized - reject login for security
+        // Only admins can manually add users from unrecognized domains
+        throw new Error(`Access denied: Email domain '${emailDomain}' is not authorized. Please contact your administrator.`);
+      }
+      
+      // Auto-assign new user to company with client role
+      await storage.upsertUser({
+        id: claims["sub"],
+        email,
+        firstName: claims["first_name"],
+        lastName: claims["last_name"],
+        profileImageUrl: claims["profile_image_url"],
+        role: "client", // New users default to client role
+        companyId: company.id, // Auto-assign to company based on domain
+      });
     }
-    
-    // Look up company by email domain
-    const company = await storage.getCompanyByDomain(emailDomain);
-    
-    if (!company) {
-      // Domain not recognized - reject login for security
-      // Only admins can manually add users from unrecognized domains
-      throw new Error(`Access denied: Email domain '${emailDomain}' is not authorized. Please contact your administrator.`);
-    }
-    
-    // Auto-assign new user to company with client role
-    await storage.upsertUser({
-      id: claims["sub"],
-      email,
-      firstName: claims["first_name"],
-      lastName: claims["last_name"],
-      profileImageUrl: claims["profile_image_url"],
-      role: "client", // New users default to client role
-      companyId: company.id, // Auto-assign to company based on domain
-    });
   }
 }
 
