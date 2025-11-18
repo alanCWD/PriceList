@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin, requireSuperAdmin, requireCompanyScopedAdmin } from "./replitAuth";
@@ -11,9 +11,29 @@ import {
   insertCompanySchema,
   insertUserSchema,
   updateUserSchema,
-  type Pricelist
+  type Pricelist,
+  type User
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
+
+// Helper to get effective company ID (supports Super Admin impersonation)
+function getEffectiveCompanyId(req: Request, user: User): number | null {
+  // Super Admin can impersonate companies via header
+  if (user.role === "superAdmin") {
+    const impersonatedId = req.headers["x-impersonated-company-id"];
+    if (impersonatedId && typeof impersonatedId === "string") {
+      const parsed = parseInt(impersonatedId, 10);
+      if (!isNaN(parsed)) {
+        return parsed;
+      }
+    }
+    // Super Admin with no impersonation header returns null (access to all)
+    return null;
+  }
+  
+  // Regular users use their assigned company
+  return user.companyId || null;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication middleware
@@ -38,11 +58,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || !user.companyId) {
-        return res.status(404).json({ error: "User company not found" });
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
       }
       
-      const company = await storage.getCompanyById(user.companyId);
+      // Get effective company ID (supports Super Admin impersonation)
+      const effectiveCompanyId = getEffectiveCompanyId(req, user);
+      
+      if (!effectiveCompanyId) {
+        return res.status(404).json({ error: "Company not specified" });
+      }
+      
+      const company = await storage.getCompanyById(effectiveCompanyId);
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
@@ -329,11 +356,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
       
-      if (!user.companyId) {
-        return res.status(404).json({ error: "User has no associated company" });
+      // Get effective company ID (supports Super Admin impersonation)
+      const effectiveCompanyId = getEffectiveCompanyId(req, user);
+      
+      if (!effectiveCompanyId) {
+        return res.status(404).json({ error: "Company not specified" });
       }
       
-      const pricelist = await storage.getLatestPricelistByCompanyId(user.companyId);
+      const pricelist = await storage.getLatestPricelistByCompanyId(effectiveCompanyId);
       
       if (!pricelist) {
         return res.status(404).json({ error: "No pricelist found" });
@@ -427,7 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // SECURITY: Clients CANNOT provide companyId - it's always set to their company
-      // Admins/Super Admins can optionally provide companyId (or leave null)
+      // Admins/Super Admins can optionally provide companyId (or leave null/use impersonation)
       const requestedCompanyId = (validation.data as any).companyId;
       const isAdminOrSuperAdmin = user.role === "admin" || user.role === "superAdmin";
       
@@ -435,10 +465,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied: You cannot create pricelists for other companies" });
       }
       
+      // Determine final company ID: explicit request > impersonation > user's company
+      let finalCompanyId: number | null;
+      if (isAdminOrSuperAdmin) {
+        // Admins/SuperAdmins: use explicit request, or fallback to effective (which handles impersonation)
+        finalCompanyId = requestedCompanyId || getEffectiveCompanyId(req, user);
+      } else {
+        // Clients: always use their company
+        finalCompanyId = user.companyId;
+      }
+      
+      // SECURITY: Require a valid company ID for all pricelists
+      if (!finalCompanyId) {
+        return res.status(400).json({ error: "Company ID is required. Please specify a company or select one via impersonation." });
+      }
+      
       const pricelistData: any = {
         ...validation.data,
-        // Force companyId based on database user role
-        companyId: isAdminOrSuperAdmin ? requestedCompanyId : user.companyId,
+        companyId: finalCompanyId,
       };
 
       console.log("[POST /api/pricelists] Validation passed, creating pricelist...");

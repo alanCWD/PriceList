@@ -7,6 +7,30 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Helper to get impersonated company ID from localStorage
+function getImpersonatedCompanyId(): string | null {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("impersonatedCompanyId");
+  }
+  return null;
+}
+
+// Helper to build headers with optional impersonation
+function buildHeaders(includeContentType: boolean = false): HeadersInit {
+  const headers: HeadersInit = {};
+  
+  if (includeContentType) {
+    headers["Content-Type"] = "application/json";
+  }
+  
+  const impersonatedCompanyId = getImpersonatedCompanyId();
+  if (impersonatedCompanyId) {
+    headers["X-Impersonated-Company-Id"] = impersonatedCompanyId;
+  }
+  
+  return headers;
+}
+
 export async function apiRequest(
   method: string,
   url: string,
@@ -23,7 +47,7 @@ export async function apiRequest(
     console.log(`apiRequest: Initiating ${method} ${url}`);
     const res = await fetch(url, {
       method,
-      headers: data ? { "Content-Type": "application/json" } : {},
+      headers: buildHeaders(!!data),
       body: bodyString,
       credentials: "include",
     });
@@ -45,6 +69,7 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
+      headers: buildHeaders(false),
       credentials: "include",
     });
 
