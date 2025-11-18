@@ -411,7 +411,14 @@ export default function ClientLanding() {
                 <CardTitle>Update Price List</CardTitle>
                 <CardDescription>Upload a new CSV to replace current data</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                <div className="bg-muted/50 rounded-md p-3 border">
+                  <p className="text-xs text-muted-foreground mb-1">Current file:</p>
+                  <p className="text-sm font-medium truncate" data-testid="text-current-filename">
+                    {latestPricelist.name}
+                  </p>
+                </div>
+                
                 <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover-elevate">
                   <input
                     type="file"
