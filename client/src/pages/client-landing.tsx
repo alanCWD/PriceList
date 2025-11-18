@@ -17,18 +17,18 @@ export default function ClientLanding() {
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
-  // Fetch latest pricelist (includes impersonatedCompanyId to refetch when company changes)
+  // Fetch latest pricelist (includes impersonatedCompanyId in queryKey to refetch when company changes)
   const { data: latestPricelist, isLoading, error } = useQuery<Pricelist>({
-    queryKey: ['/api/pricelists/latest', impersonatedCompanyId],
+    queryKey: ['/api/pricelists/latest', { impersonatedCompanyId }],
   });
 
-  // Fetch company defaults for field mapping (includes impersonatedCompanyId to refetch when company changes)
+  // Fetch company defaults for field mapping (includes impersonatedCompanyId in queryKey to refetch when company changes)
   const { data: companyDefaults } = useQuery<{
     defaultTemplate: Template;
     defaultFieldMapping: FieldMapping | null;
     defaultBranding: CompanyBranding | null;
   }>({
-    queryKey: ['/api/companies/defaults', impersonatedCompanyId],
+    queryKey: ['/api/companies/defaults', { impersonatedCompanyId }],
   });
 
   // Update pricelist mutation
