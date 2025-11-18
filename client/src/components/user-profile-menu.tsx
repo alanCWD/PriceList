@@ -75,7 +75,7 @@ export function UserProfileMenu() {
         <Button 
           variant="ghost" 
           className="relative h-9 w-9 rounded-full"
-          data-testid="button-user-profile"
+          data-testid="button-profile-menu"
         >
           <Avatar className="h-9 w-9">
             <AvatarImage src={user.profileImageUrl || undefined} alt={getDisplayName()} />
@@ -103,7 +103,7 @@ export function UserProfileMenu() {
           <>
             <DropdownMenuItem 
               onClick={handleViewToggle}
-              data-testid="menu-item-view-toggle"
+              data-testid={viewMode === "admin" ? "button-view-as-client" : "button-view-as-admin"}
             >
               {viewMode === "admin" ? (
                 <>
