@@ -14,7 +14,8 @@ import {
   type UpsertUser,
   companies,
   type Company,
-  type InsertCompany
+  type InsertCompany,
+  type Role
 } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 
@@ -24,7 +25,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
   updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined>;
-  createUser(user: { email: string; firstName: string; lastName: string; role: "admin" | "client"; companyId: number | null }): Promise<User>;
+  createUser(user: { email: string; firstName: string; lastName: string; role: Role; companyId: number | null }): Promise<User>;
   deleteUser(id: string): Promise<boolean>;
   
   // Company operations
@@ -120,7 +121,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(user: { email: string; firstName: string; lastName: string; role: "admin" | "client"; companyId: number | null }): Promise<User> {
+  async createUser(user: { email: string; firstName: string; lastName: string; role: Role; companyId: number | null }): Promise<User> {
     // Normalize email (trim and lowercase) to ensure consistency
     const normalizedEmail = user.email.trim().toLowerCase();
     

@@ -161,10 +161,14 @@ export const users = pgTable("users", {
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
 
+// Shared role enum for type safety across the application
+export const roleEnum = z.enum(["superAdmin", "admin", "client"]);
+export type Role = z.infer<typeof roleEnum>;
+
 // Schemas for user operations
 export const insertUserSchema = createInsertSchema(users, {
   email: z.string().email("Valid email is required"),
-  role: z.enum(["superAdmin", "admin", "client"]),
+  role: roleEnum,
 }).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -175,7 +179,7 @@ export const updateUserSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   companyId: z.number().nullable().optional(),
-  role: z.enum(["superAdmin", "admin", "client"]).optional(),
+  role: roleEnum.optional(),
 });
 
 // ===== PRICELISTS TABLE =====

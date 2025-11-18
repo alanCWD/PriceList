@@ -217,7 +217,29 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   }
 };
 
-// Middleware to check if user is admin
+// Middleware to check if user is super admin (full system access)
+export const requireSuperAdmin: RequestHandler = async (req, res, next) => {
+  const user = req.user as any;
+  
+  if (!req.isAuthenticated() || !user.expires_at) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  try {
+    const userId = user.claims.sub;
+    const dbUser = await storage.getUser(userId);
+    
+    if (!dbUser || dbUser.role !== "superAdmin") {
+      return res.status(403).json({ message: "Super Admin access required" });
+    }
+    
+    next();
+  } catch (error) {
+    res.status(500).json({ message: "Failed to verify super admin status" });
+  }
+};
+
+// Middleware to check if user is admin or super admin (for backward compatibility)
 export const isAdmin: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
   
@@ -229,12 +251,44 @@ export const isAdmin: RequestHandler = async (req, res, next) => {
     const userId = user.claims.sub;
     const dbUser = await storage.getUser(userId);
     
-    if (!dbUser || dbUser.role !== "admin") {
+    if (!dbUser || (dbUser.role !== "admin" && dbUser.role !== "superAdmin")) {
       return res.status(403).json({ message: "Admin access required" });
     }
     
     next();
   } catch (error) {
     res.status(500).json({ message: "Failed to verify admin status" });
+  }
+};
+
+// Middleware for company-scoped admin (admin can only access their own company's resources)
+export const requireCompanyScopedAdmin: RequestHandler = async (req, res, next) => {
+  const user = req.user as any;
+  
+  if (!req.isAuthenticated() || !user.expires_at) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  try {
+    const userId = user.claims.sub;
+    const dbUser = await storage.getUser(userId);
+    
+    // Super admin has access to everything - attach to request
+    if (dbUser?.role === "superAdmin") {
+      (req as any).dbUser = dbUser;
+      return next();
+    }
+    
+    // Admin must have a company assigned
+    if (!dbUser || dbUser.role !== "admin" || !dbUser.companyId) {
+      return res.status(403).json({ message: "Company admin access required" });
+    }
+    
+    // Attach user to request for downstream use
+    (req as any).dbUser = dbUser;
+    
+    next();
+  } catch (error) {
+    res.status(500).json({ message: "Failed to verify company admin status" });
   }
 };

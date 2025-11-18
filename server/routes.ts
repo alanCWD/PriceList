@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
+import { setupAuth, isAuthenticated, isAdmin, requireSuperAdmin, requireCompanyScopedAdmin } from "./replitAuth";
 import { z } from "zod";
 import { 
   insertPricelistSchema, 
@@ -77,9 +77,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ===== COMPANY MANAGEMENT ROUTES (Admin Only) =====
+  // ===== COMPANY MANAGEMENT ROUTES (Super Admin Only) =====
   
-  app.get("/api/companies", isAdmin, async (req, res) => {
+  app.get("/api/companies", requireSuperAdmin, async (req, res) => {
     try {
       const companies = await storage.getAllCompanies();
       res.json(companies);
@@ -89,7 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/companies/:id", isAdmin, async (req, res) => {
+  app.get("/api/companies/:id", requireSuperAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -108,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/companies", isAdmin, async (req, res) => {
+  app.post("/api/companies", requireSuperAdmin, async (req, res) => {
     try {
       const validation = insertCompanySchema.safeParse(req.body);
       if (!validation.success) {
@@ -124,7 +124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/companies/:id", isAdmin, async (req, res) => {
+  app.patch("/api/companies/:id", requireSuperAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -149,7 +149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/companies/:id", isAdmin, async (req, res) => {
+  app.delete("/api/companies/:id", requireSuperAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -168,9 +168,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ===== USER MANAGEMENT ROUTES (Admin Only) =====
+  // ===== USER MANAGEMENT ROUTES (Super Admin Only) =====
   
-  app.get("/api/users", isAdmin, async (req, res) => {
+  app.get("/api/users", requireSuperAdmin, async (req, res) => {
     try {
       const users = await storage.getAllUsers();
       res.json(users);
@@ -180,7 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users", isAdmin, async (req, res) => {
+  app.post("/api/users", requireSuperAdmin, async (req, res) => {
     try {
       // Extend insertUserSchema to require firstName and lastName for admin creation
       const adminCreateUserSchema = insertUserSchema.extend({
@@ -234,7 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/users/:id", isAdmin, async (req, res) => {
+  app.patch("/api/users/:id", requireSuperAdmin, async (req, res) => {
     try {
       const id = req.params.id;
 
@@ -303,7 +303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/users/:id", isAdmin, async (req, res) => {
+  app.delete("/api/users/:id", requireSuperAdmin, async (req, res) => {
     try {
       const id = req.params.id;
 
@@ -356,9 +356,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
       
-      // Admin can see all pricelists, clients only see their company's
+      // Admin/Super Admin can see all pricelists, clients only see their company's
       let pricelists: Pricelist[];
-      if (user.role === "admin") {
+      if (user.role === "admin" || user.role === "superAdmin") {
         pricelists = await storage.getAllPricelists();
       } else if (user.companyId) {
         pricelists = await storage.getPricelistsByCompanyId(user.companyId);
@@ -393,8 +393,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Pricelist not found" });
       }
       
-      // Access control: admin sees all, clients only see their company's pricelists
-      if (user.role !== "admin" && pricelist.companyId !== user.companyId) {
+      // Access control: admin/superAdmin sees all, clients only see their company's pricelists
+      if (user.role !== "admin" && user.role !== "superAdmin" && pricelist.companyId !== user.companyId) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -427,17 +427,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // SECURITY: Clients CANNOT provide companyId - it's always set to their company
-      // Admins can optionally provide companyId (or leave null)
+      // Admins/Super Admins can optionally provide companyId (or leave null)
       const requestedCompanyId = (validation.data as any).companyId;
+      const isAdminOrSuperAdmin = user.role === "admin" || user.role === "superAdmin";
       
-      if (user.role !== "admin" && requestedCompanyId && requestedCompanyId !== user.companyId) {
+      if (!isAdminOrSuperAdmin && requestedCompanyId && requestedCompanyId !== user.companyId) {
         return res.status(403).json({ error: "Access denied: You cannot create pricelists for other companies" });
       }
       
       const pricelistData: any = {
         ...validation.data,
         // Force companyId based on database user role
-        companyId: user.role === "admin" ? requestedCompanyId : user.companyId,
+        companyId: isAdminOrSuperAdmin ? requestedCompanyId : user.companyId,
       };
 
       console.log("[POST /api/pricelists] Validation passed, creating pricelist...");
@@ -476,8 +477,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // SECURITY: Verify ownership using database user role, not session
-      // Admin can edit any pricelist, clients can only edit their company's
-      if (user.role !== "admin" && existingPricelist.companyId !== user.companyId) {
+      // Admin/Super Admin can edit any pricelist, clients can only edit their company's
+      if (user.role !== "admin" && user.role !== "superAdmin" && existingPricelist.companyId !== user.companyId) {
         return res.status(403).json({ error: "Access denied: You can only update your company's pricelists" });
       }
 
@@ -489,7 +490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // SECURITY: Clients CANNOT change companyId at all
       const updateData: any = { ...validation.data };
-      if (user.role !== "admin") {
+      if (user.role !== "admin" && user.role !== "superAdmin") {
         delete updateData.companyId; // Force remove - clients cannot change company
       }
 
@@ -531,8 +532,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // SECURITY: Verify ownership using database user role, not session
-      // Admin can delete any pricelist, clients can only delete their company's
-      if (user.role !== "admin" && existingPricelist.companyId !== user.companyId) {
+      // Admin/Super Admin can delete any pricelist, clients can only delete their company's
+      if (user.role !== "admin" && user.role !== "superAdmin" && existingPricelist.companyId !== user.companyId) {
         return res.status(403).json({ error: "Access denied: You can only delete your company's pricelists" });
       }
 
@@ -548,8 +549,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Company Profile routes
-  app.get("/api/company-profiles", async (req, res) => {
+  // Company Profile routes (Super Admin only - these are reusable shared entities)
+  app.get("/api/company-profiles", requireSuperAdmin, async (req, res) => {
     try {
       const profiles = await storage.getAllCompanyProfiles();
       res.json(profiles);
@@ -559,7 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/company-profiles", async (req, res) => {
+  app.post("/api/company-profiles", requireSuperAdmin, async (req, res) => {
     try {
       const validation = insertCompanyProfileSchema.safeParse(req.body);
       if (!validation.success) {
@@ -575,7 +576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/company-profiles/:id", async (req, res) => {
+  app.patch("/api/company-profiles/:id", requireSuperAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -614,7 +615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/company-profiles/:id", async (req, res) => {
+  app.delete("/api/company-profiles/:id", requireSuperAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -639,8 +640,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sales Agent Profile routes
-  app.get("/api/sales-agent-profiles", async (req, res) => {
+  // Sales Agent Profile routes (Super Admin only - these are reusable shared entities)
+  app.get("/api/sales-agent-profiles", requireSuperAdmin, async (req, res) => {
     try {
       const profiles = await storage.getAllSalesAgentProfiles();
       res.json(profiles);
@@ -650,7 +651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/sales-agent-profiles", async (req, res) => {
+  app.post("/api/sales-agent-profiles", requireSuperAdmin, async (req, res) => {
     try {
       const validation = insertSalesAgentProfileSchema.safeParse(req.body);
       if (!validation.success) {
@@ -666,7 +667,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/sales-agent-profiles/:id", async (req, res) => {
+  app.patch("/api/sales-agent-profiles/:id", requireSuperAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -703,7 +704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/sales-agent-profiles/:id", async (req, res) => {
+  app.delete("/api/sales-agent-profiles/:id", requireSuperAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
