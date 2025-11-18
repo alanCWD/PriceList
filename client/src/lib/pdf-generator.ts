@@ -224,9 +224,9 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
           reader.readAsDataURL(blob);
         });
         const format = getImageFormat(base64);
-        productImageMap.set(product.sku, { data: base64, format });
+        productImageMap.set(product.id, { data: base64, format });
       } catch (error) {
-        console.error(`Failed to load image for product ${product.sku}:`, error);
+        console.error(`Failed to load image for product ${product.id}:`, error);
       }
     });
   await Promise.all(imagePromises);
@@ -303,7 +303,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         // Draw product images in the first column
         if (data.column.index === 0 && data.section === 'body') {
           const product = categoryProducts[data.row.index];
-          const imageData = productImageMap.get(product.sku);
+          const imageData = productImageMap.get(product.id);
           if (imageData) {
             try {
               const imgSize = 30; // 30pt square thumbnail
@@ -313,7 +313,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
               const imgY = cellCenterY - (imgSize / 2);
               doc.addImage(imageData.data, imageData.format, imgX, imgY, imgSize, imgSize);
             } catch (error) {
-              console.error(`Failed to add product image ${product.sku} to PDF:`, error);
+              console.error(`Failed to add product image ${product.id} to PDF:`, error);
               // Continue without this image
             }
           }
