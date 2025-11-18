@@ -195,21 +195,42 @@ This prevents empty normalized branding from overwriting user-entered values and
 - `/admin` → Admin interface (admin role only)
 - `/login` → Login page (unauthenticated users)
 
-### User Profile Menu
+### User Profile Menu & View Switching
 **Component**: `client/src/components/user-profile-menu.tsx`
 
 **Features:**
 - Avatar with initials fallback
 - Dropdown showing user name, email, and role
-- **Admin users only**: "Admin" menu item for quick navigation to /admin
+- **Admin users only**: "View as Client" toggle for switching between admin and client views
+- **Admin users only**: "Admin Settings" menu item for quick navigation to /admin
 - Logout functionality with cache invalidation
 - Available on all authenticated pages (Dashboard, Editor, Admin)
 
+**View Switching Implementation:**
+- **ViewModeContext** (`client/src/contexts/ViewModeContext.tsx`): Manages view mode state ("admin" or "client")
+- **localStorage Persistence**: View preference persists across sessions with key "viewMode"
+- **SSR-Safe Lazy Initialization**: Uses lazy initializer in useState to read localStorage before first render
+- **Admin Toggle**: 
+  - Shows "View as Client" when in admin mode (switches to client view)
+  - Shows "View as Admin" when in client mode (switches back to admin view)
+  - Navigates appropriately: admin view → /dashboard, client view → /
+- **Client Users**: Never see view toggle (always in client mode)
+
 **Implementation:**
 - Uses `useAuth()` hook for role detection
-- Conditional rendering: `{isAdmin && <AdminMenuItem />}`
+- Uses `useViewMode()` hook for view mode state management
+- Conditional rendering: `{isAdmin && <ViewToggle />}`
+- View toggle has dynamic data-testid based on current mode
 - Logout clears TanStack Query cache before redirect
 - Integrated in top-right corner of all page headers
+
+**Routing Behavior with View Mode:**
+- Root path (`/`):
+  - Admin in admin mode → redirects to /dashboard (via useEffect)
+  - Admin in client mode → stays on landing page (client view)
+  - Client users → always stays on landing page
+- View mode changes trigger React re-renders via context subscription
+- Navigation handled in useEffect (not during render) to avoid race conditions
 
 ### Save Button Validation
 **Editor Save Button** (`client/src/pages/editor.tsx`):
