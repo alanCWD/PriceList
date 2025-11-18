@@ -7,26 +7,28 @@ import { UserProfileMenu } from "@/components/user-profile-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { generatePDF } from "@/lib/pdf-generator";
+import { useViewMode } from "@/contexts/ViewModeContext";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template } from "@shared/schema";
 import Papa from "papaparse";
 
 export default function ClientLanding() {
   const { toast } = useToast();
+  const { impersonatedCompanyId } = useViewMode();
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
-  // Fetch latest pricelist
+  // Fetch latest pricelist (includes impersonatedCompanyId to refetch when company changes)
   const { data: latestPricelist, isLoading, error } = useQuery<Pricelist>({
-    queryKey: ['/api/pricelists/latest'],
+    queryKey: ['/api/pricelists/latest', impersonatedCompanyId],
   });
 
-  // Fetch company defaults for field mapping
+  // Fetch company defaults for field mapping (includes impersonatedCompanyId to refetch when company changes)
   const { data: companyDefaults } = useQuery<{
     defaultTemplate: Template;
     defaultFieldMapping: FieldMapping | null;
     defaultBranding: CompanyBranding | null;
   }>({
-    queryKey: ['/api/companies/defaults'],
+    queryKey: ['/api/companies/defaults', impersonatedCompanyId],
   });
 
   // Update pricelist mutation
