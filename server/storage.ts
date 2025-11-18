@@ -39,6 +39,7 @@ export interface IStorage {
   getAllPricelists(): Promise<Pricelist[]>;
   getPricelistById(id: number): Promise<Pricelist | undefined>;
   getPricelistsByCompanyId(companyId: number): Promise<Pricelist[]>;
+  getLatestPricelistByCompanyId(companyId: number): Promise<Pricelist | undefined>;
   createPricelist(pricelist: InsertPricelist): Promise<Pricelist>;
   updatePricelist(id: number, pricelist: Partial<InsertPricelist>): Promise<Pricelist | undefined>;
   deletePricelist(id: number): Promise<boolean>;
@@ -216,6 +217,16 @@ export class DatabaseStorage implements IStorage {
   async getPricelistsByCompanyId(companyId: number): Promise<Pricelist[]> {
     const results = await db.select().from(pricelists).where(eq(pricelists.companyId, companyId));
     return results.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  }
+
+  async getLatestPricelistByCompanyId(companyId: number): Promise<Pricelist | undefined> {
+    const results = await db
+      .select()
+      .from(pricelists)
+      .where(eq(pricelists.companyId, companyId))
+      .orderBy(desc(pricelists.updatedAt))
+      .limit(1);
+    return results[0];
   }
 
   async getPricelistById(id: number): Promise<Pricelist | undefined> {

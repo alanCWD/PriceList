@@ -59,7 +59,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // Normalize branding to full CompanyBranding shape with per-field coalescing
-      const branding = company.defaultBranding ?? {};
+      const branding: any = company.defaultBranding ?? {};
       const normalizedBranding = {
         companyName: branding.companyName ?? "",
         tagline: branding.tagline ?? "",
@@ -316,6 +316,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // Get latest pricelist for user's company (authenticated)
+  app.get("/api/pricelists/latest", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      if (!user.companyId) {
+        return res.status(404).json({ error: "User has no associated company" });
+      }
+      
+      const pricelist = await storage.getLatestPricelistByCompanyId(user.companyId);
+      
+      if (!pricelist) {
+        return res.status(404).json({ error: "No pricelist found" });
+      }
+      
+      res.json(pricelist);
+    } catch (error) {
+      console.error("Error fetching latest pricelist:", error);
+      res.status(500).json({ error: "Failed to fetch latest pricelist" });
     }
   });
 

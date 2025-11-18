@@ -78,24 +78,30 @@ Admins configure company defaults for streamlined user experience:
 2.  **CSV Upload & Field Mapping**: Upload a sample CSV to auto-detect and configure default field mappings
 3.  **Template Selection**: Choose default template (Modern, Classic, or Minimal) for the company
 4.  **Save Configuration**: Field mappings and template saved as company defaults
+5.  **Access Dashboard**: Admins see full file browser with all pricelists across all companies
 
-#### Client Workflow (Pricelist Generation)
-Clients create pricelists with company defaults pre-applied:
-1.  **CSV Upload**: Drag & drop or file picker with auto-applied company field mappings
-2.  **Field Mapping Review**: Review and adjust auto-populated field mappings if needed
-3.  **Configuration**: Branding setup (manual or from profiles), sales agent details, and QR code configuration
-4.  **Preview & Export**: Live preview of the pricelist and PDF export functionality
-5.  **Save/Load**: Persistence of pricelists with auto-generated names using "{Company} Pricelist - Day Month Year" format
+#### Client Workflow (Simplified Landing Page)
+Clients have a streamlined, single-pricelist experience:
+1.  **Landing Page**: Shows only the most recent price list for their company
+2.  **Empty State**: If no price list exists, displays welcome message with upload area
+3.  **CSV Upload**: Inline drag & drop to replace/update the current price list
+4.  **Quick Actions**: Download PDF and Print buttons directly on landing page
+5.  **Auto-Update**: New CSV upload overwrites existing price list (no version history for clients)
+6.  **Auto-Configuration**: Company defaults (field mapping, template, branding) automatically applied
 
 ### Key Features
 -   **Admin System**: For managing companies, users, reusable company branding and sales agent teams.
+-   **Role-Based UX**: 
+    - **Admins**: Full file browser showing all pricelists across all companies
+    - **Clients**: Simplified landing page showing only their latest price list
+-   **Latest Price List API**: `GET /api/pricelists/latest` returns most recent price list for user's company
+-   **Inline CSV Upload**: Clients can upload CSV directly on landing page to replace current price list
 -   **CSV-Based Field Mapping**: Admins upload sample CSVs to auto-detect and save default field mappings per company; clients inherit these mappings automatically.
--   **Auto-Generated Pricelist Names**: Save dialog pre-fills with "{Company} Pricelist - Day Month Year" format (e.g., "Test Company Pricelist - 17 November 2025"), customizable before saving.
+-   **Auto-Generated Pricelist Names**: "{Company} Price List - Day Month Year" format (e.g., "Test Company Price List - 17 November 2025")
 -   **Template System**: Three professional, print-optimized templates (Modern, Classic, Minimal) with company defaults.
--   **Database Persistence**: Save, load, update, and delete pricelists and profiles with full company isolation.
+-   **Database Persistence**: Save, load, update, and delete pricelists with full company isolation.
 -   **Professional Document Design**: Template-specific typography, layout, and print optimization.
 -   **Auto-Generated Footer**: Automatic footer format: "{Company} Pricelist - Day Month Year" (e.g., "TechCorp Pricelist - 15 January 2025") for consistent, professional appearance across all templates.
--   **Brand/Category Filtering**: Dynamic dropdown to filter pricelists by "ALL brands" or a specific category, with persistence across save/load operations.
 -   **Validation & UX**: Comprehensive validation, error handling, loading states, and toast notifications.
 -   **Export Quality**: High-quality, print-ready PDF exports with template-specific styling and pagination.
 
@@ -180,9 +186,12 @@ if (companyBranding.companyName.trim() !== "") {
 This prevents empty normalized branding from overwriting user-entered values and disabling the Save button.
 
 ### Routing Structure
-- `/` → Dashboard (authenticated users)
-- `/dashboard` → Dashboard (alias for better UX)
-- `/editor` → Pricelist editor
+- `/` → Role-based routing:
+  - **Admins**: Dashboard (full file browser with all pricelists)
+  - **Clients**: Client Landing Page (latest price list only)
+- `/dashboard` → Admin dashboard (full file browser)
+- `/client` → Client landing page (latest price list with upload)
+- `/editor` → Full pricelist editor (legacy, used by admin)
 - `/admin` → Admin interface (admin role only)
 - `/login` → Login page (unauthenticated users)
 
