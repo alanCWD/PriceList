@@ -224,15 +224,17 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   // Move yPosition to after header (add small spacing)
   yPosition = headerHeight + 20;
 
-  // Group products by category
-  const groupedProducts = products.reduce((acc, product) => {
-    const category = product.category || "Uncategorized";
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(product);
-    return acc;
-  }, {} as Record<string, Product[]>);
+  // Group products by category, excluding uncategorized items
+  const groupedProducts = products
+    .filter(product => product.category && product.category.toLowerCase() !== "uncategorized")
+    .reduce((acc, product) => {
+      const category = product.category!;
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(product);
+      return acc;
+    }, {} as Record<string, Product[]>);
 
   // Load product images as base64 in parallel
   const productImageMap = new Map<string, { data: string; format: string }>();
@@ -262,10 +264,14 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       yPosition += 20;
     }
 
-    // Category header
-    doc.setFillColor(30, 30, 30);
+    // Category header - use same color as main header
+    if (bgColor) {
+      doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
+    } else {
+      doc.setFillColor(30, 30, 30); // Fallback to dark gray
+    }
     doc.rect(margin, yPosition, pageWidth - margin * 2, 24, "F");
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(textColor.r, textColor.g, textColor.b);
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text(category, margin + 12, yPosition + 16);
