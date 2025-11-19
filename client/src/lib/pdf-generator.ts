@@ -127,9 +127,8 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     ? hexToRgb(branding.headerBackgroundColor)
     : null;
 
-  // Calculate header height accounting for logo, title, tagline, and sales agents
-  const baseHeight = logoBase64 ? Math.max(logoHeight + 10, 95) : 95;
-  const headerHeight = baseHeight + (branding.tagline ? 15 : 0) + (salesAgents.length > 0 ? 50 : 0);
+  // Header height conforms exactly to logo height (no padding)
+  const headerHeight = logoBase64 ? logoHeight : 50;
   
   // Draw header background if color is specified
   if (bgColor) {
@@ -149,29 +148,30 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     }
   }
 
-  // Header text (company name and tagline) - positioned next to logo
+  // Title at topmost part - minimal offset
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(textColor.r, textColor.g, textColor.b);
-  doc.text(branding.companyName, textStartX, yPosition + 18);
+  doc.text(branding.companyName, textStartX, yPosition + 15);
 
-  let titleBottomY = yPosition + 25; // Track where title ends
+  // Tagline immediately below title with minimal spacing
+  let taglineY = yPosition + 15;
   if (branding.tagline) {
+    taglineY = yPosition + 28; // Minimal space from title
     doc.setFontSize(11);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.text(branding.tagline, textStartX, yPosition + 35);
-    titleBottomY = yPosition + 42; // Update if tagline present
+    doc.text(branding.tagline, textStartX, taglineY);
   }
-  
-  // Move yPosition to after the logo/title area
-  yPosition = yPosition + (logoBase64 ? logoHeight : 45);
 
-  // Sales agents in header - positioned below title/tagline on the right
+  // Sales agents at the bottom of header with minimal spacing from tagline
   if (salesAgents.length > 0) {
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
+    
+    // Position agents at bottom of header area
+    const agentStartY = yPosition + headerHeight - 35; // Bottom of header minus agent block height
     let agentX = pageWidth - margin;
     
     // Position agents from right to left
@@ -183,15 +183,17 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       const textWidth = Math.max(...lines.map(line => doc.getTextWidth(line)));
       agentX -= textWidth + 20;
       
-      // Start agents below the title area (use titleBottomY + spacing)
-      let agentY = titleBottomY + 8;
+      // Place agents at bottom of header
+      let agentY = agentStartY;
       lines.forEach(line => {
         doc.text(line, agentX, agentY, { align: "left" });
-        agentY += 11;
+        agentY += 10; // Tight line spacing
       });
     });
-    yPosition += 10;
   }
+  
+  // Move yPosition to after header
+  yPosition = yPosition + headerHeight;
 
   // Thick separator line below header
   yPosition += 8;
