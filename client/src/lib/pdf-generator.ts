@@ -138,41 +138,45 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       doc.rect(0, 0, pageWidth, headerHeight, "F");
     }
 
-    // Draw logo on the left if present
-    let textStartX = margin;
+    // Minimal padding from edges
+    const headerPadding = 10;
+    const verticalPadding = 8; // Small top padding inside header
+    
+    // Draw logo on the left if present with minimal left padding
+    let textStartX = headerPadding;
     if (logoBase64) {
       try {
-        doc.addImage(logoBase64, logoFormat, margin, 0, logoWidth, logoHeight);
-        textStartX = margin + logoWidth + 20; // Add gap between logo and text
+        doc.addImage(logoBase64, logoFormat, headerPadding, verticalPadding, logoWidth, logoHeight);
+        textStartX = headerPadding + logoWidth + 20; // Add gap between logo and text
       } catch (error) {
         console.error('Failed to add logo to PDF:', error);
         // Continue without logo
       }
     }
 
-    // Title at topmost part - minimal offset
+    // Title at top with minimal padding
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.text(branding.companyName, textStartX, 15);
+    doc.text(branding.companyName, textStartX, verticalPadding + 15);
 
     // Tagline immediately below title with minimal spacing
     if (branding.tagline) {
       doc.setFontSize(11);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
-      doc.text(branding.tagline, textStartX, 28);
+      doc.text(branding.tagline, textStartX, verticalPadding + 28);
     }
 
-    // Sales agents at the bottom of header with minimal spacing from tagline
+    // Sales agents at the bottom of header with minimal spacing
     if (salesAgents.length > 0) {
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
       
-      // Position agents at bottom of header area
-      const agentStartY = headerHeight - 35; // Bottom of header minus agent block height
-      let agentX = pageWidth - margin;
+      // Position agents at bottom of header area with bottom padding
+      const agentStartY = headerHeight - 30; // Bottom padding
+      let agentX = pageWidth - headerPadding;
       
       // Position agents from right to left
       salesAgents.slice().reverse().forEach(agent => {
