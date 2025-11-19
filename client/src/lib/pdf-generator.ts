@@ -150,23 +150,24 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   }
 
   // Header text (company name and tagline) - positioned next to logo
-  const savedY = yPosition; // Save for sales agents positioning
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(textColor.r, textColor.g, textColor.b);
   doc.text(branding.companyName, textStartX, yPosition + 18);
 
+  let titleBottomY = yPosition + 25; // Track where title ends
   if (branding.tagline) {
     doc.setFontSize(11);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.text(branding.tagline, textStartX, yPosition + 32);
+    doc.text(branding.tagline, textStartX, yPosition + 35);
+    titleBottomY = yPosition + 42; // Update if tagline present
   }
   
   // Move yPosition to after the logo/title area
-  yPosition = savedY + (logoBase64 ? logoHeight : 40);
+  yPosition = yPosition + (logoBase64 ? logoHeight : 45);
 
-  // Sales agents in header - positioned at bottom right
+  // Sales agents in header - positioned below title/tagline on the right
   if (salesAgents.length > 0) {
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
@@ -182,8 +183,8 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       const textWidth = Math.max(...lines.map(line => doc.getTextWidth(line)));
       agentX -= textWidth + 20;
       
-      // Start agents at savedY position (same as logo/title)
-      let agentY = savedY + 12;
+      // Start agents below the title area (use titleBottomY + spacing)
+      let agentY = titleBottomY + 8;
       lines.forEach(line => {
         doc.text(line, agentX, agentY, { align: "left" });
         agentY += 11;
