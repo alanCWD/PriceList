@@ -130,77 +130,74 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   // Header height conforms exactly to logo height (no padding)
   const headerHeight = logoBase64 ? logoHeight : 50;
   
-  // Draw header background if color is specified
-  if (bgColor) {
-    doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
-    doc.rect(0, 0, pageWidth, headerHeight, "F");
-  }
-
-  // Draw logo on the left if present
-  let textStartX = margin;
-  if (logoBase64) {
-    try {
-      doc.addImage(logoBase64, logoFormat, margin, yPosition, logoWidth, logoHeight);
-      textStartX = margin + logoWidth + 20; // Add gap between logo and text
-    } catch (error) {
-      console.error('Failed to add logo to PDF:', error);
-      // Continue without logo
+  // Function to draw header on every page
+  const drawHeader = () => {
+    // Draw header background full-width band
+    if (bgColor) {
+      doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
+      doc.rect(0, 0, pageWidth, headerHeight, "F");
     }
-  }
 
-  // Title at topmost part - minimal offset
-  doc.setFontSize(22);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(textColor.r, textColor.g, textColor.b);
-  doc.text(branding.companyName, textStartX, yPosition + 15);
+    // Draw logo on the left if present
+    let textStartX = margin;
+    if (logoBase64) {
+      try {
+        doc.addImage(logoBase64, logoFormat, margin, 0, logoWidth, logoHeight);
+        textStartX = margin + logoWidth + 20; // Add gap between logo and text
+      } catch (error) {
+        console.error('Failed to add logo to PDF:', error);
+        // Continue without logo
+      }
+    }
 
-  // Tagline immediately below title with minimal spacing
-  let taglineY = yPosition + 15;
-  if (branding.tagline) {
-    taglineY = yPosition + 28; // Minimal space from title
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "italic");
+    // Title at topmost part - minimal offset
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.text(branding.tagline, textStartX, taglineY);
-  }
+    doc.text(branding.companyName, textStartX, 15);
 
-  // Sales agents at the bottom of header with minimal spacing from tagline
-  if (salesAgents.length > 0) {
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    
-    // Position agents at bottom of header area
-    const agentStartY = yPosition + headerHeight - 35; // Bottom of header minus agent block height
-    let agentX = pageWidth - margin;
-    
-    // Position agents from right to left
-    salesAgents.slice().reverse().forEach(agent => {
-      const lines = [];
-      if (agent.region) lines.push(agent.region);
-      lines.push(agent.name, agent.email, agent.phone);
+    // Tagline immediately below title with minimal spacing
+    if (branding.tagline) {
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(textColor.r, textColor.g, textColor.b);
+      doc.text(branding.tagline, textStartX, 28);
+    }
+
+    // Sales agents at the bottom of header with minimal spacing from tagline
+    if (salesAgents.length > 0) {
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(textColor.r, textColor.g, textColor.b);
       
-      const textWidth = Math.max(...lines.map(line => doc.getTextWidth(line)));
-      agentX -= textWidth + 20;
+      // Position agents at bottom of header area
+      const agentStartY = headerHeight - 35; // Bottom of header minus agent block height
+      let agentX = pageWidth - margin;
       
-      // Place agents at bottom of header
-      let agentY = agentStartY;
-      lines.forEach(line => {
-        doc.text(line, agentX, agentY, { align: "left" });
-        agentY += 10; // Tight line spacing
+      // Position agents from right to left
+      salesAgents.slice().reverse().forEach(agent => {
+        const lines = [];
+        if (agent.region) lines.push(agent.region);
+        lines.push(agent.name, agent.email, agent.phone);
+        
+        const textWidth = Math.max(...lines.map(line => doc.getTextWidth(line)));
+        agentX -= textWidth + 20;
+        
+        // Place agents at bottom of header
+        let agentY = agentStartY;
+        lines.forEach(line => {
+          doc.text(line, agentX, agentY, { align: "left" });
+          agentY += 10; // Tight line spacing
+        });
       });
-    });
-  }
-  
-  // Move yPosition to after header
-  yPosition = yPosition + headerHeight;
+    }
+  };
 
-  // Thick separator line below header
-  yPosition += 8;
-  doc.setDrawColor(30, 30, 30);
-  doc.setLineWidth(2);
-  doc.line(margin, yPosition, pageWidth - margin, yPosition);
-  yPosition += 30;
+  // Draw header on first page
+  drawHeader();
+  
+  // Move yPosition to after header (add small spacing)
+  yPosition = headerHeight + 20;
 
   // Group products by category
   const groupedProducts = products.reduce((acc, product) => {
@@ -304,7 +301,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         3: { cellWidth: 100 },
         4: { cellWidth: 75 },
       },
-      margin: { left: margin, right: margin, bottom: margin + footerHeight },
+      margin: { left: margin, right: margin, top: headerHeight + 20, bottom: margin + footerHeight },
       didDrawCell: hasImages ? (data) => {
         // Draw product images in the first column
         if (data.column.index === 0 && data.section === 'body') {
@@ -330,6 +327,9 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         }
       } : undefined,
       didDrawPage: (data) => {
+        // Draw header on every page
+        drawHeader();
+        
         // Minimal footer with text and small QR code
         const footerY = pageHeight - margin - 12;
         
