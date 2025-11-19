@@ -224,11 +224,16 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   // Move yPosition to after header (add small spacing)
   yPosition = headerHeight + 20;
 
-  // Group products by category, excluding uncategorized items
+  // Group products by category, excluding only explicitly "Uncategorized" items
   const groupedProducts = products
-    .filter(product => product.category && product.category.toLowerCase() !== "uncategorized")
+    .filter(product => {
+      // Only exclude if explicitly labeled "Uncategorized" (case-insensitive)
+      // Allow empty categories - they'll be shown under their category name or producer
+      return !product.category || product.category.toLowerCase() !== "uncategorized";
+    })
     .reduce((acc, product) => {
-      const category = product.category!;
+      // Use category as the grouping key, empty categories will group together
+      const category = product.category || "";
       if (!acc[category]) {
         acc[category] = [];
       }
