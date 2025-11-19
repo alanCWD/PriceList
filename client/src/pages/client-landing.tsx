@@ -7,6 +7,7 @@ import { UserProfileMenu } from "@/components/user-profile-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { generatePDF } from "@/lib/pdf-generator";
+import { stripHtml } from "@/lib/text-utils";
 import { useViewMode } from "@/contexts/ViewModeContext";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template } from "@shared/schema";
 import Papa from "papaparse";
@@ -149,15 +150,15 @@ export default function ClientLanding() {
           };
         }
 
-        // Map CSV data to products
+        // Map CSV data to products and strip HTML tags (for Wix exports)
         const products: Product[] = csvData.map((row: any, index: number) => ({
           id: `product-${index}`,
-          product: fieldMapping.product ? row[fieldMapping.product] || "Unnamed Product" : "Unnamed Product",
-          sku: fieldMapping.sku ? row[fieldMapping.sku] || "" : "",
-          format: fieldMapping.format ? row[fieldMapping.format] || "" : "",
-          price: fieldMapping.price ? row[fieldMapping.price] || "" : "",
-          category: fieldMapping.category ? row[fieldMapping.category] || "" : "",
-          notes: fieldMapping.notes ? row[fieldMapping.notes] || "" : "",
+          product: stripHtml(fieldMapping.product ? row[fieldMapping.product] || "Unnamed Product" : "Unnamed Product"),
+          sku: stripHtml(fieldMapping.sku ? row[fieldMapping.sku] || "" : ""),
+          format: stripHtml(fieldMapping.format ? row[fieldMapping.format] || "" : ""),
+          price: stripHtml(fieldMapping.price ? row[fieldMapping.price] || "" : ""),
+          category: stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : ""),
+          notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
           productImageUrl: fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "",
         }));
 
