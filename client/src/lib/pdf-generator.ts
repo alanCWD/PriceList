@@ -140,58 +140,62 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
 
     // Minimal padding from edges
     const headerPadding = 10;
-    const verticalPadding = 8; // Small top padding inside header
+    const topPadding = 12; // Top padding for title baseline
     
     // Draw logo on the left if present with minimal left padding
-    let textStartX = headerPadding;
     if (logoBase64) {
       try {
-        doc.addImage(logoBase64, logoFormat, headerPadding, verticalPadding, logoWidth, logoHeight);
-        textStartX = headerPadding + logoWidth + 20; // Add gap between logo and text
+        // Center logo vertically if header is taller than logo
+        const logoY = (headerHeight - logoHeight) / 2;
+        doc.addImage(logoBase64, logoFormat, headerPadding, logoY, logoWidth, logoHeight);
       } catch (error) {
         console.error('Failed to add logo to PDF:', error);
         // Continue without logo
       }
     }
 
-    // Title at top with minimal padding
+    // Title centered horizontally at top
+    const centerX = pageWidth / 2;
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.text(branding.companyName, textStartX, verticalPadding + 15);
+    doc.text(branding.companyName, centerX, topPadding, { align: "center" });
 
-    // Tagline immediately below title with minimal spacing
+    // Tagline centered below title with minimal spacing
     if (branding.tagline) {
       doc.setFontSize(11);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
-      doc.text(branding.tagline, textStartX, verticalPadding + 28);
+      doc.text(branding.tagline, centerX, topPadding + 16, { align: "center" });
     }
 
-    // Sales agents at the bottom of header with minimal spacing
+    // Sales agents at bottom-right with right alignment
     if (salesAgents.length > 0) {
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
       
-      // Position agents at bottom of header area with bottom padding
-      const agentStartY = headerHeight - 30; // Bottom padding
-      let agentX = pageWidth - headerPadding;
+      const bottomPadding = 10;
+      const lineHeight = 10;
+      const agentRightX = pageWidth - headerPadding;
       
       // Position agents from right to left
-      salesAgents.slice().reverse().forEach(agent => {
+      salesAgents.slice().reverse().forEach((agent, agentIndex) => {
         const lines = [];
         if (agent.region) lines.push(agent.region);
         lines.push(agent.name, agent.email, agent.phone);
         
-        const textWidth = Math.max(...lines.map(line => doc.getTextWidth(line)));
-        agentX -= textWidth + 20;
+        // Calculate starting Y for this agent block (bottom-aligned)
+        let agentY = headerHeight - bottomPadding - (lines.length - 1) * lineHeight;
         
-        // Place agents at bottom of header
-        let agentY = agentStartY;
+        // Measure the widest line to offset this agent block to the left
+        const maxWidth = Math.max(...lines.map(line => doc.getTextWidth(line)));
+        const agentX = agentRightX - (agentIndex * (maxWidth + 30));
+        
+        // Draw agent info right-aligned
         lines.forEach(line => {
-          doc.text(line, agentX, agentY, { align: "left" });
-          agentY += 10; // Tight line spacing
+          doc.text(line, agentX, agentY, { align: "right" });
+          agentY += lineHeight;
         });
       });
     }
