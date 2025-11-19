@@ -13,6 +13,7 @@ import { PreviewPanel } from "@/components/preview-panel";
 import { SavePricelistDialog } from "@/components/save-pricelist-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { stripHtml } from "@/lib/text-utils";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template } from "@shared/schema";
 
 export default function Editor() {
@@ -174,14 +175,15 @@ export default function Editor() {
         }
       }
       
+      // Strip HTML tags from all text fields (Wix exports include HTML markup)
       return {
         id: `product-${index}`,
-        category: fieldMapping.category ? row[fieldMapping.category] || "" : "",
-        notes: fieldMapping.notes ? row[fieldMapping.notes] || "" : "",
-        product: row[fieldMapping.product] || "",
-        sku: row[fieldMapping.sku] || "",
-        format: format,
-        price: row[fieldMapping.price] || "",
+        category: stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : ""),
+        notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
+        product: stripHtml(row[fieldMapping.product] || ""),
+        sku: stripHtml(row[fieldMapping.sku] || ""),
+        format: stripHtml(format),
+        price: stripHtml(row[fieldMapping.price] || ""),
         productImageUrl: imageUrl,
       };
     });
