@@ -140,7 +140,8 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
 
     // Minimal padding from edges
     const headerPadding = 10;
-    const topPadding = 12; // Top padding for title baseline
+    const bottomPadding = 10;
+    const lineHeight = 10;
     
     // Draw logo on the left if present with minimal left padding
     if (logoBase64) {
@@ -154,19 +155,37 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       }
     }
 
-    // Title centered horizontally at top
+    // Calculate agent block height to position title/tagline above it
+    let maxAgentLines = 0;
+    if (salesAgents.length > 0) {
+      salesAgents.forEach(agent => {
+        let lineCount = 0;
+        if (agent.region) lineCount++;
+        lineCount += 3; // name, email, phone
+        maxAgentLines = Math.max(maxAgentLines, lineCount);
+      });
+    }
+    const agentBlockHeight = maxAgentLines * lineHeight;
+    const agentTop = headerHeight - bottomPadding - agentBlockHeight;
+    
+    // Position title/tagline centered between top and agents
+    const titleBaseline = 28; // Safe top padding + font ascent
+    const taglineBaseline = 46; // Below title with minimal spacing
+    
     const centerX = pageWidth / 2;
+    
+    // Title centered horizontally
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.text(branding.companyName, centerX, topPadding, { align: "center" });
+    doc.text(branding.companyName, centerX, titleBaseline, { align: "center" });
 
     // Tagline centered below title with minimal spacing
     if (branding.tagline) {
       doc.setFontSize(11);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
-      doc.text(branding.tagline, centerX, topPadding + 16, { align: "center" });
+      doc.text(branding.tagline, centerX, taglineBaseline, { align: "center" });
     }
 
     // Sales agents at bottom-right with right alignment
@@ -175,8 +194,6 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       doc.setFont("helvetica", "normal");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
       
-      const bottomPadding = 10;
-      const lineHeight = 10;
       const agentRightX = pageWidth - headerPadding;
       
       // Position agents from right to left
