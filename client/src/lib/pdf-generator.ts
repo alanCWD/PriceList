@@ -337,7 +337,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         3: { cellWidth: 100 },
         4: { cellWidth: 75 },
       },
-      margin: { left: margin, right: margin, top: headerHeight + 20, bottom: margin + footerHeight },
+      margin: { left: margin, right: margin, top: 50, bottom: margin + footerHeight },
       didDrawCell: hasImages ? (data) => {
         // Draw product images in the first column
         if (data.column.index === 0 && data.section === 'body') {
@@ -363,8 +363,28 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         }
       } : undefined,
       didDrawPage: (data) => {
-        // Draw header on every page
-        drawHeader();
+        const currentPage = (doc as any).getCurrentPageInfo().pageNumber;
+        
+        // Draw full header only on first page
+        if (currentPage === 1) {
+          drawHeader();
+        } else {
+          // On subsequent pages, draw a simple centered title bar
+          const simpleHeaderHeight = 30;
+          
+          // Draw background bar if color is defined
+          if (bgColor) {
+            doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
+            doc.rect(0, 0, pageWidth, simpleHeaderHeight, "F");
+          }
+          
+          // Center company name in the bar
+          doc.setFontSize(14);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(textColor.r, textColor.g, textColor.b);
+          const centerX = pageWidth / 2;
+          doc.text(branding.companyName, centerX, simpleHeaderHeight / 2 + 5, { align: "center" });
+        }
         
         // Minimal footer with text and small QR code
         const footerY = pageHeight - margin - 12;
