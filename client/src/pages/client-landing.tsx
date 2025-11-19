@@ -151,16 +151,25 @@ export default function ClientLanding() {
         }
 
         // Map CSV data to products and strip HTML tags (for Wix exports)
-        const products: Product[] = csvData.map((row: any, index: number) => ({
-          id: `product-${index}`,
-          product: stripHtml(fieldMapping.product ? row[fieldMapping.product] || "Unnamed Product" : "Unnamed Product"),
-          sku: stripHtml(fieldMapping.sku ? row[fieldMapping.sku] || "" : ""),
-          format: stripHtml(fieldMapping.format ? row[fieldMapping.format] || "" : ""),
-          price: stripHtml(fieldMapping.price ? row[fieldMapping.price] || "" : ""),
-          category: stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : ""),
-          notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
-          productImageUrl: fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "",
-        }));
+        const products: Product[] = csvData.map((row: any, index: number) => {
+          let imageUrl = fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "";
+          
+          // Auto-complete Wix image URLs if only filename is provided
+          if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+            imageUrl = `https://static.wixstatic.com/media/${imageUrl}`;
+          }
+          
+          return {
+            id: `product-${index}`,
+            product: stripHtml(fieldMapping.product ? row[fieldMapping.product] || "Unnamed Product" : "Unnamed Product"),
+            sku: stripHtml(fieldMapping.sku ? row[fieldMapping.sku] || "" : ""),
+            format: stripHtml(fieldMapping.format ? row[fieldMapping.format] || "" : ""),
+            price: stripHtml(fieldMapping.price ? row[fieldMapping.price] || "" : ""),
+            category: stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : ""),
+            notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
+            productImageUrl: imageUrl,
+          };
+        });
 
         // Validate we have products
         if (products.length === 0) {
