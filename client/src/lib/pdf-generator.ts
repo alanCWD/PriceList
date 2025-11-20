@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getDisplayName } from "./collection-parser";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
 
 interface PDFConfig {
@@ -788,6 +789,9 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     }
 
     // Category header - matches header background colour with grey text
+    // Extract display name (e.g., "2-wine-1-white-Synchromesh" -> "Synchromesh")
+    const displayName = getDisplayName(category);
+    
     if (bgColor) {
       doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
     } else {
@@ -797,7 +801,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     doc.setTextColor(216, 219, 217); // Grey text (#D8DBD9)
     doc.setFontSize(11); // Smaller category font
     doc.setFont("helvetica", "bold");
-    doc.text(category, margin + 8, yPosition + 12);
+    doc.text(displayName, margin + 8, yPosition + 12);
     yPosition += 22;
 
     // Check if this category has any products with images or notes

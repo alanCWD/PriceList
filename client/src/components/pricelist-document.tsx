@@ -1,5 +1,6 @@
 import { Mail, Phone } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { getDisplayName } from "@/lib/collection-parser";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
 
 interface PricelistDocumentProps {
@@ -695,27 +696,33 @@ function MinimalTemplate({
 
       {/* Ultra-Compact Table Layout */}
       <main className="px-8 py-4" style={{ paddingTop: '16px', paddingBottom: '16px', paddingLeft: '32px', paddingRight: '32px' }}>
-        {Object.entries(groupedProducts).map(([category, categoryProducts], categoryIndex) => (
-          <div key={category} className={categoryIndex > 0 ? "mt-6" : ""} style={{ marginTop: categoryIndex > 0 ? '24px' : '0' }}>
-            {/* Compact Category Header - Matches header background with grey text */}
-            <h2 
-              className="font-semibold mb-2"
-              data-testid={`category-${categoryIndex}`}
-              style={{ 
-                fontSize: '11px',
-                fontWeight: 600,
-                marginBottom: '8px',
-                padding: '6px 8px',
-                backgroundColor: headerBgColor,
-                color: '#D8DBD9',
-                borderRadius: '2px'
-              }}
-            >
-              {category}
-            </h2>
+        {Object.entries(groupedProducts)
+          .sort(([catA], [catB]) => catA.localeCompare(catB)) // Sort by category sortKey
+          .map(([category, categoryProducts], categoryIndex) => {
+            // Extract display name from sortKey (e.g., "2-wine-1-white-Synchromesh" -> "Synchromesh")
+            const displayName = getDisplayName(category);
+            
+            return (
+              <div key={category} className={categoryIndex > 0 ? "mt-6" : ""} style={{ marginTop: categoryIndex > 0 ? '24px' : '0' }}>
+                {/* Compact Category Header - Matches header background with grey text */}
+                <h2 
+                  className="font-semibold mb-2"
+                  data-testid={`category-${categoryIndex}`}
+                  style={{ 
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    marginBottom: '8px',
+                    padding: '6px 8px',
+                    backgroundColor: headerBgColor,
+                    color: '#D8DBD9',
+                    borderRadius: '2px'
+                  }}
+                >
+                  {displayName}
+                </h2>
 
-            {/* Ultra-Compact Table */}
-            <table 
+                {/* Ultra-Compact Table */}
+                <table 
               className="w-full border-collapse"
               style={{ 
                 width: '100%',
@@ -848,9 +855,10 @@ function MinimalTemplate({
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
-        ))}
+                </table>
+              </div>
+            );
+          })}
       </main>
 
       {/* Compact Footer */}
