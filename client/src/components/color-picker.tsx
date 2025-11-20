@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HexColorPicker } from "react-colorful";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -24,17 +24,33 @@ export function ColorPicker({
   testId,
 }: ColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [hexInput, setHexInput] = useState(color || "#ffffff");
   const currentColor = color || "#ffffff";
+
+  // Sync hex input with color prop changes
+  useEffect(() => {
+    setHexInput(currentColor);
+  }, [currentColor]);
 
   const handleColorChange = (newColor: string) => {
     onChange(newColor);
+    setHexInput(newColor);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Only update if it's a valid hex color format
+    setHexInput(value);
+    
+    // Only propagate to parent if it's a valid hex color format
     if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
       onChange(value);
+    }
+  };
+
+  const handleInputBlur = () => {
+    // On blur, if invalid, revert to current color
+    if (!/^#[0-9A-Fa-f]{6}$/.test(hexInput)) {
+      setHexInput(currentColor);
     }
   };
 
@@ -63,8 +79,9 @@ export function ColorPicker({
                 <Label htmlFor="hex-input">Hex Color</Label>
                 <Input
                   id="hex-input"
-                  value={currentColor.toUpperCase()}
+                  value={hexInput.toUpperCase()}
                   onChange={handleInputChange}
+                  onBlur={handleInputBlur}
                   placeholder="#FFFFFF"
                   maxLength={7}
                   data-testid={`${testId}-input`}
