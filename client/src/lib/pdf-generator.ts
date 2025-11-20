@@ -833,19 +833,20 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       headStyles: {
         fillColor: [245, 245, 245],
         textColor: [60, 60, 60],
-        fontSize: 7, // Very small header font
+        fontSize: 6.5, // Ultra-small header font (1/4 reduction)
         fontStyle: "bold",
         halign: "left",
-        cellPadding: 2,
+        cellPadding: 1, // Reduced padding for tighter spacing
+        minCellHeight: 6, // Minimal header row height
       },
       bodyStyles: {
-        fontSize: 8, // Small body font
+        fontSize: 6.5, // Ultra-small body font (1/4 reduction)
         textColor: [30, 30, 30],
-        minCellHeight: hasImages ? 25 : 10, // Very compact rows
-        cellPadding: 2,
+        minCellHeight: hasImages ? 18 : 6, // Ultra-compact rows (~1/4 of original)
+        cellPadding: 1, // Reduced padding for tighter spacing
       },
       alternateRowStyles: {
-        fillColor: [250, 250, 250],
+        fillColor: [242, 242, 242], // Stronger zebra striping for better visibility
       },
       columnStyles: (() => {
         const styles: any = {};
@@ -879,7 +880,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
           const imageData = productImageMap.get(product.id);
           if (imageData) {
             try {
-              const imgSize = 20; // Small thumbnail
+              const imgSize = 16; // Smaller thumbnail for ultra-compact layout
               const cellCenterX = data.cell.x + (data.cell.width / 2);
               const cellCenterY = data.cell.y + (data.cell.height / 2);
               const imgX = cellCenterX - (imgSize / 2);

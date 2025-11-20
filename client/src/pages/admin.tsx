@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog } from "lucide-react";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { CSVUpload } from "@/components/csv-upload";
+import { ColorPicker } from "@/components/color-picker";
+import { getPaletteFromLogo } from "@/lib/color-extractor";
 import type { 
   CompanyProfile, 
   SalesAgentProfile,
@@ -1815,7 +1817,46 @@ function CompanyBrandingManager() {
                 data-testid="input-footer-text"
               />
             </div>
+            <ColorPicker
+              label="Header & Logo Background Color"
+              color={branding.headerBackgroundColor}
+              onChange={(color) => setBranding({ ...branding, headerBackgroundColor: color })}
+              onExtractFromLogo={async () => {
+                if (branding.logoUrl) {
+                  try {
+                    const { backgroundColor } = await getPaletteFromLogo(branding.logoUrl);
+                    setBranding({ ...branding, headerBackgroundColor: backgroundColor });
+                  } catch (error) {
+                    console.error('Failed to extract color from logo:', error);
+                    toast({ title: "Error", description: "Failed to extract color from logo", variant: "destructive" });
+                  }
+                }
+              }}
+              showExtractButton={!!branding.logoUrl}
+              testId="picker-header-bg"
+            />
+            <ColorPicker
+              label="Header Text Color"
+              color={branding.headerTextColor}
+              onChange={(color) => setBranding({ ...branding, headerTextColor: color })}
+              onExtractFromLogo={async () => {
+                if (branding.logoUrl) {
+                  try {
+                    const { textColor } = await getPaletteFromLogo(branding.logoUrl);
+                    setBranding({ ...branding, headerTextColor: textColor });
+                  } catch (error) {
+                    console.error('Failed to extract color from logo:', error);
+                    toast({ title: "Error", description: "Failed to extract color from logo", variant: "destructive" });
+                  }
+                }
+              }}
+              showExtractButton={!!branding.logoUrl}
+              testId="picker-header-text"
+            />
           </div>
+          <p className="text-xs text-muted-foreground">
+            Colors are automatically extracted from your logo, or you can customize them using the color pickers above.
+          </p>
         </CardContent>
         <CardFooter>
           <Button 

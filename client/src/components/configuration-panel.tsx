@@ -11,6 +11,7 @@ import { Plus, Trash2, Upload, ArrowRight, Building2, Users, QrCode, AlertCircle
 import { QRCodeSVG } from "qrcode.react";
 import type { CompanyBranding, SalesAgent, QRCodeConfig, CompanyProfile, SalesAgentProfile, Product } from "@shared/schema";
 import { getPaletteFromLogo } from "@/lib/color-extractor";
+import { ColorPicker } from "@/components/color-picker";
 
 interface ConfigurationPanelProps {
   branding: CompanyBranding;
@@ -233,6 +234,48 @@ export function ConfigurationPanel({
               </div>
             </div>
           </div>
+
+          <Separator />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ColorPicker
+              label="Header & Logo Background Color"
+              color={branding.headerBackgroundColor}
+              onChange={(color) => onBrandingChange({ ...branding, headerBackgroundColor: color })}
+              onExtractFromLogo={async () => {
+                if (logoPreview) {
+                  try {
+                    const { backgroundColor } = await getPaletteFromLogo(logoPreview);
+                    onBrandingChange({ ...branding, headerBackgroundColor: backgroundColor });
+                  } catch (error) {
+                    console.error('Failed to extract color from logo:', error);
+                  }
+                }
+              }}
+              showExtractButton={!!logoPreview}
+              testId="picker-header-bg"
+            />
+            <ColorPicker
+              label="Header Text Color"
+              color={branding.headerTextColor}
+              onChange={(color) => onBrandingChange({ ...branding, headerTextColor: color })}
+              onExtractFromLogo={async () => {
+                if (logoPreview) {
+                  try {
+                    const { textColor } = await getPaletteFromLogo(logoPreview);
+                    onBrandingChange({ ...branding, headerTextColor: textColor });
+                  } catch (error) {
+                    console.error('Failed to extract color from logo:', error);
+                  }
+                }
+              }}
+              showExtractButton={!!logoPreview}
+              testId="picker-header-text"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Colors are automatically extracted from your logo, or you can customize them using the color pickers above.
+          </p>
         </CardContent>
       </Card>
 
