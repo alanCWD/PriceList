@@ -611,11 +611,30 @@ function MinimalTemplate({
   qrCodeConfig,
   currentDate,
 }: TemplateProps) {
+  // Use branding colors or defaults
+  const headerBgColor = branding.headerBackgroundColor || '#f8f9fa';
+  const headerTextColor = branding.headerTextColor || '#1a1a1a';
+
+  // Check if any products have images
+  const hasImages = Object.values(groupedProducts).some(products =>
+    products.some(p => p.productImageUrl)
+  );
+
   return (
     <div className="pricelist-document font-sans" id="pricelist-document" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <header className="px-16 py-3" style={{ backgroundColor: '#CCC79A' }}>
-        <div className="flex gap-6">
-          {/* Logo - Far Left */}
+      {/* Ultra-Compact Header */}
+      <header 
+        className="px-8 py-2"
+        style={{ 
+          backgroundColor: headerBgColor,
+          paddingTop: '8px',
+          paddingBottom: '8px',
+          paddingLeft: '32px',
+          paddingRight: '32px'
+        }}
+      >
+        <div className="flex gap-4 items-center">
+          {/* Logo - Far Left (Compact) */}
           {branding.logoUrl && (
             <div className="flex-shrink-0">
               <img
@@ -623,154 +642,238 @@ function MinimalTemplate({
                 alt={branding.companyName}
                 className="w-auto object-contain"
                 data-testid="img-header-logo"
-                style={{ height: '120px' }}
+                style={{ height: '40px' }}
               />
             </div>
           )}
           
-          {/* Content Area */}
-          <div className="flex-1 flex flex-col justify-between" style={{ minHeight: '120px' }}>
-            {/* Title and Tagline - Top */}
-            <div>
-              <h1 
-                className="font-light"
-                data-testid="text-company-name"
-                style={{ fontSize: '24px', fontWeight: 300, color: '#2d5016' }}
+          {/* Title - Center */}
+          <div className="flex-1 text-center">
+            <h1 
+              className="font-semibold"
+              data-testid="text-company-name"
+              style={{ fontSize: '16px', fontWeight: 600, color: headerTextColor, lineHeight: '1.2' }}
+            >
+              {branding.companyName}
+            </h1>
+            {branding.tagline && (
+              <p 
+                className="text-xs"
+                data-testid="text-tagline"
+                style={{ fontSize: '9px', marginTop: '2px', color: headerTextColor, lineHeight: '1.2' }}
               >
-                {branding.companyName}
-              </h1>
-              {branding.tagline && (
-                <p 
-                  className="font-light mt-1"
-                  data-testid="text-tagline"
-                  style={{ fontSize: '14px', fontWeight: 300, marginTop: '4px', color: '#2d5016' }}
-                >
-                  {branding.tagline}
-                </p>
-              )}
-            </div>
-            
-            {/* Sales Agents - Bottom Right */}
-            {salesAgents.length > 0 && (
-              <div className="flex gap-6 justify-end">
-                {salesAgents.map((agent, index) => (
-                  <div key={index} className="text-right min-w-0" data-testid={`agent-header-${index}`}>
-                    {agent.region && (
-                      <p 
-                        className="font-medium"
-                        style={{ fontSize: '10px', fontWeight: 500, color: '#2d5016' }}
-                      >
-                        {agent.region}
-                      </p>
-                    )}
-                    <p 
-                      className="font-medium" 
-                      style={{ fontSize: '12px', fontWeight: 400, color: '#2d5016' }}
-                    >
-                      {agent.name}
-                    </p>
-                    <p 
-                      style={{ fontSize: '10px', fontWeight: 300, color: '#2d5016' }}
-                    >
-                      {agent.email}
-                    </p>
-                    <p 
-                      style={{ fontSize: '10px', fontWeight: 300, color: '#2d5016' }}
-                    >
-                      {agent.phone}
-                    </p>
-                  </div>
-                ))}
-              </div>
+                {branding.tagline}
+              </p>
             )}
           </div>
+          
+          {/* Sales Agents - Right */}
+          {salesAgents.length > 0 && (
+            <div className="flex gap-4 flex-shrink-0">
+              {salesAgents.slice(0, 2).map((agent, index) => (
+                <div key={index} className="text-right text-xs" data-testid={`agent-header-${index}`} style={{ fontSize: '7px', lineHeight: '1.2' }}>
+                  {agent.region && (
+                    <p style={{ fontWeight: 500, color: headerTextColor }}>
+                      {agent.region}
+                    </p>
+                  )}
+                  <p style={{ fontWeight: 500, color: headerTextColor }}>
+                    {agent.name}
+                  </p>
+                  <p style={{ color: headerTextColor, opacity: 0.9 }}>
+                    {agent.email}
+                  </p>
+                  <p style={{ color: headerTextColor, opacity: 0.9 }}>
+                    {agent.phone}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 
-      <main className="px-16 py-6" style={{ paddingTop: '24px', paddingBottom: '24px' }}>
+      {/* Ultra-Compact Table Layout */}
+      <main className="px-8 py-4" style={{ paddingTop: '16px', paddingBottom: '16px', paddingLeft: '32px', paddingRight: '32px' }}>
         {Object.entries(groupedProducts).map(([category, categoryProducts], categoryIndex) => (
-          <div key={category} className={categoryIndex > 0 ? "mt-16" : ""} style={{ marginTop: categoryIndex > 0 ? '64px' : '0' }}>
+          <div key={category} className={categoryIndex > 0 ? "mt-6" : ""} style={{ marginTop: categoryIndex > 0 ? '24px' : '0' }}>
+            {/* Compact Category Header */}
             <h2 
-              className="text-2xl font-light text-gray-900 mb-6"
+              className="font-semibold mb-2"
               data-testid={`category-${categoryIndex}`}
-              style={{ fontSize: '24px', fontWeight: 300, marginBottom: '24px' }}
+              style={{ 
+                fontSize: '10px',
+                fontWeight: 600,
+                marginBottom: '4px',
+                paddingBottom: '2px',
+                borderBottom: '1px solid #d1d5db'
+              }}
             >
               {category}
             </h2>
 
-            <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {categoryProducts.map((product) => (
-                <div 
-                  key={product.id}
-                  className="flex items-start gap-4 py-3 border-b border-gray-200"
-                  data-testid={`product-row-${product.id}`}
-                  style={{ paddingTop: '12px', paddingBottom: '12px', borderBottom: '1px solid #e5e7eb' }}
-                >
-                  {product.productImageUrl && (
-                    <div className="flex-shrink-0">
-                      <img
-                        src={product.productImageUrl}
-                        alt={product.product}
-                        style={{ 
-                          width: '48px',
-                          height: '48px',
-                          objectFit: 'cover',
-                          borderRadius: '4px',
-                          border: '1px solid #e5e7eb'
-                        }}
-                        onError={(e) => {
-                          console.error('Image failed to load:', product.productImageUrl);
-                          e.currentTarget.style.display = 'none';
-                        }}
-                        data-testid={`product-image-${product.id}`}
-                      />
-                    </div>
+            {/* Ultra-Compact Table */}
+            <table 
+              className="w-full border-collapse"
+              style={{ 
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '8.5px',
+                lineHeight: '1.2'
+              }}
+            >
+              <thead>
+                <tr style={{ backgroundColor: '#f3f4f6' }}>
+                  {hasImages && (
+                    <th 
+                      className="text-left font-semibold"
+                      style={{ 
+                        padding: '2px 4px',
+                        fontSize: '7px',
+                        fontWeight: 600,
+                        textAlign: 'left',
+                        width: '5%'
+                      }}
+                    >
+                      Img
+                    </th>
                   )}
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900" style={{ fontSize: '15px', fontWeight: 500 }}>
+                  <th 
+                    className="text-left font-semibold"
+                    style={{ 
+                      padding: '2px 4px',
+                      fontSize: '7px',
+                      fontWeight: 600,
+                      textAlign: 'left',
+                      width: '12%'
+                    }}
+                  >
+                    SKU
+                  </th>
+                  <th 
+                    className="text-left font-semibold"
+                    style={{ 
+                      padding: '2px 4px',
+                      fontSize: '7px',
+                      fontWeight: 600,
+                      textAlign: 'left',
+                      width: hasImages ? '35%' : '40%'
+                    }}
+                  >
+                    Product
+                  </th>
+                  <th 
+                    className="text-left font-semibold"
+                    style={{ 
+                      padding: '2px 4px',
+                      fontSize: '7px',
+                      fontWeight: 600,
+                      textAlign: 'left',
+                      width: '18%'
+                    }}
+                  >
+                    Format
+                  </th>
+                  <th 
+                    className="text-right font-semibold"
+                    style={{ 
+                      padding: '2px 4px',
+                      fontSize: '7px',
+                      fontWeight: 600,
+                      textAlign: 'right',
+                      width: hasImages ? '10%' : '12%'
+                    }}
+                  >
+                    Price
+                  </th>
+                  <th 
+                    className="text-left font-semibold"
+                    style={{ 
+                      padding: '2px 4px',
+                      fontSize: '7px',
+                      fontWeight: 600,
+                      textAlign: 'left',
+                      width: hasImages ? '20%' : '18%'
+                    }}
+                  >
+                    Notes
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {categoryProducts.map((product, productIndex) => (
+                  <tr 
+                    key={product.id}
+                    data-testid={`product-row-${product.id}`}
+                    style={{ 
+                      backgroundColor: productIndex % 2 === 0 ? '#ffffff' : '#f2f2f2'
+                    }}
+                  >
+                    {hasImages && (
+                      <td style={{ padding: '1px 4px', verticalAlign: 'middle' }}>
+                        {product.productImageUrl && (
+                          <img
+                            src={product.productImageUrl}
+                            alt={product.product}
+                            style={{ 
+                              width: '16px',
+                              height: '16px',
+                              objectFit: 'cover'
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                            data-testid={`product-image-${product.id}`}
+                          />
+                        )}
+                      </td>
+                    )}
+                    <td style={{ padding: '1px 4px', fontSize: '8.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {product.sku}
+                    </td>
+                    <td style={{ padding: '1px 4px', fontSize: '8.5px', fontWeight: 500 }}>
                       {product.product}
-                    </p>
-                    <div className="flex gap-3 mt-1 text-sm text-gray-500" style={{ fontSize: '13px', marginTop: '4px' }}>
-                      <span>{product.sku}</span>
-                      <span>•</span>
-                      <span>{product.format}</span>
-                      {product.notes && (
-                        <>
-                          <span>•</span>
-                          <span>{product.notes}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-lg font-medium text-gray-900" style={{ fontSize: '18px', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
+                    </td>
+                    <td style={{ padding: '1px 4px', fontSize: '8.5px' }}>
+                      {product.format}
+                    </td>
+                    <td style={{ padding: '1px 4px', fontSize: '8.5px', fontWeight: 500, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       {product.price}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                    </td>
+                    <td style={{ padding: '1px 4px', fontSize: '8.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {product.notes}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ))}
       </main>
 
-      {/* Footer - Minimal Height */}
+      {/* Compact Footer */}
       <footer 
-        className="px-16 py-2 border-t border-gray-300 mt-12"
-        style={{ marginTop: '48px', borderTop: '1px solid #d1d5db', paddingTop: '8px', paddingBottom: '8px' }}
+        className="px-8 py-1 border-t mt-6"
+        style={{ 
+          marginTop: '24px',
+          borderTop: '1px solid #d1d5db',
+          paddingTop: '4px',
+          paddingBottom: '4px',
+          paddingLeft: '32px',
+          paddingRight: '32px'
+        }}
       >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 text-xs text-gray-600" style={{ fontSize: '10px', color: '#6b7280' }}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2" style={{ fontSize: '7px', color: '#6b7280' }}>
             <span className="page-number">Page: </span>
             <span>{branding.companyName} Pricelist - {currentDate}</span>
           </div>
 
-          {/* QR Code - Far Right */}
           {qrCodeConfig && (
             <div className="flex-shrink-0">
               <QRCodeSVG
                 value={qrCodeConfig.url}
-                size={32}
+                size={20}
                 data-testid="qr-code"
               />
             </div>
