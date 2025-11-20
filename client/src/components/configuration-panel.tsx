@@ -53,22 +53,9 @@ export function ConfigurationPanel({
     if (profile) {
       setLogoPreview(profile.branding.logoUrl);
       
-      // If profile has a logo but no colors, extract them
-      if (profile.branding.logoUrl && (!profile.branding.headerBackgroundColor || !profile.branding.headerTextColor)) {
-        try {
-          const { backgroundColor, textColor } = await getPaletteFromLogo(profile.branding.logoUrl);
-          onBrandingChange({ 
-            ...profile.branding,
-            headerBackgroundColor: backgroundColor,
-            headerTextColor: textColor,
-          });
-        } catch (error) {
-          console.error('Failed to extract colors from logo:', error);
-          onBrandingChange(profile.branding);
-        }
-      } else {
-        onBrandingChange(profile.branding);
-      }
+      // Never auto-extract colours - user can manually use "Extract from Logo" button
+      // This prevents overwriting manually set colours
+      onBrandingChange(profile.branding);
     }
   };
 
