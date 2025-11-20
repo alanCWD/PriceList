@@ -7,7 +7,7 @@ import { z } from "zod";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, FileText, Trash2, Edit, Calendar } from "lucide-react";
+import { Loader2, Plus, FileText, Trash2, Edit, Eye, Calendar } from "lucide-react";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { format } from "date-fns";
 import type { Pricelist, Company, Product, CompanyBranding } from "@shared/schema";
@@ -56,8 +56,8 @@ export default function Dashboard() {
     setLocation("/editor");
   };
 
-  const handleEdit = (id: number) => {
-    setLocation(`/editor?id=${id}`);
+  const handleView = (id: number) => {
+    setLocation(`/view?id=${id}`);
   };
 
   // Schema-backed JSON field parser with validation for data integrity
@@ -233,11 +233,11 @@ export default function Dashboard() {
                   <Button
                     variant="outline"
                     className="flex-1"
-                    onClick={() => handleEdit(pricelist.id)}
-                    data-testid={`button-edit-${pricelist.id}`}
+                    onClick={() => handleView(pricelist.id)}
+                    data-testid={`button-view-${pricelist.id}`}
                   >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
+                    <Eye className="w-4 h-4 mr-2" />
+                    View
                   </Button>
                   
                   <AlertDialog>

@@ -9,6 +9,7 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import ClientLanding from "@/pages/client-landing";
 import Editor from "@/pages/editor";
+import PricelistView from "@/pages/pricelist-view";
 import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/client" component={ClientLanding} />
       <Route path="/editor" component={Editor} />
+      <Route path="/view" component={PricelistView} />
       <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />
     </Switch>
