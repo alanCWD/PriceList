@@ -14,6 +14,7 @@ import { SavePricelistDialog } from "@/components/save-pricelist-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { stripHtml } from "@/lib/text-utils";
+import { parseCollection } from "@/lib/collection-parser";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template } from "@shared/schema";
 
 export default function Editor() {
@@ -175,10 +176,22 @@ export default function Editor() {
         }
       }
       
+      // Parse collection field if available to extract brand name
+      let category = stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : "");
+      const collectionField = fieldMapping.category ? row[fieldMapping.category] : null;
+      
+      if (collectionField) {
+        const parsed = parseCollection(collectionField);
+        if (parsed) {
+          // Use sortKey as category - it contains brand name with sorting prefix
+          category = parsed.sortKey;
+        }
+      }
+      
       // Strip HTML tags from all text fields (Wix exports include HTML markup)
       return {
         id: `product-${index}`,
-        category: stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : ""),
+        category,
         notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
         product: stripHtml(row[fieldMapping.product] || ""),
         sku: stripHtml(row[fieldMapping.sku] || ""),
