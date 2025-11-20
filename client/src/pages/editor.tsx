@@ -195,6 +195,7 @@ export default function Editor() {
   const saveMutation = useMutation({
     mutationFn: async ({ name, description }: { name: string; description?: string }) => {
       console.log("Mutation: Starting mutation with:", { name, description, productsCount: products.length });
+      console.log("Mutation: Current branding state:", JSON.stringify(companyBranding, null, 2));
       const payload = {
         name,
         description,
@@ -207,6 +208,7 @@ export default function Editor() {
         categoryFilter: categoryFilter ?? null, // Explicitly send null instead of undefined
       };
 
+      console.log("Mutation: Payload branding:", JSON.stringify(payload.branding, null, 2));
       console.log("Mutation: Payload size:", JSON.stringify(payload).length, "bytes");
 
       if (currentPricelistId) {
