@@ -76,20 +76,9 @@ export function ConfigurationPanel({
         const result = reader.result as string;
         setLogoPreview(result);
         
-        // Extract colors from logo
-        try {
-          const { backgroundColor, textColor } = await getPaletteFromLogo(result);
-          onBrandingChange({ 
-            ...branding, 
-            logoUrl: result,
-            headerBackgroundColor: backgroundColor,
-            headerTextColor: textColor,
-          });
-        } catch (error) {
-          console.error('Failed to extract colors from logo:', error);
-          // Fallback: set logo without colors
-          onBrandingChange({ ...branding, logoUrl: result });
-        }
+        // Never auto-extract colours - preserves manually set colours
+        // User can manually click "Extract from Logo" button if needed
+        onBrandingChange({ ...branding, logoUrl: result });
       };
       reader.readAsDataURL(file);
     }
