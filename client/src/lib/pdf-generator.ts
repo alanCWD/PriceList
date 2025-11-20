@@ -787,14 +787,10 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       yPosition += 12; // Minimal spacing between categories
     }
 
-    // Category header - use same color as main header
-    if (bgColor) {
-      doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
-    } else {
-      doc.setFillColor(30, 30, 30); // Fallback to dark gray
-    }
+    // Category header - blue bar with grey text (minimalist design)
+    doc.setFillColor(74, 144, 226); // Blue bar (#4A90E2)
     doc.rect(margin, yPosition, pageWidth - margin * 2, 18, "F"); // Smaller header
-    doc.setTextColor(textColor.r, textColor.g, textColor.b);
+    doc.setTextColor(107, 114, 128); // Grey text (#6B7280)
     doc.setFontSize(11); // Smaller category font
     doc.setFont("helvetica", "bold");
     doc.text(category, margin + 8, yPosition + 12);
