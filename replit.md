@@ -59,8 +59,10 @@ The system features a robust, database-centric security model where all authoriz
 - **CSV-Based Field Mapping**: Admins configure default mappings that clients inherit.
 - **Auto-Generated Pricelist Names**: Consistent naming convention.
 - **Template System**: Three professional, print-optimized templates (Modern, Classic, Minimal).
-  - Modern template: Full header (logo, title/tagline, sales agents) on page 1; simple centered title bar on pages 2+
-  - All templates: Category headers sorted alphabetically A-Z; products within categories remain in original CSV order
+  - **Modern template**: Full header (logo left, title/tagline center, sales agents right) on page 1 (~120pt height); simple centered title bar on pages 2+
+  - **Minimal template**: Compact header matching Modern layout (logo left, title/tagline center, agents right) with reduced fonts and height (~40-50pt), shown only on page 1; very compressed row spacing (8pt body font, 7pt headers) to minimize page count; dynamic column inclusion (Image/Notes columns only when data present); reduced margins (40pt vs 48pt) for maximum content density
+  - **Classic template**: Traditional layout with centered branding
+  - **All templates**: Category headers sorted alphabetically A-Z; products within categories maintain original CSV order; "Uncategorized" products excluded from output; branding colors applied to headers
 - **Database Persistence**: Full CRUD operations for pricelists with company isolation.
 - **Professional Document Design**: High-quality, print-ready PDF exports with template-specific styling.
 - **Validation & UX**: Comprehensive validation, error handling, and notifications.
