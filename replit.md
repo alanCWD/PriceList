@@ -59,6 +59,8 @@ The system features a robust, database-centric security model where all authoriz
 - **CSV-Based Field Mapping**: Admins configure default mappings that clients inherit.
 - **Auto-Generated Pricelist Names**: Consistent naming convention.
 - **Template System**: Three professional, print-optimized templates (Modern, Classic, Minimal).
+  - Modern template: Full header (logo, title/tagline, sales agents) on page 1; simple centered title bar on pages 2+
+  - All templates: Category headers sorted alphabetically A-Z; products within categories remain in original CSV order
 - **Database Persistence**: Full CRUD operations for pricelists with company isolation.
 - **Professional Document Design**: High-quality, print-ready PDF exports with template-specific styling.
 - **Validation & UX**: Comprehensive validation, error handling, and notifications.
