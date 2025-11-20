@@ -263,8 +263,10 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     });
   await Promise.all(imagePromises);
 
-  // Render products by category
-  Object.entries(groupedProducts).forEach(([category, categoryProducts], index) => {
+  // Render products by category (sorted alphabetically by category name)
+  Object.entries(groupedProducts)
+    .sort(([categoryA], [categoryB]) => categoryA.localeCompare(categoryB))
+    .forEach(([category, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 20;
     }
@@ -486,7 +488,9 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     return acc;
   }, {} as Record<string, Product[]>);
 
-  Object.entries(groupedProducts).forEach(([category, categoryProducts], index) => {
+  Object.entries(groupedProducts)
+    .sort(([categoryA], [categoryB]) => categoryA.localeCompare(categoryB))
+    .forEach(([category, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 25;
     }
@@ -631,7 +635,9 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     doc.text(footerText, margin, footerY);
   };
 
-  Object.entries(groupedProducts).forEach(([category, categoryProducts], index) => {
+  Object.entries(groupedProducts)
+    .sort(([categoryA], [categoryB]) => categoryA.localeCompare(categoryB))
+    .forEach(([category, categoryProducts], index) => {
     if (yPosition + 50 > maxY) {
       addFooter();
       doc.addPage();
