@@ -70,11 +70,32 @@ The system features a robust, database-centric security model where all authoriz
 
 ### Routing Structure
 - `/`: Role-based routing to admin dashboard or client landing page.
-- `/dashboard`: Admin dashboard.
-- `/client`: Client landing page.
-- `/editor`: Full pricelist editor (primarily for admins).
+- `/dashboard`: Admin dashboard with pricelist cards showing "View" buttons.
+- `/client`: Client landing page with inline preview and CSV upload.
+- `/view`: View-only page for saved pricelists (preview, download, print). No CSV upload required.
+- `/editor`: Full pricelist editor for creating new pricelists or editing existing ones.
 - `/admin`: Admin interface (admin role only).
 - `/login`: Login page.
+
+### Pricelist Viewing Workflow
+**Problem Solved**: Users no longer need to re-upload CSV files to view or download saved pricelists.
+
+**New Workflow**:
+1. **Dashboard** → Click "View" on any pricelist card
+2. **View Page** (`/view?id={pricelistId}`) displays:
+   - Pricelist name and description in header
+   - Full preview with all formatting and branding
+   - Download PDF button (works immediately, no CSV needed)
+   - Print button for direct printing
+   - Edit button to switch to full editor if changes are needed
+3. **Editor** (optional) → Accessed via "Edit" button from view page for modifications
+
+**Technical Details**:
+- View page loads complete pricelist data from database
+- All product data, branding, sales agents, QR codes, and templates restored from database
+- PreviewPanel component renders exactly as it appears in editor
+- PDF generation uses same data source as preview (database, not CSV)
+- Client landing page (`/client`) continues to show inline preview for latest pricelist
 
 ### User Profile Menu & View Switching
 **Component**: `client/src/components/user-profile-menu.tsx`
