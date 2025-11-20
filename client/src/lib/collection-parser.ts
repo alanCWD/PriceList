@@ -167,9 +167,26 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
 
 /**
  * Get display name from sort key (strips sorting prefix)
+ * 
+ * Sort key formats:
+ * - "1-cider-Salt Spring Wild" → "Salt Spring Wild"
+ * - "2-wine-1-white-Synchromesh" → "Synchromesh"
+ * - "4-nonAlc-Ones+ Non-Alc BC Wine" → "Ones+ Non-Alc BC Wine"
  */
 export function getDisplayName(sortKey: string): string {
-  // Extract brand from sort key like "2-wine-1-white-Synchromesh"
-  const parts = sortKey.split('-');
-  return parts[parts.length - 1];
+  // Sort keys have format: {num}-{category}-[{num}-{subtype}-]{brandName}
+  // Wine has extra segments: "2-wine-1-white-BrandName"
+  // Others: "1-cider-BrandName" or "3-spirits-BrandName" or "4-nonAlc-BrandName"
+  
+  // Strategy: Remove leading numeric and category prefixes
+  // Match pattern: starts with digit(s), hyphen, letters, hyphen, optionally (digit(s), hyphen, letters, hyphen)
+  // Everything after those prefixes is the brand name (which may contain hyphens)
+  
+  const match = sortKey.match(/^\d+-\w+(?:-\d+-\w+)?-(.+)$/);
+  if (match) {
+    return match[1]; // Return captured brand name
+  }
+  
+  // Fallback: if format doesn't match, return as-is
+  return sortKey;
 }
