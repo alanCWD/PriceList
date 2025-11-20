@@ -869,7 +869,8 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       })(),
       margin: { left: margin, right: margin, top: 35, bottom: margin + footerHeight },
       didDrawCell: hasImages ? (data) => {
-        if (data.column.index === 0 && data.section === 'body') {
+        // Only process body cells in the image column with valid row indices
+        if (data.column.index === 0 && data.section === 'body' && data.row.index >= 0) {
           const product = currentCategoryProducts[data.row.index];
           if (!product) {
             console.error(`Product not found at index ${data.row.index} in category ${category}`);
