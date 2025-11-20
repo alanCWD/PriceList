@@ -697,16 +697,18 @@ function MinimalTemplate({
       <main className="px-8 py-4" style={{ paddingTop: '16px', paddingBottom: '16px', paddingLeft: '32px', paddingRight: '32px' }}>
         {Object.entries(groupedProducts).map(([category, categoryProducts], categoryIndex) => (
           <div key={category} className={categoryIndex > 0 ? "mt-6" : ""} style={{ marginTop: categoryIndex > 0 ? '24px' : '0' }}>
-            {/* Compact Category Header */}
+            {/* Compact Category Header - Blue bar with grey text */}
             <h2 
               className="font-semibold mb-2"
               data-testid={`category-${categoryIndex}`}
               style={{ 
-                fontSize: '10px',
+                fontSize: '11px',
                 fontWeight: 600,
-                marginBottom: '4px',
-                paddingBottom: '2px',
-                borderBottom: '1px solid #d1d5db'
+                marginBottom: '8px',
+                padding: '6px 8px',
+                backgroundColor: '#4A90E2',
+                color: '#6B7280',
+                borderRadius: '2px'
               }}
             >
               {category}
