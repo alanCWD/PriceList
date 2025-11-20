@@ -33,6 +33,7 @@ export function ColorPicker({
   }, [currentColor]);
 
   const handleColorChange = (newColor: string) => {
+    console.log(`[ColorPicker] Color changed from ${currentColor} to ${newColor} for "${label}"`);
     onChange(newColor);
     setHexInput(newColor);
   };
@@ -43,6 +44,7 @@ export function ColorPicker({
     
     // Only propagate to parent if it's a valid hex color format
     if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+      console.log(`[ColorPicker] Input value changed to ${value} for "${label}"`);
       onChange(value);
     }
   };

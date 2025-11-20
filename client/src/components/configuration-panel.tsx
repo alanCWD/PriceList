@@ -241,11 +241,15 @@ export function ConfigurationPanel({
             <ColorPicker
               label="Header & Logo Background Color"
               color={branding.headerBackgroundColor}
-              onChange={(color) => onBrandingChange({ ...branding, headerBackgroundColor: color })}
+              onChange={(color) => {
+                console.log(`[ConfigurationPanel] headerBackgroundColor changing to ${color}`);
+                onBrandingChange({ ...branding, headerBackgroundColor: color });
+              }}
               onExtractFromLogo={async () => {
                 if (logoPreview) {
                   try {
                     const { backgroundColor } = await getPaletteFromLogo(logoPreview);
+                    console.log(`[ConfigurationPanel] Extracted headerBackgroundColor from logo: ${backgroundColor}`);
                     onBrandingChange({ ...branding, headerBackgroundColor: backgroundColor });
                   } catch (error) {
                     console.error('Failed to extract color from logo:', error);
@@ -258,11 +262,15 @@ export function ConfigurationPanel({
             <ColorPicker
               label="Header Text Color"
               color={branding.headerTextColor}
-              onChange={(color) => onBrandingChange({ ...branding, headerTextColor: color })}
+              onChange={(color) => {
+                console.log(`[ConfigurationPanel] headerTextColor changing to ${color}`);
+                onBrandingChange({ ...branding, headerTextColor: color });
+              }}
               onExtractFromLogo={async () => {
                 if (logoPreview) {
                   try {
                     const { textColor } = await getPaletteFromLogo(logoPreview);
+                    console.log(`[ConfigurationPanel] Extracted headerTextColor from logo: ${textColor}`);
                     onBrandingChange({ ...branding, headerTextColor: textColor });
                   } catch (error) {
                     console.error('Failed to extract color from logo:', error);
