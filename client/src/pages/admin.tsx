@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog } from "lucide-react";
+import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, Tag } from "lucide-react";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { CSVUpload } from "@/components/csv-upload";
 import { ColorPicker } from "@/components/color-picker";
@@ -23,7 +23,9 @@ import type {
   Company,
   User,
   Template,
-  FieldMapping
+  FieldMapping,
+  BrandRegistry,
+  BrandCategory
 } from "@shared/schema";
 
 export default function AdminPage() {
@@ -120,7 +122,7 @@ export default function AdminPage() {
         ) : (
           <>
             {/* Company Admin Tabs */}
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="branding" data-testid="tab-company-branding">
                 <Building2 className="w-4 h-4 mr-2" />
                 Company Branding
@@ -128,6 +130,10 @@ export default function AdminPage() {
               <TabsTrigger value="sales-agents" data-testid="tab-company-sales-agents">
                 <Users className="w-4 h-4 mr-2" />
                 Sales Agents
+              </TabsTrigger>
+              <TabsTrigger value="brands" data-testid="tab-brand-registry">
+                <Tag className="w-4 h-4 mr-2" />
+                Brand Registry
               </TabsTrigger>
             </TabsList>
 
@@ -137,6 +143,10 @@ export default function AdminPage() {
 
             <TabsContent value="sales-agents" className="mt-6">
               <CompanySalesAgentsManager />
+            </TabsContent>
+
+            <TabsContent value="brands" className="mt-6">
+              <BrandRegistryManager />
             </TabsContent>
           </>
         )}
@@ -2034,6 +2044,352 @@ function CompanySalesAgentsManager() {
           </Button>
         </CardFooter>
       </Card>
+    </div>
+  );
+}
+
+function BrandRegistryManager() {
+  const { toast } = useToast();
+  const [editingBrand, setEditingBrand] = useState<BrandRegistry | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [brandName, setBrandName] = useState("");
+  const [category, setCategory] = useState<BrandCategory>("wine");
+  const [displayOrder, setDisplayOrder] = useState<number | undefined>(undefined);
+
+  // Fetch brands for current company
+  const { data: brands, isLoading } = useQuery<BrandRegistry[]>({
+    queryKey: ["/api/brands"],
+  });
+
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: async (data: { brandName: string; category: BrandCategory; displayOrder?: number }) => {
+      const res = await apiRequest("POST", "/api/brands", data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      toast({ title: "Brand added successfully" });
+      setIsAddDialogOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to add brand", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async (data: { id: number; brandName?: string; category?: BrandCategory; displayOrder?: number | null }) => {
+      const { id, ...updates } = data;
+      const res = await apiRequest("PATCH", `/api/brands/${id}`, updates);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      toast({ title: "Brand updated successfully" });
+      setEditingBrand(null);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update brand", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/brands/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      toast({ title: "Brand deleted successfully" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to delete brand", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const resetForm = () => {
+    setBrandName("");
+    setCategory("wine");
+    setDisplayOrder(undefined);
+  };
+
+  const handleAdd = () => {
+    if (!brandName.trim()) {
+      toast({ title: "Error", description: "Brand name is required", variant: "destructive" });
+      return;
+    }
+    createMutation.mutate({ brandName: brandName.trim(), category, displayOrder });
+  };
+
+  const handleEdit = (brand: BrandRegistry) => {
+    setEditingBrand(brand);
+    setBrandName(brand.brandName);
+    setCategory(brand.category as BrandCategory);
+    setDisplayOrder(brand.displayOrder || undefined);
+  };
+
+  const handleUpdate = () => {
+    if (!editingBrand) return;
+    if (!brandName.trim()) {
+      toast({ title: "Error", description: "Brand name is required", variant: "destructive" });
+      return;
+    }
+    updateMutation.mutate({
+      id: editingBrand.id,
+      brandName: brandName.trim(),
+      category,
+      displayOrder: displayOrder || null,
+    });
+  };
+
+  const handleDelete = (id: number, name: string) => {
+    if (confirm(`Delete brand "${name}"? This cannot be undone.`)) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const categoryLabels: Record<BrandCategory, string> = {
+    cider: "Cider",
+    wine: "Wine",
+    spirits: "Spirits",
+    nonAlc: "Non-Alcoholic",
+  };
+
+  // Group brands by category
+  const brandsByCategory = brands?.reduce((acc, brand) => {
+    const cat = brand.category as BrandCategory;
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(brand);
+    return acc;
+  }, {} as Record<BrandCategory, BrandRegistry[]>);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center">
+          <Loader2 className="w-6 h-6 mx-auto animate-spin" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Brand Registry</CardTitle>
+              <CardDescription>
+                Manage your company's brand list for consistent categorization and sorting
+              </CardDescription>
+            </div>
+            <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-brand">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Brand
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {!brands || brands.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Tag className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No brands registered yet</p>
+              <p className="text-sm mt-2">Add your first brand to get started</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {(["cider", "wine", "spirits", "nonAlc"] as BrandCategory[]).map((cat) => {
+                const categoryBrands = brandsByCategory?.[cat] || [];
+                if (categoryBrands.length === 0) return null;
+
+                return (
+                  <div key={cat} className="space-y-3">
+                    <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                      {categoryLabels[cat]} ({categoryBrands.length})
+                    </h3>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left px-4 py-2 font-medium text-sm">Brand Name</th>
+                            <th className="text-left px-4 py-2 font-medium text-sm">Display Order</th>
+                            <th className="text-right px-4 py-2 font-medium text-sm">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {categoryBrands.map((brand) => (
+                            <tr key={brand.id} className="border-t hover-elevate" data-testid={`brand-row-${brand.id}`}>
+                              <td className="px-4 py-3">{brand.brandName}</td>
+                              <td className="px-4 py-3 text-muted-foreground text-sm">
+                                {brand.displayOrder || "Auto (A-Z)"}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex gap-2 justify-end">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEdit(brand)}
+                                    data-testid={`button-edit-brand-${brand.id}`}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(brand.id, brand.brandName)}
+                                    data-testid={`button-delete-brand-${brand.id}`}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add Brand Dialog */}
+      {isAddDialogOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setIsAddDialogOpen(false)}>
+          <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle>Add Brand</CardTitle>
+              <CardDescription>Add a new brand to your registry</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="add-brand-name">Brand Name</Label>
+                <Input
+                  id="add-brand-name"
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                  placeholder="Mt. Boucherie Estate Winery"
+                  data-testid="input-brand-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-category">Category</Label>
+                <Select value={category} onValueChange={(v) => setCategory(v as BrandCategory)}>
+                  <SelectTrigger id="add-category" data-testid="select-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cider">Cider</SelectItem>
+                    <SelectItem value="wine">Wine</SelectItem>
+                    <SelectItem value="spirits">Spirits</SelectItem>
+                    <SelectItem value="nonAlc">Non-Alcoholic</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-display-order">Display Order (optional)</Label>
+                <Input
+                  id="add-display-order"
+                  type="number"
+                  value={displayOrder ?? ""}
+                  onChange={(e) => setDisplayOrder(e.target.value ? parseInt(e.target.value) : undefined)}
+                  placeholder="Leave empty for alphabetical"
+                  data-testid="input-display-order"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave empty to sort alphabetically. Lower numbers appear first.
+                </p>
+              </div>
+            </CardContent>
+            <CardFooter className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => { setIsAddDialogOpen(false); resetForm(); }} data-testid="button-cancel-add">
+                Cancel
+              </Button>
+              <Button onClick={handleAdd} disabled={createMutation.isPending} data-testid="button-confirm-add">
+                {createMutation.isPending ? "Adding..." : "Add Brand"}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Brand Dialog */}
+      {editingBrand && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setEditingBrand(null); resetForm(); }}>
+          <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle>Edit Brand</CardTitle>
+              <CardDescription>Update brand information</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-brand-name">Brand Name</Label>
+                <Input
+                  id="edit-brand-name"
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                  data-testid="input-edit-brand-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">Category</Label>
+                <Select value={category} onValueChange={(v) => setCategory(v as BrandCategory)}>
+                  <SelectTrigger id="edit-category" data-testid="select-edit-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cider">Cider</SelectItem>
+                    <SelectItem value="wine">Wine</SelectItem>
+                    <SelectItem value="spirits">Spirits</SelectItem>
+                    <SelectItem value="nonAlc">Non-Alcoholic</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-display-order">Display Order (optional)</Label>
+                <Input
+                  id="edit-display-order"
+                  type="number"
+                  value={displayOrder ?? ""}
+                  onChange={(e) => setDisplayOrder(e.target.value ? parseInt(e.target.value) : undefined)}
+                  placeholder="Leave empty for alphabetical"
+                  data-testid="input-edit-display-order"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave empty to sort alphabetically. Lower numbers appear first.
+                </p>
+              </div>
+            </CardContent>
+            <CardFooter className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => { setEditingBrand(null); resetForm(); }} data-testid="button-cancel-edit">
+                Cancel
+              </Button>
+              <Button onClick={handleUpdate} disabled={updateMutation.isPending} data-testid="button-confirm-edit">
+                {updateMutation.isPending ? "Updating..." : "Update Brand"}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

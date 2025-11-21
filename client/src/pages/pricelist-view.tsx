@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { PreviewPanel } from "@/components/preview-panel";
-import type { Pricelist, Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
+import type { Pricelist, Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
 export default function PricelistView() {
   const [, setLocation] = useLocation();
@@ -16,6 +16,11 @@ export default function PricelistView() {
   const { data: pricelist, isLoading, error } = useQuery<Pricelist>({
     queryKey: pricelistId ? [`/api/pricelists/${pricelistId}`] : [],
     enabled: !!pricelistId,
+  });
+
+  // Load brand registry for the current company
+  const { data: brandRegistry } = useQuery<BrandRegistry[]>({
+    queryKey: ['/api/brands'],
   });
 
   if (!pricelistId) {
@@ -130,6 +135,7 @@ export default function PricelistView() {
           template={template}
           pricelistName={pricelist.name}
           categoryFilter={categoryFilter}
+          brandRegistry={brandRegistry}
         />
       </main>
     </div>

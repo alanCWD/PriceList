@@ -35,7 +35,7 @@ The application employs a React (TypeScript) frontend and a Node.js Express back
 - **Styling**: Tailwind CSS, Inter font family
 
 ### Data Models
-Key data models include `Product`, `FieldMapping`, `CompanyBranding`, `SalesAgent`, `QRCodeConfig`, and `Template`. User and company management are handled via `sessions`, `users`, and `companies` tables, while pricelist-specific data is stored in `pricelists`, `companyProfiles`, and `salesAgentProfiles` for reusability.
+Key data models include `Product`, `FieldMapping`, `CompanyBranding`, `SalesAgent`, `QRCodeConfig`, `Template`, and `BrandRegistry`. User and company management are handled via `sessions`, `users`, and `companies` tables, while pricelist-specific data is stored in `pricelists`, `companyProfiles`, and `salesAgentProfiles` for reusability. Brand registry data is stored in `brandRegistry` table with company-scoped multi-tenant design.
 
 ### Authentication & Authorization
 The system features a robust, database-centric security model where all authorization decisions rely on fresh database lookups. Sessions only contain user IDs, with roles and company affiliations dynamically fetched from the database.
@@ -58,11 +58,19 @@ The system features a robust, database-centric security model where all authoriz
 - **Inline CSV Upload**: Allows clients to easily update pricelists.
 - **CSV-Based Field Mapping**: Admins configure default mappings that clients inherit.
 - **Auto-Generated Pricelist Names**: Consistent naming convention.
+- **Brand Registry System**: Company-scoped master brand list for explicit brand categorization and consistent product grouping.
+  - **Database-Driven**: Brands stored in PostgreSQL with company isolation, category assignment, and optional display order
+  - **Admin UI**: Complete CRUD interface for Company Admins to add, edit, and delete brands
+  - **Priority Lookup**: During CSV upload, brands are looked up in registry FIRST before falling back to pattern matching
+  - **Category Override**: Registry category takes precedence over collection string parsing for consistent categorization
+  - **Alphabetical Sorting**: Brands sorted A-Z within each category group (Cider → Wine → Spirits → NonAlc) unless custom display order set
+  - **Future-Ready**: Infrastructure in place for client filtering feature (all brands or specific brand selection)
 - **Intelligent Collection Parsing & Standardization**: Wix CSV "collection" field parser that extracts brand names and product categories from variable-order semicolon-delimited strings. Handles Canadian wine industry categorization: Cider → Wine (Sparkling/White/Rosé/Red) → Spirits → Non-Alc BC Wine. Products sorted by brand within each category group. Preserves hyphenated brand names (e.g., "Ones+ Non-Alc BC Wine").
+  - **Registry Integration**: parseCollection() now accepts optional brand registry parameter for priority brand lookup
   - **Automatic Standardization**: On CSV upload, messy collection strings are parsed into structured components (category, type, brand, region) and stored in the product data
   - **Wine Type Recognition**: Supports sparkling, white, rosé (rose/pink/blush), and red wine types with proper sort ordering
   - **Region Recognition**: Recognizes regions (Okanagan, Vancouver Island, Lower Mainland, etc.) to distinguish them from brands - regions are stored but not displayed in output
-  - **Known Wineries**: Explicit recognition for brands like Cannon Estate, Synchromesh, Cobble Hill Winery, Salt Spring Wild
+  - **Fallback Pattern Matching**: If brand not found in registry, uses known wineries list and heuristic extraction
   - **Manual Override UI**: "Review" tab in editor allows inline editing of parsed collection data with table interface showing original collection string alongside editable fields
   - **Complete Product Coverage**: All products displayed in review table, including those where parsing failed, allowing manual data entry from scratch
   - **Persistent Storage**: Parsed collection components stored in database JSONB column and survive save/load cycles

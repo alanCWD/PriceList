@@ -15,8 +15,8 @@ import { CollectionEditor } from "@/components/collection-editor";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { stripHtml } from "@/lib/text-utils";
-import { parseCollection } from "@/lib/collection-parser";
-import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template } from "@shared/schema";
+import { parseCollection, type BrandRegistryEntry } from "@/lib/collection-parser";
+import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template, BrandRegistry } from "@shared/schema";
 
 export default function Editor() {
   const [location] = useLocation();
@@ -63,6 +63,11 @@ export default function Editor() {
   const { data: loadedPricelist } = useQuery<Pricelist>({
     queryKey: pricelistId ? ['/api/pricelists', pricelistId] : [],
     enabled: !!pricelistId,
+  });
+
+  // Load brand registry for the current company
+  const { data: brandRegistry } = useQuery<BrandRegistry[]>({
+    queryKey: ['/api/brands'],
   });
 
   // Effect to populate form when pricelist is loaded (editing mode)
@@ -188,7 +193,13 @@ export default function Editor() {
       let collectionRegion: string | undefined;
       
       if (collectionField) {
-        const parsed = parseCollection(collectionField);
+        // Convert brand registry to the format expected by parseCollection
+        const brandRegistryEntries: BrandRegistryEntry[] = (brandRegistry || []).map(b => ({
+          brandName: b.brandName,
+          category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
+          displayOrder: b.displayOrder,
+        }));
+        const parsed = parseCollection(collectionField, brandRegistryEntries);
         if (parsed) {
           // Use sortKey as category - it contains brand name with sorting prefix
           category = parsed.sortKey;
@@ -431,6 +442,7 @@ export default function Editor() {
               template={template}
               pricelistName={currentPricelistName}
               categoryFilter={categoryFilter}
+              brandRegistry={brandRegistry}
             />
           </TabsContent>
         </Tabs>

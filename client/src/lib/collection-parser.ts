@@ -59,10 +59,20 @@ interface ParsedCollection {
   sortKey: string; // e.g., "1-Cider-Salt Spring Wild" or "2-Wine-White-Synchromesh"
 }
 
+export interface BrandRegistryEntry {
+  brandName: string;
+  category: 'cider' | 'wine' | 'spirits' | 'nonAlc';
+  displayOrder?: number | null;
+}
+
 /**
  * Parse collection string to extract brand and categorization
+ * If brandRegistry is provided, brands will be looked up in the registry first
  */
-export function parseCollection(collectionString: string): ParsedCollection | null {
+export function parseCollection(
+  collectionString: string, 
+  brandRegistry?: BrandRegistryEntry[]
+): ParsedCollection | null {
   if (!collectionString) return null;
 
   // Split by semicolon and clean up terms
@@ -71,26 +81,48 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
     .map(term => term.trim())
     .filter(term => term.length > 0)
     .map(term => term.toLowerCase());
-
-  // Determine primary category
-  let primaryCategory: 'cider' | 'wine' | 'spirits' | 'nonAlc' | null = null;
   
-  for (const term of terms) {
-    if (CATEGORY_INDICATORS.cider.some(indicator => term.includes(indicator))) {
-      primaryCategory = 'cider';
-      break;
+  const originalTerms = collectionString.split(';').map(t => t.trim()).filter(t => t.length > 0);
+
+  // FIRST PRIORITY: Check brand registry if provided
+  let registryMatch: { brand: string; category: 'cider' | 'wine' | 'spirits' | 'nonAlc' } | null = null;
+  if (brandRegistry && brandRegistry.length > 0) {
+    for (const term of originalTerms) {
+      const matchedBrand = brandRegistry.find(
+        b => b.brandName.toLowerCase() === term.toLowerCase()
+      );
+      if (matchedBrand) {
+        registryMatch = {
+          brand: matchedBrand.brandName, // Use registry's canonical name
+          category: matchedBrand.category,
+        };
+        break;
+      }
     }
-    if (CATEGORY_INDICATORS.nonAlc.some(indicator => term.includes(indicator))) {
-      primaryCategory = 'nonAlc';
-      break;
-    }
-    if (CATEGORY_INDICATORS.spirits.some(indicator => term.includes(indicator))) {
-      primaryCategory = 'spirits';
-      break;
-    }
-    if (CATEGORY_INDICATORS.wine.some(indicator => term.includes(indicator))) {
-      primaryCategory = 'wine';
-      break;
+  }
+
+  // If we found a match in the registry, use it for category
+  let primaryCategory: 'cider' | 'wine' | 'spirits' | 'nonAlc' | null = registryMatch?.category || null;
+  
+  // If not found in registry, determine category from collection string
+  if (!primaryCategory) {
+    for (const term of terms) {
+      if (CATEGORY_INDICATORS.cider.some(indicator => term.includes(indicator))) {
+        primaryCategory = 'cider';
+        break;
+      }
+      if (CATEGORY_INDICATORS.nonAlc.some(indicator => term.includes(indicator))) {
+        primaryCategory = 'nonAlc';
+        break;
+      }
+      if (CATEGORY_INDICATORS.spirits.some(indicator => term.includes(indicator))) {
+        primaryCategory = 'spirits';
+        break;
+      }
+      if (CATEGORY_INDICATORS.wine.some(indicator => term.includes(indicator))) {
+        primaryCategory = 'wine';
+        break;
+      }
     }
   }
 
@@ -120,49 +152,61 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
   }
 
   // Extract brand name and region
-  let brand = '';
+  // If we matched a brand in the registry, use it; otherwise extract from collection
+  let brand = registryMatch?.brand || '';
   let region: string | undefined;
-  const originalTerms = collectionString.split(';').map(t => t.trim()).filter(t => t.length > 0);
   
-  // First pass: check for known wineries (exact match)
-  for (const term of originalTerms) {
-    const termLower = term.toLowerCase();
-    if (KNOWN_WINERIES.some(w => termLower === w)) {
-      brand = term; // Store original case
-      break;
-    }
-  }
-  
-  // Second pass: identify regions and extract brand if not found
-  for (const term of originalTerms) {
-    const termLower = term.toLowerCase();
-    
-    // Check if it's a region (store ALL regions, including Lower Mainland)
-    if (REGIONS.some(r => termLower === r)) {
-      if (!region) region = term; // Store original case of first region found
-      continue;
+  // If brand not from registry, extract it using pattern matching
+  if (!brand) {
+    // First pass: check for known wineries (exact match)
+    for (const term of originalTerms) {
+      const termLower = term.toLowerCase();
+      if (KNOWN_WINERIES.some(w => termLower === w)) {
+        brand = term; // Store original case
+        break;
+      }
     }
     
-    // If brand already found (from known wineries), just continue processing
-    if (brand) continue;
-    
-    // Skip if it's a category indicator
-    const isCategory = Object.values(CATEGORY_INDICATORS).some(indicators =>
-      indicators.some(indicator => termLower.includes(indicator))
-    );
-    if (isCategory) continue;
-    
-    // Skip if it's a wine type
-    const isWineType = Object.values(WINE_TYPES).some(types =>
-      types.some(type => termLower.includes(type))
-    );
-    if (isWineType) continue;
-    
-    // Skip if it's noise
-    if (NOISE_WORDS.some(noise => termLower === noise)) continue;
-    
-    // This must be the brand
-    brand = term;
+    // Second pass: identify regions and extract brand if not found
+    for (const term of originalTerms) {
+      const termLower = term.toLowerCase();
+      
+      // Check if it's a region (store ALL regions, including Lower Mainland)
+      if (REGIONS.some(r => termLower === r)) {
+        if (!region) region = term; // Store original case of first region found
+        continue;
+      }
+      
+      // If brand already found (from known wineries), just continue processing
+      if (brand) continue;
+      
+      // Skip if it's a category indicator
+      const isCategory = Object.values(CATEGORY_INDICATORS).some(indicators =>
+        indicators.some(indicator => termLower.includes(indicator))
+      );
+      if (isCategory) continue;
+      
+      // Skip if it's a wine type
+      const isWineType = Object.values(WINE_TYPES).some(types =>
+        types.some(type => termLower.includes(type))
+      );
+      if (isWineType) continue;
+      
+      // Skip if it's noise
+      if (NOISE_WORDS.some(noise => termLower === noise)) continue;
+      
+      // This must be the brand
+      brand = term;
+    }
+  } else {
+    // Brand came from registry, but still extract region
+    for (const term of originalTerms) {
+      const termLower = term.toLowerCase();
+      if (REGIONS.some(r => termLower === r)) {
+        if (!region) region = term;
+        break;
+      }
+    }
   }
 
   if (!brand) return null;

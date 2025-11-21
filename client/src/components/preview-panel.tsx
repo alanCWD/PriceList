@@ -5,8 +5,8 @@ import { Download, Printer } from "lucide-react";
 import { PricelistDocument } from "@/components/pricelist-document";
 import { generatePDF } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
-import { parseCollection } from "@/lib/collection-parser";
-import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
+import { parseCollection, type BrandRegistryEntry } from "@/lib/collection-parser";
+import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
 interface PreviewPanelProps {
   products: Product[];
@@ -16,6 +16,7 @@ interface PreviewPanelProps {
   template?: Template;
   pricelistName?: string;
   categoryFilter?: string | null;
+  brandRegistry?: BrandRegistry[];
 }
 
 export function PreviewPanel({
@@ -26,12 +27,20 @@ export function PreviewPanel({
   template = "modern",
   pricelistName,
   categoryFilter,
+  brandRegistry,
 }: PreviewPanelProps) {
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Normalize products: re-parse collection data for any product missing parsed fields
   const normalizedProducts = useMemo(() => {
+    // Convert brand registry to the format expected by parseCollection
+    const brandRegistryEntries: BrandRegistryEntry[] = (brandRegistry || []).map(b => ({
+      brandName: b.brandName,
+      category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
+      displayOrder: b.displayOrder,
+    }));
+    
     return products.map(product => {
       // If all parsed fields are present, use product as-is
       if (product.collectionBrand && product.collectionCategory) {
@@ -40,7 +49,7 @@ export function PreviewPanel({
       
       // Re-parse collection data from collectionRaw or category
       const collectionString = product.collectionRaw || product.category || "";
-      const parsed = parseCollection(collectionString);
+      const parsed = parseCollection(collectionString, brandRegistryEntries);
       
       // If parsing failed, extract a clean brand name from the category string
       if (!parsed) {
@@ -71,7 +80,7 @@ export function PreviewPanel({
         collectionRegion: parsed.region,
       };
     });
-  }, [products]);
+  }, [products, brandRegistry]);
 
   // Filter products by category if filter is set
   const filteredProducts = categoryFilter
