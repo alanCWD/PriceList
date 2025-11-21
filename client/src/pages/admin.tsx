@@ -2224,12 +2224,59 @@ function BrandRegistryManager() {
     return acc;
   }, {} as Record<BrandCategory, BrandRegistry[]>);
 
-  if (isLoading) {
+  // Show loading state while companies are loading for Super Admins
+  if (isSuperAdmin && companiesLoading) {
     return (
       <Card>
         <CardContent className="pt-6 text-center">
           <Loader2 className="w-6 h-6 mx-auto animate-spin" />
+          <p className="text-sm text-muted-foreground mt-2">Loading companies...</p>
         </CardContent>
+      </Card>
+    );
+  }
+
+  // Show message if Super Admin but no companies found
+  if (isSuperAdmin && (!companies || companies.length === 0)) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center">
+          <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p className="text-muted-foreground">No companies found</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show message if Super Admin but no company selected yet
+  if (isSuperAdmin && !selectedCompanyId) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Brand Registry</CardTitle>
+          <CardDescription>
+            Select a company to view and manage their brands
+          </CardDescription>
+          <div className="mt-4">
+            <Label htmlFor="company-selector">Select Company</Label>
+            <Select
+              value={selectedCompanyId?.toString() || ""}
+              onValueChange={(val) => setSelectedCompanyId(parseInt(val))}
+              disabled={companiesLoading}
+            >
+              <SelectTrigger id="company-selector" data-testid="select-company" className="w-full md:w-96">
+                <SelectValue placeholder="Select a company" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies?.map((company) => (
+                  <SelectItem key={company.id} value={company.id.toString()}>
+                    {company.name} (@{company.domain})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
       </Card>
     );
   }
