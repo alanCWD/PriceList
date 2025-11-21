@@ -61,7 +61,7 @@ The system features a robust, database-centric security model where all authoriz
 - **Intelligent Collection Parsing & Standardization**: Wix CSV "collection" field parser that extracts brand names and product categories from variable-order semicolon-delimited strings. Handles Canadian wine industry categorization: Cider → Wine (Sparkling/White/Rosé/Red) → Spirits → Non-Alc BC Wine. Products sorted by brand within each category group. Preserves hyphenated brand names (e.g., "Ones+ Non-Alc BC Wine").
   - **Automatic Standardization**: On CSV upload, messy collection strings are parsed into structured components (category, type, brand, region) and stored in the product data
   - **Wine Type Recognition**: Supports sparkling, white, rosé (rose/pink/blush), and red wine types with proper sort ordering
-  - **Region Filtering**: Blacklists "Lower Mainland" (ignored completely), recognizes legitimate regions (Okanagan, Vancouver Island, etc.)
+  - **Region Recognition**: Recognizes regions (Okanagan, Vancouver Island, Lower Mainland, etc.) to distinguish them from brands - regions are stored but not displayed in output
   - **Known Wineries**: Explicit recognition for brands like Cannon Estate, Synchromesh, Cobble Hill Winery, Salt Spring Wild
   - **Manual Override UI**: "Review" tab in editor allows inline editing of parsed collection data with table interface showing original collection string alongside editable fields
   - **Complete Product Coverage**: All products displayed in review table, including those where parsing failed, allowing manual data entry from scratch

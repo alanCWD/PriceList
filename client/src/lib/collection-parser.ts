@@ -26,7 +26,7 @@ const WINE_TYPES = {
   red: ['red', 'noir', 'merlot', 'cabernet', 'syrah', 'pinot noir'],
 };
 
-// Regions to ignore (not brand names)
+// Regions to recognize (not brand names, stored but not displayed)
 const REGIONS = [
   'okanagan',
   'vancouver island',
@@ -36,10 +36,6 @@ const REGIONS = [
   'kootenays',
   'bc',
   'british columbia',
-];
-
-// Regions to ignore completely (blacklisted - won't be stored)
-const BLACKLISTED_REGIONS = [
   'lower mainland',
 ];
 
@@ -137,22 +133,17 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
     }
   }
   
-  // Second pass: identify legitimate regions (skip blacklisted ones) and extract brand if not found
+  // Second pass: identify regions and extract brand if not found
   for (const term of originalTerms) {
     const termLower = term.toLowerCase();
     
-    // Skip blacklisted regions entirely (don't store them)
-    if (BLACKLISTED_REGIONS.some(r => termLower === r)) {
-      continue;
-    }
-    
-    // Check if it's a legitimate region (store first legitimate region found)
+    // Check if it's a region (store ALL regions, including Lower Mainland)
     if (REGIONS.some(r => termLower === r)) {
-      if (!region) region = term; // Store original case
+      if (!region) region = term; // Store original case of first region found
       continue;
     }
     
-    // If brand already found (from known wineries), just continue processing regions
+    // If brand already found (from known wineries), just continue processing
     if (brand) continue;
     
     // Skip if it's a category indicator
@@ -210,8 +201,8 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
 
 /**
  * Format parsed collection into standardized display string
- * Format: Category | Type | Brand | Region
- * Example: "Wine | White | Synchromesh | Okanagan"
+ * Format: Category | Type | Brand (region is stored but NOT displayed)
+ * Example: "Wine | White | Synchromesh"
  */
 export function formatCollection(parsed: ParsedCollection): string {
   const parts: string[] = [];
@@ -227,10 +218,7 @@ export function formatCollection(parsed: ParsedCollection): string {
   // Brand
   parts.push(parsed.brand);
   
-  // Region (if present)
-  if (parsed.region) {
-    parts.push(parsed.region);
-  }
+  // Note: Region is stored in the data but NOT displayed in the formatted string
   
   return parts.join(' | ');
 }
