@@ -225,7 +225,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   // Move yPosition to after header (add small spacing)
   yPosition = headerHeight + 20;
 
-  // Group products by category, excluding only explicitly "Uncategorized" items
+  // Group products by brand (collectionBrand), excluding only explicitly "Uncategorized" items
   const groupedProducts = products
     .filter(product => {
       // Only exclude if explicitly labeled "Uncategorized" (case-insensitive)
@@ -233,14 +233,38 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       return !product.category || product.category.toLowerCase() !== "uncategorized";
     })
     .reduce((acc, product) => {
-      // Use category as the grouping key, empty categories will group together
-      const category = product.category || "";
-      if (!acc[category]) {
-        acc[category] = [];
+      // Group by brand to get single bar per brand
+      const brandKey = product.collectionBrand || product.category || "";
+      if (!acc[brandKey]) {
+        acc[brandKey] = [];
       }
-      acc[category].push(product);
+      acc[brandKey].push(product);
       return acc;
     }, {} as Record<string, Product[]>);
+
+  // Sort products within each brand by wine type
+  const wineTypeOrder: Record<string, number> = {
+    'sparkling': 1,
+    'white': 2,
+    'rose': 3,
+    'rosé': 3,
+    'red': 4,
+  };
+
+  Object.values(groupedProducts).forEach(brandProducts => {
+    brandProducts.sort((a, b) => {
+      const typeA = a.collectionType?.toLowerCase() || '';
+      const typeB = b.collectionType?.toLowerCase() || '';
+      const orderA = wineTypeOrder[typeA] || 999;
+      const orderB = wineTypeOrder[typeB] || 999;
+      
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      
+      return (a.product || '').localeCompare(b.product || '');
+    });
+  });
 
   // Load product images as base64 in parallel
   const productImageMap = new Map<string, { data: string; format: string }>();
@@ -264,15 +288,19 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     });
   await Promise.all(imagePromises);
 
-  // Render products by category (sorted alphabetically by category name)
+  // Render products by brand (sorted by sortKey to maintain category hierarchy)
   Object.entries(groupedProducts)
-    .sort(([categoryA], [categoryB]) => categoryA.localeCompare(categoryB))
-    .forEach(([category, categoryProducts], index) => {
+    .sort(([brandA, productsA], [brandB, productsB]) => {
+      const sortKeyA = productsA[0]?.category || brandA;
+      const sortKeyB = productsB[0]?.category || brandB;
+      return sortKeyA.localeCompare(sortKeyB);
+    })
+    .forEach(([brandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 20;
     }
 
-    // Category header - use same color as main header
+    // Brand header - use same color as main header
     if (bgColor) {
       doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
     } else {
@@ -282,7 +310,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text(category, margin + 12, yPosition + 16);
+    doc.text(brandName, margin + 12, yPosition + 16);
     yPosition += 30;
 
     // Check if this category has any products with images
@@ -346,7 +374,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         if (data.column.index === 0 && data.section === 'body') {
           const product = currentCategoryProducts[data.row.index];
           if (!product) {
-            console.error(`Product not found at index ${data.row.index} in category ${category}`);
+            console.error(`Product not found at index ${data.row.index} in brand ${brandName}`);
             return;
           }
           const imageData = productImageMap.get(product.id);
@@ -481,17 +509,45 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
   yPosition += 30;
 
   const groupedProducts = products.reduce((acc, product) => {
-    const category = product.category || "Uncategorized";
-    if (!acc[category]) {
-      acc[category] = [];
+    const brandKey = product.collectionBrand || product.category || "Uncategorized";
+    if (!acc[brandKey]) {
+      acc[brandKey] = [];
     }
-    acc[category].push(product);
+    acc[brandKey].push(product);
     return acc;
   }, {} as Record<string, Product[]>);
 
+  // Sort products within each brand by wine type
+  const wineTypeOrder: Record<string, number> = {
+    'sparkling': 1,
+    'white': 2,
+    'rose': 3,
+    'rosé': 3,
+    'red': 4,
+  };
+
+  Object.values(groupedProducts).forEach(brandProducts => {
+    brandProducts.sort((a, b) => {
+      const typeA = a.collectionType?.toLowerCase() || '';
+      const typeB = b.collectionType?.toLowerCase() || '';
+      const orderA = wineTypeOrder[typeA] || 999;
+      const orderB = wineTypeOrder[typeB] || 999;
+      
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      
+      return (a.product || '').localeCompare(b.product || '');
+    });
+  });
+
   Object.entries(groupedProducts)
-    .sort(([categoryA], [categoryB]) => categoryA.localeCompare(categoryB))
-    .forEach(([category, categoryProducts], index) => {
+    .sort(([brandA, productsA], [brandB, productsB]) => {
+      const sortKeyA = productsA[0]?.category || brandA;
+      const sortKeyB = productsB[0]?.category || brandB;
+      return sortKeyA.localeCompare(sortKeyB);
+    })
+    .forEach(([brandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 25;
     }
@@ -499,7 +555,7 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     doc.setFont("times", "bold");
     doc.setFontSize(18);
     doc.setTextColor(30, 30, 30);
-    doc.text(category, margin, yPosition);
+    doc.text(brandName, margin, yPosition);
     yPosition += 5;
     doc.setDrawColor(156, 163, 175);
     doc.setLineWidth(2);
@@ -741,7 +797,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
   drawHeader();
   yPosition = headerHeight + 15;
 
-  // Group products by category, excluding only explicitly "Uncategorized" items
+  // Group products by brand, excluding only explicitly "Uncategorized" items
   const groupedProducts = products
     .filter(product => {
       // Only exclude if explicitly labeled "Uncategorized" (case-insensitive)
@@ -749,14 +805,38 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       return !product.category || product.category.toLowerCase() !== "uncategorized";
     })
     .reduce((acc, product) => {
-      // Use category as the grouping key, empty categories will group together
-      const category = product.category || "";
-      if (!acc[category]) {
-        acc[category] = [];
+      // Group by brand to get single bar per brand
+      const brandKey = product.collectionBrand || product.category || "";
+      if (!acc[brandKey]) {
+        acc[brandKey] = [];
       }
-      acc[category].push(product);
+      acc[brandKey].push(product);
       return acc;
     }, {} as Record<string, Product[]>);
+
+  // Sort products within each brand by wine type
+  const wineTypeOrder: Record<string, number> = {
+    'sparkling': 1,
+    'white': 2,
+    'rose': 3,
+    'rosé': 3,
+    'red': 4,
+  };
+
+  Object.values(groupedProducts).forEach(brandProducts => {
+    brandProducts.sort((a, b) => {
+      const typeA = a.collectionType?.toLowerCase() || '';
+      const typeB = b.collectionType?.toLowerCase() || '';
+      const orderA = wineTypeOrder[typeA] || 999;
+      const orderB = wineTypeOrder[typeB] || 999;
+      
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      
+      return (a.product || '').localeCompare(b.product || '');
+    });
+  });
 
   // Load product images as base64 in parallel
   const productImageMap = new Map<string, { data: string; format: string }>();
@@ -780,17 +860,21 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     });
   await Promise.all(imagePromises);
 
-  // Render products by category (sorted alphabetically)
+  // Render products by brand (sorted by sortKey to maintain category hierarchy)
   Object.entries(groupedProducts)
-    .sort(([categoryA], [categoryB]) => categoryA.localeCompare(categoryB))
-    .forEach(([category, categoryProducts], index) => {
+    .sort(([brandA, productsA], [brandB, productsB]) => {
+      const sortKeyA = productsA[0]?.category || brandA;
+      const sortKeyB = productsB[0]?.category || brandB;
+      return sortKeyA.localeCompare(sortKeyB);
+    })
+    .forEach(([brandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 12; // Minimal spacing between categories
     }
 
-    // Category header - matches header background colour with grey text
-    // Extract display name (e.g., "2-wine-1-white-Synchromesh" -> "Synchromesh")
-    const displayName = getDisplayName(category);
+    // Brand header - matches header background colour with grey text
+    // brandName is already the clean brand name (e.g., "Mt. Boucherie Estate Winery")
+    const displayName = brandName;
     
     if (bgColor) {
       doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
@@ -799,7 +883,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     }
     doc.rect(margin, yPosition, pageWidth - margin * 2, 18, "F"); // Smaller header
     doc.setTextColor(216, 219, 217); // Grey text (#D8DBD9)
-    doc.setFontSize(11); // Smaller category font
+    doc.setFontSize(11); // Smaller brand font
     doc.setFont("helvetica", "bold");
     doc.text(displayName, margin + 8, yPosition + 12);
     yPosition += 22;
@@ -878,7 +962,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         if (data.column.index === 0 && data.section === 'body' && data.row.index >= 0) {
           const product = currentCategoryProducts[data.row.index];
           if (!product) {
-            console.error(`Product not found at index ${data.row.index} in category ${category}`);
+            console.error(`Product not found at index ${data.row.index} in brand ${brandName}`);
             return;
           }
           const imageData = productImageMap.get(product.id);

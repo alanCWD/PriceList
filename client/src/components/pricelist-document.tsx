@@ -130,11 +130,18 @@ export function PricelistDocument({
         </div>
       </header>
 
-      {/* Products by Category */}
+      {/* Products by Brand */}
       <main className="px-12 py-8" style={{ paddingTop: '32px', paddingBottom: '32px' }}>
-        {Object.entries(groupedProducts).map(([category, categoryProducts], categoryIndex) => (
+        {Object.entries(groupedProducts)
+          .sort(([brandA, productsA], [brandB, productsB]) => {
+            // Sort brand groups by sortKey to maintain category hierarchy
+            const sortKeyA = productsA[0]?.category || brandA;
+            const sortKeyB = productsB[0]?.category || brandB;
+            return sortKeyA.localeCompare(sortKeyB);
+          })
+          .map(([brandName, categoryProducts], categoryIndex) => (
           <div 
-            key={category} 
+            key={brandName} 
             className={categoryIndex > 0 ? "mt-12" : ""}
             style={{ marginTop: categoryIndex > 0 ? '48px' : '0' }}
           >
@@ -153,7 +160,7 @@ export function PricelistDocument({
                 data-testid={`category-${categoryIndex}`}
                 style={{ fontSize: '16px', fontWeight: 600 }}
               >
-                {category}
+                {brandName}
               </h2>
             </div>
 
@@ -489,14 +496,21 @@ function ClassicTemplate({
       </header>
 
       <main className="px-12 py-8" style={{ paddingTop: '32px', paddingBottom: '32px' }}>
-        {Object.entries(groupedProducts).map(([category, categoryProducts], categoryIndex) => (
-          <div key={category} className={categoryIndex > 0 ? "mt-10" : ""} style={{ marginTop: categoryIndex > 0 ? '40px' : '0' }}>
+        {Object.entries(groupedProducts)
+          .sort(([brandA, productsA], [brandB, productsB]) => {
+            // Sort brand groups by sortKey to maintain category hierarchy
+            const sortKeyA = productsA[0]?.category || brandA;
+            const sortKeyB = productsB[0]?.category || brandB;
+            return sortKeyA.localeCompare(sortKeyB);
+          })
+          .map(([brandName, categoryProducts], categoryIndex) => (
+          <div key={brandName} className={categoryIndex > 0 ? "mt-10" : ""} style={{ marginTop: categoryIndex > 0 ? '40px' : '0' }}>
             <h2 
               className="text-xl font-bold text-gray-900 mb-3 pb-2 border-b-2 border-gray-400"
               data-testid={`category-${categoryIndex}`}
               style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px', paddingBottom: '8px', borderBottom: '2px solid #9ca3af' }}
             >
-              {category}
+              {brandName}
             </h2>
 
             <table 
@@ -697,14 +711,19 @@ function MinimalTemplate({
       {/* Ultra-Compact Table Layout */}
       <main className="px-8 py-4" style={{ paddingTop: '16px', paddingBottom: '16px', paddingLeft: '32px', paddingRight: '32px' }}>
         {Object.entries(groupedProducts)
-          .sort(([catA], [catB]) => catA.localeCompare(catB)) // Sort by category sortKey
-          .map(([category, categoryProducts], categoryIndex) => {
-            // Extract display name from sortKey (e.g., "2-wine-1-white-Synchromesh" -> "Synchromesh")
-            const displayName = getDisplayName(category);
+          .sort(([brandA, productsA], [brandB, productsB]) => {
+            // Sort brand groups by sortKey from first product in each group (maintains category hierarchy)
+            const sortKeyA = productsA[0]?.category || brandA;
+            const sortKeyB = productsB[0]?.category || brandB;
+            return sortKeyA.localeCompare(sortKeyB);
+          })
+          .map(([brandName, categoryProducts], categoryIndex) => {
+            // brandName is now the clean brand name (e.g., "Mt. Boucherie Estate Winery")
+            const displayName = brandName;
             
             return (
-              <div key={category} className={categoryIndex > 0 ? "mt-6" : ""} style={{ marginTop: categoryIndex > 0 ? '24px' : '0' }}>
-                {/* Compact Category Header - Matches header background with grey text */}
+              <div key={brandName} className={categoryIndex > 0 ? "mt-6" : ""} style={{ marginTop: categoryIndex > 0 ? '24px' : '0' }}>
+                {/* Compact Brand Header - Matches header background with grey text */}
                 <h2 
                   className="font-semibold mb-2"
                   data-testid={`category-${categoryIndex}`}

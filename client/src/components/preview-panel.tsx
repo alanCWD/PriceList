@@ -62,15 +62,42 @@ export function PreviewPanel({
     window.print();
   };
 
-  // Group filtered products by category
+  // Group filtered products by brand (collectionBrand) for single brand bars
   const groupedProducts = filteredProducts.reduce((acc, product) => {
-    const category = product.category || "Uncategorized";
-    if (!acc[category]) {
-      acc[category] = [];
+    // Use collectionBrand as the key to group all products from same brand together
+    const brandKey = product.collectionBrand || product.category || "Uncategorized";
+    if (!acc[brandKey]) {
+      acc[brandKey] = [];
     }
-    acc[category].push(product);
+    acc[brandKey].push(product);
     return acc;
   }, {} as Record<string, Product[]>);
+
+  // Sort products within each brand group by wine type (Sparkling → White → Rosé → Red)
+  const wineTypeOrder: Record<string, number> = {
+    'sparkling': 1,
+    'white': 2,
+    'rose': 3,
+    'rosé': 3,
+    'red': 4,
+  };
+
+  Object.values(groupedProducts).forEach(brandProducts => {
+    brandProducts.sort((a, b) => {
+      // First sort by wine type
+      const typeA = a.collectionType?.toLowerCase() || '';
+      const typeB = b.collectionType?.toLowerCase() || '';
+      const orderA = wineTypeOrder[typeA] || 999;
+      const orderB = wineTypeOrder[typeB] || 999;
+      
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      
+      // Then by product name as secondary sort
+      return (a.product || '').localeCompare(b.product || '');
+    });
+  });
 
   return (
     <div className="space-y-6">
@@ -134,7 +161,7 @@ export function PreviewPanel({
             <p className="text-2xl font-semibold text-foreground">
               {Object.keys(groupedProducts).length}
             </p>
-            <p className="text-sm text-muted-foreground">Categories</p>
+            <p className="text-sm text-muted-foreground">Brands</p>
           </div>
           <div>
             <p className="text-2xl font-semibold text-foreground">{salesAgents.length}</p>
