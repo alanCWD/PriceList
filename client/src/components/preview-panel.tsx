@@ -1,10 +1,11 @@
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Printer } from "lucide-react";
 import { PricelistDocument } from "@/components/pricelist-document";
 import { generatePDF } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
+import { parseCollection } from "@/lib/collection-parser";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
 
 interface PreviewPanelProps {
@@ -29,10 +30,53 @@ export function PreviewPanel({
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Normalize products: re-parse collection data for any product missing parsed fields
+  const normalizedProducts = useMemo(() => {
+    return products.map(product => {
+      // If all parsed fields are present, use product as-is
+      if (product.collectionBrand && product.collectionCategory) {
+        return product;
+      }
+      
+      // Re-parse collection data from collectionRaw or category
+      const collectionString = product.collectionRaw || product.category || "";
+      const parsed = parseCollection(collectionString);
+      
+      // If parsing failed, extract a clean brand name from the category string
+      if (!parsed) {
+        // Try to extract the first non-region, non-type term as the brand
+        const terms = collectionString
+          .split(';')
+          .map(t => t.trim())
+          .filter(t => t.length > 0);
+        
+        // Find first term that's not a region, wine type, or category
+        const brandTerm = terms.find(t => {
+          const lower = t.toLowerCase();
+          return !lower.match(/okanagan|vancouver island|lower mainland|gulf islands|cider|wine|spirits|sparkling|white|ros[eé]|red|non alcoholic|keg/i);
+        }) || terms[0] || "Uncategorized";
+        
+        return {
+          ...product,
+          collectionBrand: brandTerm,
+        };
+      }
+      
+      // Return product with parsed fields populated
+      return {
+        ...product,
+        collectionBrand: parsed.brand,
+        collectionCategory: parsed.primaryCategory,
+        collectionType: parsed.wineType,
+        collectionRegion: parsed.region,
+      };
+    });
+  }, [products]);
+
   // Filter products by category if filter is set
   const filteredProducts = categoryFilter
-    ? products.filter((p) => p.category === categoryFilter)
-    : products;
+    ? normalizedProducts.filter((p) => p.category === categoryFilter)
+    : normalizedProducts;
 
   const handleDownloadPDF = async () => {
     try {
