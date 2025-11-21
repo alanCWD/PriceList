@@ -790,7 +790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Super Admins can query brands for any company via companyId query param
       let targetCompanyId: number;
-      if (user.role === "super_admin" && req.query.companyId) {
+      if (user.role === "superAdmin" && req.query.companyId) {
         targetCompanyId = parseInt(req.query.companyId as string);
         if (isNaN(targetCompanyId)) {
           return res.status(400).json({ error: "Invalid company ID" });
@@ -824,7 +824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Super Admins can create brands for any company via companyId in request body
       let targetCompanyId: number;
-      if (user.role === "super_admin" && req.body.companyId) {
+      if (user.role === "superAdmin" && req.body.companyId) {
         targetCompanyId = parseInt(req.body.companyId);
         if (isNaN(targetCompanyId)) {
           return res.status(400).json({ error: "Invalid company ID" });
