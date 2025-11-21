@@ -305,6 +305,9 @@ export const brandRegistry = pgTable("brand_registry", {
   brandName: varchar("brand_name", { length: 255 }).notNull(),
   category: varchar("category", { length: 50 }).notNull().$type<'cider' | 'wine' | 'spirits' | 'nonAlc'>(),
   
+  // Optional product type within category (e.g., for wine: red, white, rosé, sparkling)
+  type: varchar("type", { length: 100 }),
+  
   // Optional display order override (null = alphabetical, integer = custom sort)
   displayOrder: integer("display_order"),
   
@@ -326,6 +329,7 @@ export type BrandCategory = z.infer<typeof brandCategoryEnum>;
 export const insertBrandRegistrySchema = createInsertSchema(brandRegistry, {
   brandName: z.string().min(1, "Brand name is required"),
   category: brandCategoryEnum,
+  type: z.string().optional(),
   displayOrder: z.number().int().positive().optional(),
 }).omit({ id: true, createdAt: true, updatedAt: true });
 
@@ -335,4 +339,5 @@ export type InsertBrandRegistry = z.infer<typeof insertBrandRegistrySchema>;
 export const updateBrandRegistrySchema = insertBrandRegistrySchema.partial().extend({
   brandName: z.string().min(1).optional(),
   category: brandCategoryEnum.optional(),
+  type: z.string().optional(),
 });
