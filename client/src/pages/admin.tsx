@@ -84,7 +84,7 @@ export default function AdminPage() {
         {isSuperAdmin ? (
           <>
             {/* Super Admin Tabs */}
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="companies" data-testid="tab-companies">
                 <Building className="w-4 h-4 mr-2" />
                 Companies
@@ -100,6 +100,10 @@ export default function AdminPage() {
               <TabsTrigger value="agents" data-testid="tab-agent-profiles">
                 <Users className="w-4 h-4 mr-2" />
                 Sales Agent Teams
+              </TabsTrigger>
+              <TabsTrigger value="brands" data-testid="tab-brand-registry">
+                <Tag className="w-4 h-4 mr-2" />
+                Brand Registry
               </TabsTrigger>
             </TabsList>
 
@@ -117,6 +121,10 @@ export default function AdminPage() {
 
             <TabsContent value="agents" className="mt-6">
               <SalesAgentProfilesManager />
+            </TabsContent>
+
+            <TabsContent value="brands" className="mt-6">
+              <BrandRegistryManager />
             </TabsContent>
           </>
         ) : (
