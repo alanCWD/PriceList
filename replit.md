@@ -59,12 +59,14 @@ The system features a robust, database-centric security model where all authoriz
 - **CSV-Based Field Mapping**: Admins configure default mappings that clients inherit.
 - **Auto-Generated Pricelist Names**: Consistent naming convention.
 - **Brand Registry System**: Company-scoped master brand list for explicit brand categorization and consistent product grouping.
-  - **Database-Driven**: Brands stored in PostgreSQL with company isolation, category assignment, and optional display order
-  - **Admin UI**: Complete CRUD interface for Company Admins to add, edit, and delete brands
+  - **Database-Driven**: Brands stored in PostgreSQL with company isolation, category assignment, optional type field, and optional display order
+  - **Type Field**: Optional varchar(100) field for product types within categories (e.g., for wine: red, white, rosé, sparkling) - provides flexibility for categorizing products beyond the main category
+  - **Admin UI**: Complete CRUD interface for Company Admins to add, edit, and delete brands with full support for type field in both Add and Edit dialogs
   - **Priority Lookup**: During CSV upload, brands are looked up in registry FIRST before falling back to pattern matching
   - **Category Override**: Registry category takes precedence over collection string parsing for consistent categorization
   - **Alphabetical Sorting**: Brands sorted A-Z within each category group (Cider → Wine → Spirits → NonAlc) unless custom display order set
-  - **Future-Ready**: Infrastructure in place for client filtering feature (all brands or specific brand selection)
+  - **Table Display**: Brand registry table shows Brand Name, Type (displays "—" when unset), Display Order, and Actions columns
+  - **Future-Ready**: Infrastructure in place for client filtering feature (all brands or specific brand selection), and type field can be utilized for filtering or display purposes in pricelists
 - **Intelligent Collection Parsing & Standardization**: Wix CSV "collection" field parser that extracts brand names and product categories from variable-order semicolon-delimited strings. Handles Canadian wine industry categorization: Cider → Wine (Sparkling/White/Rosé/Red) → Spirits → Non-Alc BC Wine. Products sorted by brand within each category group. Preserves hyphenated brand names (e.g., "Ones+ Non-Alc BC Wine").
   - **Registry Integration**: parseCollection() now accepts optional brand registry parameter for priority brand lookup
   - **Automatic Standardization**: On CSV upload, messy collection strings are parsed into structured components (category, type, brand, region) and stored in the product data
