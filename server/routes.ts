@@ -886,6 +886,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Group products by brand
       const productsByBrand: Record<string, any[]> = {};
+      let productsWithoutBrand = 0;
+      
       latestPricelist.products.forEach((product: any) => {
         const brandName = product.collectionBrand;
         if (brandName) {
@@ -893,8 +895,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             productsByBrand[brandName] = [];
           }
           productsByBrand[brandName].push(product);
+        } else {
+          productsWithoutBrand++;
         }
       });
+
+      console.log(`[GET /api/brands/products] Total products: ${latestPricelist.products.length}`);
+      console.log(`[GET /api/brands/products] Products without brand: ${productsWithoutBrand}`);
+      console.log(`[GET /api/brands/products] Brands found: ${Object.keys(productsByBrand).length}`);
+      console.log(`[GET /api/brands/products] Brand names:`, Object.keys(productsByBrand));
 
       res.json(productsByBrand);
     } catch (error) {
