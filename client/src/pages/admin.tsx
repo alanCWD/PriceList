@@ -2301,7 +2301,7 @@ function BrandRegistryManager() {
     setDraggedOverProductId(null);
   };
 
-  const handleDrop = (e: React.DragEvent, targetProductId: string, brandName: string) => {
+  const handleDrop = async (e: React.DragEvent, targetProductId: string, brandName: string) => {
     e.preventDefault();
     
     if (!draggedProductId || draggedProductId === targetProductId) {
@@ -2317,15 +2317,45 @@ function BrandRegistryManager() {
 
     if (draggedIndex === -1 || targetIndex === -1) return;
 
-    // Reorder the products array
-    const reorderedProducts = [...brandProducts];
-    const [draggedProduct] = reorderedProducts.splice(draggedIndex, 1);
-    reorderedProducts.splice(targetIndex, 0, draggedProduct);
+    // Reorder the products within this brand
+    const reorderedBrandProducts = [...brandProducts];
+    const [draggedProduct] = reorderedBrandProducts.splice(draggedIndex, 1);
+    reorderedBrandProducts.splice(targetIndex, 0, draggedProduct);
 
-    // Update each product's order in the backend
-    // For now, we'll just show a toast. In a full implementation, 
-    // you'd save the new order to the pricelist
-    toast({ title: "Product reordered", description: "Drag-and-drop ordering coming soon!" });
+    // Now we need to reconstruct the entire products array with the new order
+    // We'll keep all products from other brands in their original positions
+    // and replace this brand's products with the reordered ones
+    const allProductsFlat: any[] = [];
+    
+    // Flatten productsByBrand into a single array, preserving original order
+    // but using reordered products for the current brand
+    Object.entries(productsByBrand || {}).forEach(([brand, products]) => {
+      if (brand === brandName) {
+        allProductsFlat.push(...reorderedBrandProducts);
+      } else {
+        allProductsFlat.push(...products);
+      }
+    });
+
+    // Save the reordered products to the backend
+    try {
+      const payload = isSuperAdmin && selectedCompanyId
+        ? { reorderedProducts: allProductsFlat, companyId: selectedCompanyId }
+        : { reorderedProducts: allProductsFlat };
+      
+      await apiRequest("PATCH", "/api/brands/products", payload);
+      
+      // Invalidate the products query to refetch with new order
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
+      
+      toast({ title: "Products reordered successfully!" });
+    } catch (error: any) {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to reorder products", 
+        variant: "destructive" 
+      });
+    }
 
     setDraggedProductId(null);
     setDraggedOverProductId(null);

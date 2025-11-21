@@ -809,26 +809,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "No pricelist found for this company" });
       }
 
-      const { productId, updates } = req.body; // updates can contain: collectionType, order, etc.
-      
-      if (!productId) {
-        return res.status(400).json({ error: "Product ID is required" });
-      }
-
-      // Update the product in the products array
-      const updatedProducts = latestPricelist.products.map((p: any) => {
-        if (p.id === productId) {
-          return { ...p, ...updates };
+      // Check if this is a bulk reorder (reorderedProducts array) or single update (productId + updates)
+      if (req.body.reorderedProducts) {
+        // Bulk reorder: replace entire products array with new order
+        await storage.updatePricelist(latestPricelist.id, {
+          products: req.body.reorderedProducts,
+        });
+        res.json({ success: true });
+      } else {
+        // Single product update
+        const { productId, updates } = req.body;
+        
+        if (!productId) {
+          return res.status(400).json({ error: "Product ID is required" });
         }
-        return p;
-      });
 
-      // Save updated pricelist
-      await storage.updatePricelist(latestPricelist.id, {
-        products: updatedProducts,
-      });
+        // Update the product in the products array
+        const updatedProducts = latestPricelist.products.map((p: any) => {
+          if (p.id === productId) {
+            return { ...p, ...updates };
+          }
+          return p;
+        });
 
-      res.json({ success: true });
+        // Save updated pricelist
+        await storage.updatePricelist(latestPricelist.id, {
+          products: updatedProducts,
+        });
+
+        res.json({ success: true });
+      }
     } catch (error) {
       console.error("Error updating product:", error);
       res.status(500).json({ error: "Failed to update product" });
