@@ -788,6 +788,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
+      // Debug logging
+      console.log('[GET /api/brands] User role:', user.role);
+      console.log('[GET /api/brands] Query params:', req.query);
+      console.log('[GET /api/brands] companyId param:', req.query.companyId);
+
       // Super Admins can query brands for any company via companyId query param
       let targetCompanyId: number;
       if (user.role === "superAdmin" && req.query.companyId) {

@@ -2097,8 +2097,12 @@ function BrandRegistryManager() {
       const url = isSuperAdmin && selectedCompanyId
         ? `/api/brands?companyId=${selectedCompanyId}`
         : "/api/brands";
+      console.log('[BrandRegistry] Fetching brands from URL:', url);
       const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch brands");
+      if (!res.ok) {
+        console.error('[BrandRegistry] Fetch failed:', res.status, res.statusText);
+        throw new Error("Failed to fetch brands");
+      }
       return res.json();
     },
     enabled: isSuperAdmin ? !!selectedCompanyId : true,
