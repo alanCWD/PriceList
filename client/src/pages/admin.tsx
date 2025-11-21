@@ -2368,7 +2368,7 @@ function BrandRegistryManager() {
     nonAlc: "Non-Alcoholic",
   };
 
-  // Group brands by category
+  // Group brands by category (backend already sorts by wine → spirits → cider → nonAlc)
   const brandsByCategory = brands?.reduce((acc, brand) => {
     const cat = brand.category as BrandCategory;
     if (!acc[cat]) acc[cat] = [];

@@ -20,7 +20,7 @@ import {
   type BrandRegistry,
   type InsertBrandRegistry,
 } from "@shared/schema";
-import { eq, desc, and, asc } from "drizzle-orm";
+import { eq, desc, and, asc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required by Replit Auth)
@@ -351,7 +351,12 @@ export class DatabaseStorage implements IStorage {
       .from(brandRegistry)
       .where(eq(brandRegistry.companyId, companyId))
       .orderBy(
-        asc(brandRegistry.category),
+        sql`CASE ${brandRegistry.category}
+          WHEN 'wine' THEN 1
+          WHEN 'spirits' THEN 2
+          WHEN 'cider' THEN 3
+          WHEN 'nonAlc' THEN 4
+        END`,
         asc(brandRegistry.displayOrder),
         asc(brandRegistry.brandName)
       );

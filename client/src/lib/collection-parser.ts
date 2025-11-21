@@ -211,11 +211,11 @@ export function parseCollection(
 
   if (!brand) return null;
 
-  // Build sort key based on hierarchy
+  // Build sort key based on hierarchy (Wine → Spirits → Cider → Non-Alc)
   const primarySortOrder = {
-    cider: '1',
-    wine: '2',
-    spirits: '3',
+    wine: '1',
+    spirits: '2',
+    cider: '3',
     nonAlc: '4',
   };
 
