@@ -776,6 +776,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== BRAND REGISTRY ROUTES (Admin & Company Admin) =====
+
+  // Get products grouped by brand from latest pricelist
+  // Returns products from the most recent pricelist for the company
+  app.get("/api/brands/products", isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Determine target company (Super Admin can specify, others use their own)
+      let targetCompanyId: number;
+      if (user.role === "superAdmin" && req.query.companyId) {
+        targetCompanyId = parseInt(req.query.companyId as string);
+        if (isNaN(targetCompanyId)) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+      } else {
+        const effectiveCompanyId = getEffectiveCompanyId(req, user);
+        if (!effectiveCompanyId) {
+          return res.status(400).json({ error: "No company associated with user" });
+        }
+        targetCompanyId = effectiveCompanyId;
+      }
+
+      // Get latest pricelist for this company
+      const latestPricelist = await storage.getLatestPricelistByCompanyId(targetCompanyId);
+      
+      if (!latestPricelist || !latestPricelist.products) {
+        return res.json({}); // Return empty object if no pricelist exists
+      }
+
+      // Group products by brand
+      const productsByBrand: Record<string, any[]> = {};
+      latestPricelist.products.forEach((product: any) => {
+        const brandName = product.collectionBrand;
+        if (brandName) {
+          if (!productsByBrand[brandName]) {
+            productsByBrand[brandName] = [];
+          }
+          productsByBrand[brandName].push(product);
+        }
+      });
+
+      res.json(productsByBrand);
+    } catch (error) {
+      console.error("Error fetching products by brand:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
   
   // Get brands for current user's company (Admin & Company Admin)
   // Super Admins can optionally pass companyId query parameter to view any company's brands

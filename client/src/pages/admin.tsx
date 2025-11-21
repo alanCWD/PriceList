@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, Tag } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { CSVUpload } from "@/components/csv-upload";
 import { ColorPicker } from "@/components/color-picker";
@@ -2108,6 +2109,20 @@ function BrandRegistryManager() {
     enabled: isSuperAdmin ? !!selectedCompanyId : true,
   });
 
+  // Fetch products grouped by brand from latest pricelist
+  const { data: productsByBrand } = useQuery<Record<string, any[]>>({
+    queryKey: isSuperAdmin ? ["/api/brands/products", { companyId: selectedCompanyId }] : ["/api/brands/products"],
+    queryFn: async () => {
+      const url = isSuperAdmin && selectedCompanyId
+        ? `/api/brands/products?companyId=${selectedCompanyId}`
+        : "/api/brands/products";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch products");
+      return res.json();
+    },
+    enabled: isSuperAdmin ? !!selectedCompanyId : true,
+  });
+
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: { brandName: string; category: BrandCategory; type?: string; displayOrder?: number }) => {
@@ -2349,51 +2364,100 @@ function BrandRegistryManager() {
                     <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
                       {categoryLabels[cat]} ({categoryBrands.length})
                     </h3>
-                    <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full">
-                        <thead className="bg-muted/50">
-                          <tr>
-                            <th className="text-left px-4 py-2 font-medium text-sm">Brand Name</th>
-                            <th className="text-left px-4 py-2 font-medium text-sm">Type</th>
-                            <th className="text-left px-4 py-2 font-medium text-sm">Display Order</th>
-                            <th className="text-right px-4 py-2 font-medium text-sm">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {categoryBrands.map((brand) => (
-                            <tr key={brand.id} className="border-t hover-elevate" data-testid={`brand-row-${brand.id}`}>
-                              <td className="px-4 py-3">{brand.brandName}</td>
-                              <td className="px-4 py-3 text-muted-foreground text-sm">
-                                {brand.type || "—"}
-                              </td>
-                              <td className="px-4 py-3 text-muted-foreground text-sm">
-                                {brand.displayOrder || "Auto (A-Z)"}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex gap-2 justify-end">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEdit(brand)}
-                                    data-testid={`button-edit-brand-${brand.id}`}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDelete(brand.id, brand.brandName)}
-                                    data-testid={`button-delete-brand-${brand.id}`}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
+                    <Accordion type="multiple" className="space-y-2">
+                      {categoryBrands.map((brand) => {
+                        const brandProducts = productsByBrand?.[brand.brandName] || [];
+                        
+                        return (
+                          <AccordionItem key={brand.id} value={brand.id.toString()} className="border rounded-lg px-4">
+                            <div className="flex items-center justify-between py-3">
+                              <AccordionTrigger className="flex-1 hover:no-underline">
+                                <div className="flex items-center gap-3 text-left">
+                                  <span className="font-medium">{brand.brandName}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    ({brandProducts.length} product{brandProducts.length !== 1 ? 's' : ''})
+                                  </span>
+                                  {brand.type && (
+                                    <span className="text-xs bg-muted px-2 py-1 rounded">
+                                      Type: {brand.type}
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-muted-foreground">
+                                    Order: {brand.displayOrder || "A-Z"}
+                                  </span>
                                 </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                              </AccordionTrigger>
+                              <div className="flex gap-2 ml-4">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(brand);
+                                  }}
+                                  data-testid={`button-edit-brand-${brand.id}`}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(brand.id, brand.brandName);
+                                  }}
+                                  data-testid={`button-delete-brand-${brand.id}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <AccordionContent>
+                              {brandProducts.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground text-sm">
+                                  No products found for this brand in the latest pricelist
+                                </div>
+                              ) : (
+                                <div className="space-y-2 pb-4">
+                                  <div className="text-xs text-muted-foreground mb-2">
+                                    Products from latest pricelist:
+                                  </div>
+                                  {brandProducts.map((product, idx) => (
+                                    <div
+                                      key={product.id}
+                                      className="flex items-center gap-3 p-3 bg-muted/30 rounded border text-sm"
+                                    >
+                                      <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
+                                      <div className="flex-1 grid grid-cols-4 gap-3">
+                                        <div>
+                                          <div className="font-medium">{product.product}</div>
+                                          <div className="text-xs text-muted-foreground">{product.sku}</div>
+                                        </div>
+                                        <div className="text-muted-foreground">{product.format}</div>
+                                        <div>
+                                          <span className="text-xs text-muted-foreground">Type: </span>
+                                          <span className="font-medium">
+                                            {product.collectionType || "—"}
+                                          </span>
+                                        </div>
+                                        <div className="font-medium">{product.price}</div>
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-xs"
+                                      >
+                                        Edit Type
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </AccordionContent>
+                          </AccordionItem>
+                        );
+                      })}
+                    </Accordion>
                   </div>
                 );
               })}
