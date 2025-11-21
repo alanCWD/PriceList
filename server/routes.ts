@@ -11,6 +11,8 @@ import {
   insertCompanySchema,
   insertUserSchema,
   updateUserSchema,
+  insertBrandRegistrySchema,
+  updateBrandRegistrySchema,
   type Pricelist,
   type User
 } from "@shared/schema";
@@ -770,6 +772,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting sales agent profile:", error);
       res.status(500).json({ error: "Failed to delete sales agent profile" });
+    }
+  });
+
+  // ===== BRAND REGISTRY ROUTES (Admin & Company Admin) =====
+  
+  // Get brands for current user's company (Admin & Company Admin)
+  app.get("/api/brands", isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const effectiveCompanyId = getEffectiveCompanyId(req, user);
+      if (!effectiveCompanyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      const brands = await storage.getBrandsByCompanyId(effectiveCompanyId);
+      res.json(brands);
+    } catch (error) {
+      console.error("Error fetching brands:", error);
+      res.status(500).json({ error: "Failed to fetch brands" });
+    }
+  });
+
+  // Create a new brand (Admin & Company Admin)
+  app.post("/api/brands", isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const effectiveCompanyId = getEffectiveCompanyId(req, user);
+      if (!effectiveCompanyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      // Validate request body
+      const validation = insertBrandRegistrySchema.safeParse({
+        ...req.body,
+        companyId: effectiveCompanyId, // Always use user's company
+      });
+      
+      if (!validation.success) {
+        const errorMessage = fromZodError(validation.error).message;
+        return res.status(400).json({ error: errorMessage });
+      }
+
+      const brand = await storage.createBrand(validation.data);
+      res.status(201).json(brand);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("already exists")) {
+        return res.status(409).json({ error: error.message });
+      }
+      console.error("Error creating brand:", error);
+      res.status(500).json({ error: "Failed to create brand" });
+    }
+  });
+
+  // Update a brand (Admin & Company Admin)
+  app.patch("/api/brands/:id", isAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid brand ID" });
+      }
+
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // SECURITY: Verify brand belongs to user's company
+      const existing = await storage.getBrandById(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Brand not found" });
+      }
+
+      const effectiveCompanyId = getEffectiveCompanyId(req, user);
+      if (effectiveCompanyId && existing.companyId !== effectiveCompanyId) {
+        return res.status(403).json({ error: "Access denied: Brand belongs to different company" });
+      }
+
+      // Validate request body
+      const validation = updateBrandRegistrySchema.safeParse(req.body);
+      if (!validation.success) {
+        const errorMessage = fromZodError(validation.error).message;
+        return res.status(400).json({ error: errorMessage });
+      }
+
+      const brand = await storage.updateBrand(id, validation.data);
+      if (!brand) {
+        return res.status(500).json({ error: "Failed to update brand" });
+      }
+
+      res.json(brand);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("already exists")) {
+        return res.status(409).json({ error: error.message });
+      }
+      console.error("Error updating brand:", error);
+      res.status(500).json({ error: "Failed to update brand" });
+    }
+  });
+
+  // Delete a brand (Admin & Company Admin)
+  app.delete("/api/brands/:id", isAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid brand ID" });
+      }
+
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // SECURITY: Verify brand belongs to user's company
+      const existing = await storage.getBrandById(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Brand not found" });
+      }
+
+      const effectiveCompanyId = getEffectiveCompanyId(req, user);
+      if (effectiveCompanyId && existing.companyId !== effectiveCompanyId) {
+        return res.status(403).json({ error: "Access denied: Brand belongs to different company" });
+      }
+
+      const success = await storage.deleteBrand(id);
+      if (!success) {
+        return res.status(500).json({ error: "Failed to delete brand" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting brand:", error);
+      res.status(500).json({ error: "Failed to delete brand" });
     }
   });
 

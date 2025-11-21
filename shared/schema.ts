@@ -290,3 +290,49 @@ export const insertSalesAgentProfileSchema = z.object({
 });
 
 export type InsertSalesAgentProfile = z.infer<typeof insertSalesAgentProfileSchema>;
+
+// ===== BRAND REGISTRY TABLE =====
+
+// Brand Registry table - master list of brands with categorization
+// Used for consistent brand grouping and sorting in pricelists
+export const brandRegistry = pgTable("brand_registry", {
+  id: serial("id").primaryKey(),
+  
+  // Company association (multi-tenant support)
+  companyId: integer("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  // Brand information
+  brandName: varchar("brand_name", { length: 255 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull().$type<'cider' | 'wine' | 'spirits' | 'nonAlc'>(),
+  
+  // Optional display order override (null = alphabetical, integer = custom sort)
+  displayOrder: integer("display_order"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  // Ensure unique brand names per company
+  index("brand_registry_company_brand_idx").on(table.companyId, table.brandName),
+]);
+
+export type BrandRegistry = typeof brandRegistry.$inferSelect;
+
+// Category enum for brand registry
+export const brandCategoryEnum = z.enum(['cider', 'wine', 'spirits', 'nonAlc']);
+export type BrandCategory = z.infer<typeof brandCategoryEnum>;
+
+// Insert schema for brand registry
+export const insertBrandRegistrySchema = createInsertSchema(brandRegistry, {
+  brandName: z.string().min(1, "Brand name is required"),
+  category: brandCategoryEnum,
+  displayOrder: z.number().int().positive().optional(),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type InsertBrandRegistry = z.infer<typeof insertBrandRegistrySchema>;
+
+// Update schema for brand registry
+export const updateBrandRegistrySchema = insertBrandRegistrySchema.partial().extend({
+  brandName: z.string().min(1).optional(),
+  category: brandCategoryEnum.optional(),
+});

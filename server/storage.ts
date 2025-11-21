@@ -15,9 +15,12 @@ import {
   companies,
   type Company,
   type InsertCompany,
-  type Role
+  type Role,
+  brandRegistry,
+  type BrandRegistry,
+  type InsertBrandRegistry,
 } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, asc } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required by Replit Auth)
@@ -58,6 +61,13 @@ export interface IStorage {
   createSalesAgentProfile(profile: InsertSalesAgentProfile): Promise<SalesAgentProfile>;
   updateSalesAgentProfile(id: number, profile: Partial<InsertSalesAgentProfile>): Promise<SalesAgentProfile | undefined>;
   deleteSalesAgentProfile(id: number): Promise<boolean>;
+  
+  // Brand Registry operations
+  getBrandsByCompanyId(companyId: number): Promise<BrandRegistry[]>;
+  getBrandById(id: number): Promise<BrandRegistry | undefined>;
+  createBrand(brand: InsertBrandRegistry): Promise<BrandRegistry>;
+  updateBrand(id: number, brand: Partial<InsertBrandRegistry>): Promise<BrandRegistry | undefined>;
+  deleteBrand(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -331,6 +341,83 @@ export class DatabaseStorage implements IStorage {
   
   async deleteSalesAgentProfile(id: number): Promise<boolean> {
     const result = await db.delete(salesAgentProfiles).where(eq(salesAgentProfiles.id, id)).returning();
+    return result.length > 0;
+  }
+  
+  // Brand Registry operations
+  async getBrandsByCompanyId(companyId: number): Promise<BrandRegistry[]> {
+    const results = await db
+      .select()
+      .from(brandRegistry)
+      .where(eq(brandRegistry.companyId, companyId))
+      .orderBy(
+        asc(brandRegistry.category),
+        asc(brandRegistry.displayOrder),
+        asc(brandRegistry.brandName)
+      );
+    return results;
+  }
+  
+  async getBrandById(id: number): Promise<BrandRegistry | undefined> {
+    const result = await db.select().from(brandRegistry).where(eq(brandRegistry.id, id));
+    return result[0];
+  }
+  
+  async createBrand(brand: InsertBrandRegistry): Promise<BrandRegistry> {
+    // Check for duplicate brand name in same company
+    const existing = await db
+      .select()
+      .from(brandRegistry)
+      .where(
+        and(
+          eq(brandRegistry.companyId, brand.companyId),
+          eq(brandRegistry.brandName, brand.brandName)
+        )
+      )
+      .limit(1);
+    
+    if (existing.length > 0) {
+      throw new Error(`Brand "${brand.brandName}" already exists for this company`);
+    }
+    
+    const result = await db.insert(brandRegistry).values(brand).returning();
+    return result[0]!;
+  }
+  
+  async updateBrand(id: number, updates: Partial<InsertBrandRegistry>): Promise<BrandRegistry | undefined> {
+    // If brandName is being updated, check for duplicates
+    if (updates.brandName) {
+      const current = await this.getBrandById(id);
+      if (!current) {
+        return undefined;
+      }
+      
+      const existing = await db
+        .select()
+        .from(brandRegistry)
+        .where(
+          and(
+            eq(brandRegistry.companyId, current.companyId),
+            eq(brandRegistry.brandName, updates.brandName)
+          )
+        )
+        .limit(1);
+      
+      if (existing.length > 0 && existing[0].id !== id) {
+        throw new Error(`Brand "${updates.brandName}" already exists for this company`);
+      }
+    }
+    
+    const result = await db
+      .update(brandRegistry)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(brandRegistry.id, id))
+      .returning();
+    return result[0];
+  }
+  
+  async deleteBrand(id: number): Promise<boolean> {
+    const result = await db.delete(brandRegistry).where(eq(brandRegistry.id, id)).returning();
     return result.length > 0;
   }
 }
