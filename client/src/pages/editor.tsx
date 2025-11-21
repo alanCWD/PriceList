@@ -11,6 +11,7 @@ import { TemplateSelector } from "@/components/template-selector";
 import { FieldMappingPanel } from "@/components/field-mapping-panel";
 import { PreviewPanel } from "@/components/preview-panel";
 import { SavePricelistDialog } from "@/components/save-pricelist-dialog";
+import { CollectionEditor } from "@/components/collection-editor";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { stripHtml } from "@/lib/text-utils";
@@ -176,15 +177,28 @@ export default function Editor() {
         }
       }
       
-      // Parse collection field if available to extract brand name
+      // Parse collection field if available to extract brand name and categorization
       let category = stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : "");
       const collectionField = fieldMapping.category ? row[fieldMapping.category] : null;
+      
+      let collectionRaw: string | undefined;
+      let collectionCategory: 'cider' | 'wine' | 'spirits' | 'nonAlc' | undefined;
+      let collectionType: string | undefined;
+      let collectionBrand: string | undefined;
+      let collectionRegion: string | undefined;
       
       if (collectionField) {
         const parsed = parseCollection(collectionField);
         if (parsed) {
           // Use sortKey as category - it contains brand name with sorting prefix
           category = parsed.sortKey;
+          
+          // Store parsed collection components
+          collectionRaw = collectionField;
+          collectionCategory = parsed.primaryCategory;
+          collectionType = parsed.wineType;
+          collectionBrand = parsed.brand;
+          collectionRegion = parsed.region;
         }
       }
       
@@ -198,11 +212,16 @@ export default function Editor() {
         format: stripHtml(format),
         price: stripHtml(row[fieldMapping.price] || ""),
         productImageUrl: imageUrl,
+        collectionRaw,
+        collectionCategory,
+        collectionType,
+        collectionBrand,
+        collectionRegion,
       };
     });
 
     setProducts(mappedProducts);
-    setActiveTab("config");
+    setActiveTab("collection");
   };
 
   const saveMutation = useMutation({
@@ -309,25 +328,34 @@ export default function Editor() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-4">
-            <TabsTrigger value="upload" data-testid="tab-upload" className="gap-2">
+          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-5">
+            <TabsTrigger value="upload" data-testid="tab-upload" className="gap-2 text-xs">
               <Upload className="w-4 h-4" />
-              Upload CSV
+              Upload
             </TabsTrigger>
             <TabsTrigger 
               value="mapping" 
               data-testid="tab-mapping"
               disabled={csvHeaders.length === 0}
-              className="gap-2"
+              className="gap-2 text-xs"
             >
               <FileText className="w-4 h-4" />
               Map Fields
             </TabsTrigger>
             <TabsTrigger 
+              value="collection" 
+              data-testid="tab-collection"
+              disabled={products.length === 0}
+              className="gap-2 text-xs"
+            >
+              <FileText className="w-4 h-4" />
+              Review
+            </TabsTrigger>
+            <TabsTrigger 
               value="config" 
               data-testid="tab-config"
               disabled={products.length === 0}
-              className="gap-2"
+              className="gap-2 text-xs"
             >
               <Settings className="w-4 h-4" />
               Configure
@@ -336,7 +364,7 @@ export default function Editor() {
               value="preview" 
               data-testid="tab-preview"
               disabled={products.length === 0}
-              className="gap-2"
+              className="gap-2 text-xs"
             >
               <Eye className="w-4 h-4" />
               Preview
@@ -361,6 +389,21 @@ export default function Editor() {
               onApply={handleApplyMapping}
               previewData={csvData.slice(0, 3)}
             />
+          </TabsContent>
+
+          <TabsContent value="collection" className="space-y-6">
+            <CollectionEditor
+              products={products}
+              onProductsChange={setProducts}
+            />
+            <div className="flex justify-end" data-testid="container-continue-button">
+              <Button
+                onClick={() => setActiveTab("config")}
+                data-testid="button-continue-to-config"
+              >
+                Continue to Configuration
+              </Button>
+            </div>
           </TabsContent>
 
           <TabsContent value="config" className="space-y-6">

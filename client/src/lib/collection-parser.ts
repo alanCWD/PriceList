@@ -44,6 +44,7 @@ interface ParsedCollection {
   brand: string;
   primaryCategory: 'cider' | 'wine' | 'spirits' | 'nonAlc';
   wineType?: 'sparkling' | 'white' | 'red';
+  region?: string;
   sortKey: string; // e.g., "1-Cider-Salt Spring Wild" or "2-Wine-White-Synchromesh"
 }
 
@@ -103,12 +104,19 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
     }
   }
 
-  // Extract brand name - it's the term that's not a category, region, or noise word
+  // Extract brand name and region
   let brand = '';
+  let region: string | undefined;
   const originalTerms = collectionString.split(';').map(t => t.trim()).filter(t => t.length > 0);
   
   for (const term of originalTerms) {
     const termLower = term.toLowerCase();
+    
+    // Check if it's a region
+    if (REGIONS.some(r => termLower === r)) {
+      region = term; // Store original case
+      continue;
+    }
     
     // Skip if it's a category indicator
     const isCategory = Object.values(CATEGORY_INDICATORS).some(indicators =>
@@ -121,9 +129,6 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
       types.some(type => termLower.includes(type))
     );
     if (isWineType) continue;
-    
-    // Skip if it's a region
-    if (REGIONS.some(region => termLower === region)) continue;
     
     // Skip if it's noise
     if (NOISE_WORDS.some(noise => termLower === noise)) continue;
@@ -161,8 +166,36 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
     brand,
     primaryCategory,
     wineType,
+    region,
     sortKey,
   };
+}
+
+/**
+ * Format parsed collection into standardized display string
+ * Format: Category | Type | Brand | Region
+ * Example: "Wine | White | Synchromesh | Okanagan"
+ */
+export function formatCollection(parsed: ParsedCollection): string {
+  const parts: string[] = [];
+  
+  // Category (capitalized)
+  parts.push(parsed.primaryCategory.charAt(0).toUpperCase() + parsed.primaryCategory.slice(1));
+  
+  // Type (if wine)
+  if (parsed.wineType) {
+    parts.push(parsed.wineType.charAt(0).toUpperCase() + parsed.wineType.slice(1));
+  }
+  
+  // Brand
+  parts.push(parsed.brand);
+  
+  // Region (if present)
+  if (parsed.region) {
+    parts.push(parsed.region);
+  }
+  
+  return parts.join(' | ');
 }
 
 /**

@@ -58,7 +58,12 @@ The system features a robust, database-centric security model where all authoriz
 - **Inline CSV Upload**: Allows clients to easily update pricelists.
 - **CSV-Based Field Mapping**: Admins configure default mappings that clients inherit.
 - **Auto-Generated Pricelist Names**: Consistent naming convention.
-- **Intelligent Collection Parsing**: Wix CSV "collection" field parser that extracts brand names and product categories from variable-order semicolon-delimited strings. Handles Canadian wine industry categorization: Cider → Wine (Sparkling/White/Red) → Spirits → Non-Alc BC Wine. Products sorted by brand within each category group. Preserves hyphenated brand names (e.g., "Ones+ Non-Alc BC Wine").
+- **Intelligent Collection Parsing & Standardization**: Wix CSV "collection" field parser that extracts brand names and product categories from variable-order semicolon-delimited strings. Handles Canadian wine industry categorization: Cider → Wine (Sparkling/White/Red) → Spirits → Non-Alc BC Wine. Products sorted by brand within each category group. Preserves hyphenated brand names (e.g., "Ones+ Non-Alc BC Wine").
+  - **Automatic Standardization**: On CSV upload, messy collection strings are parsed into structured components (category, type, brand, region) and stored in the product data
+  - **Manual Override UI**: "Review" tab in editor allows inline editing of parsed collection data with table interface showing original collection string alongside editable fields
+  - **Complete Product Coverage**: All products displayed in review table, including those where parsing failed, allowing manual data entry from scratch
+  - **Persistent Storage**: Parsed collection components stored in database JSONB column and survive save/load cycles
+  - **Dynamic SortKey Generation**: Brand grouping sortKeys automatically regenerated when collection data is edited
 - **Template System**: Three professional, print-optimized templates (Modern, Classic, Minimal).
   - **Modern template**: Full header (logo left, title/tagline center, sales agents right) on page 1 (~120pt height); simple centered title bar on pages 2+
   - **Minimal template**: Compact header matching Modern layout (logo left, title/tagline center, agents right) with reduced fonts and height (~40-50pt), shown only on page 1; very compressed row spacing (8pt body font, 7pt headers) to minimize page count; dynamic column inclusion (Image/Notes columns only when data present); reduced margins (40pt vs 48pt) for maximum content density; brand separator bars using branding.headerBackgroundColor with #D8DBD9 grey text

@@ -13,6 +13,13 @@ export const productSchema = z.object({
   format: z.string(), // Package format (e.g., "12 x 750 ml")
   price: z.string(), // Price as string to preserve formatting
   productImageUrl: z.string().optional(), // Product image URL for thumbnail display
+  
+  // Parsed collection data (from WIX collection field)
+  collectionRaw: z.string().optional(), // Original unparsed collection string
+  collectionCategory: z.enum(['cider', 'wine', 'spirits', 'nonAlc']).optional(), // Main category
+  collectionType: z.string().optional(), // Sub-type (e.g., "white", "red", "sparkling" for wine)
+  collectionBrand: z.string().optional(), // Brand/producer name
+  collectionRegion: z.string().optional(), // Region (e.g., "Okanagan", "Vancouver Island")
 });
 
 export type Product = z.infer<typeof productSchema>;
