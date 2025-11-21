@@ -2058,22 +2058,51 @@ function CompanySalesAgentsManager() {
 
 function BrandRegistryManager() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "super_admin";
+  
   const [editingBrand, setEditingBrand] = useState<BrandRegistry | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [brandName, setBrandName] = useState("");
   const [category, setCategory] = useState<BrandCategory>("wine");
   const [type, setType] = useState("");
   const [displayOrder, setDisplayOrder] = useState<number | undefined>(undefined);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
 
-  // Fetch brands for current company
+  // Fetch all companies (for Super Admins)
+  const { data: companies, isLoading: companiesLoading } = useQuery<Company[]>({
+    queryKey: ["/api/companies"],
+    enabled: isSuperAdmin,
+  });
+
+  // Auto-select first company for Super Admins
+  useEffect(() => {
+    if (isSuperAdmin && companies && companies.length > 0 && !selectedCompanyId) {
+      setSelectedCompanyId(companies[0].id);
+    }
+  }, [companies, isSuperAdmin, selectedCompanyId]);
+
+  // Fetch brands for selected company (Super Admin) or current company (Company Admin)
   const { data: brands, isLoading } = useQuery<BrandRegistry[]>({
-    queryKey: ["/api/brands"],
+    queryKey: isSuperAdmin ? ["/api/brands", { companyId: selectedCompanyId }] : ["/api/brands"],
+    queryFn: async () => {
+      const url = isSuperAdmin && selectedCompanyId
+        ? `/api/brands?companyId=${selectedCompanyId}`
+        : "/api/brands";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch brands");
+      return res.json();
+    },
+    enabled: isSuperAdmin ? !!selectedCompanyId : true,
   });
 
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: { brandName: string; category: BrandCategory; type?: string; displayOrder?: number }) => {
-      const res = await apiRequest("POST", "/api/brands", data);
+      const payload = isSuperAdmin && selectedCompanyId
+        ? { ...data, companyId: selectedCompanyId }
+        : data;
+      const res = await apiRequest("POST", "/api/brands", payload);
       return await res.json();
     },
     onSuccess: () => {
@@ -2221,6 +2250,27 @@ function BrandRegistryManager() {
               Add Brand
             </Button>
           </div>
+          {isSuperAdmin && (
+            <div className="mt-4">
+              <Label htmlFor="company-selector">Select Company</Label>
+              <Select
+                value={selectedCompanyId?.toString() || ""}
+                onValueChange={(val) => setSelectedCompanyId(parseInt(val))}
+                disabled={companiesLoading}
+              >
+                <SelectTrigger id="company-selector" data-testid="select-company" className="w-full md:w-96">
+                  <SelectValue placeholder="Select a company" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies?.map((company) => (
+                    <SelectItem key={company.id} value={company.id.toString()}>
+                      {company.name} (@{company.domain})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {!brands || brands.length === 0 ? (

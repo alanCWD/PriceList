@@ -778,6 +778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== BRAND REGISTRY ROUTES (Admin & Company Admin) =====
   
   // Get brands for current user's company (Admin & Company Admin)
+  // Super Admins can optionally pass companyId query parameter to view any company's brands
   app.get("/api/brands", isAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -787,12 +788,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      const effectiveCompanyId = getEffectiveCompanyId(req, user);
-      if (!effectiveCompanyId) {
-        return res.status(400).json({ error: "No company associated with user" });
+      // Super Admins can query brands for any company via companyId query param
+      let targetCompanyId: number;
+      if (user.role === "super_admin" && req.query.companyId) {
+        targetCompanyId = parseInt(req.query.companyId as string);
+        if (isNaN(targetCompanyId)) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+      } else {
+        const effectiveCompanyId = getEffectiveCompanyId(req, user);
+        if (!effectiveCompanyId) {
+          return res.status(400).json({ error: "No company associated with user" });
+        }
+        targetCompanyId = effectiveCompanyId;
       }
 
-      const brands = await storage.getBrandsByCompanyId(effectiveCompanyId);
+      const brands = await storage.getBrandsByCompanyId(targetCompanyId);
       res.json(brands);
     } catch (error) {
       console.error("Error fetching brands:", error);
@@ -801,6 +812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new brand (Admin & Company Admin)
+  // Super Admins can pass companyId in request body to create brands for any company
   app.post("/api/brands", isAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -810,15 +822,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      const effectiveCompanyId = getEffectiveCompanyId(req, user);
-      if (!effectiveCompanyId) {
-        return res.status(400).json({ error: "No company associated with user" });
+      // Super Admins can create brands for any company via companyId in request body
+      let targetCompanyId: number;
+      if (user.role === "super_admin" && req.body.companyId) {
+        targetCompanyId = parseInt(req.body.companyId);
+        if (isNaN(targetCompanyId)) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+      } else {
+        const effectiveCompanyId = getEffectiveCompanyId(req, user);
+        if (!effectiveCompanyId) {
+          return res.status(400).json({ error: "No company associated with user" });
+        }
+        targetCompanyId = effectiveCompanyId;
       }
 
       // Validate request body
       const validation = insertBrandRegistrySchema.safeParse({
         ...req.body,
-        companyId: effectiveCompanyId, // Always use user's company
+        companyId: targetCompanyId,
       });
       
       if (!validation.success) {
@@ -838,6 +860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update a brand (Admin & Company Admin)
+  // Super Admins can update brands for any company
   app.patch("/api/brands/:id", isAdmin, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -852,15 +875,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // SECURITY: Verify brand belongs to user's company
+      // SECURITY: Verify brand belongs to user's company (unless Super Admin)
       const existing = await storage.getBrandById(id);
       if (!existing) {
         return res.status(404).json({ error: "Brand not found" });
       }
 
-      const effectiveCompanyId = getEffectiveCompanyId(req, user);
-      if (effectiveCompanyId && existing.companyId !== effectiveCompanyId) {
-        return res.status(403).json({ error: "Access denied: Brand belongs to different company" });
+      if (user.role !== "super_admin") {
+        const effectiveCompanyId = getEffectiveCompanyId(req, user);
+        if (effectiveCompanyId && existing.companyId !== effectiveCompanyId) {
+          return res.status(403).json({ error: "Access denied: Brand belongs to different company" });
+        }
       }
 
       // Validate request body
@@ -886,6 +911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a brand (Admin & Company Admin)
+  // Super Admins can delete brands for any company
   app.delete("/api/brands/:id", isAdmin, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -900,15 +926,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // SECURITY: Verify brand belongs to user's company
+      // SECURITY: Verify brand belongs to user's company (unless Super Admin)
       const existing = await storage.getBrandById(id);
       if (!existing) {
         return res.status(404).json({ error: "Brand not found" });
       }
 
-      const effectiveCompanyId = getEffectiveCompanyId(req, user);
-      if (effectiveCompanyId && existing.companyId !== effectiveCompanyId) {
-        return res.status(403).json({ error: "Access denied: Brand belongs to different company" });
+      if (user.role !== "super_admin") {
+        const effectiveCompanyId = getEffectiveCompanyId(req, user);
+        if (effectiveCompanyId && existing.companyId !== effectiveCompanyId) {
+          return res.status(403).json({ error: "Access denied: Brand belongs to different company" });
+        }
       }
 
       const success = await storage.deleteBrand(id);
