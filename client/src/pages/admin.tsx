@@ -2069,6 +2069,12 @@ function BrandRegistryManager() {
   const [type, setType] = useState("");
   const [displayOrder, setDisplayOrder] = useState<number | undefined>(undefined);
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
+  
+  // Product editing state
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editingProductType, setEditingProductType] = useState<string>("");
+  const [draggedProductId, setDraggedProductId] = useState<string | null>(null);
+  const [draggedOverProductId, setDraggedOverProductId] = useState<string | null>(null);
 
   // Debug logging
   console.log('[BrandRegistry] Render state:', { 
@@ -2187,6 +2193,30 @@ function BrandRegistryManager() {
     },
   });
 
+  // Update product mutation (for type editing)
+  const updateProductMutation = useMutation({
+    mutationFn: async (data: { productId: string; updates: any; companyId?: number }) => {
+      const payload = isSuperAdmin && selectedCompanyId
+        ? { productId: data.productId, updates: data.updates, companyId: selectedCompanyId }
+        : { productId: data.productId, updates: data.updates };
+      const res = await apiRequest("PATCH", "/api/brands/products", payload);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
+      toast({ title: "Product updated successfully" });
+      setEditingProductId(null);
+      setEditingProductType("");
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update product", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const resetForm = () => {
     setBrandName("");
     setCategory("wine");
@@ -2234,6 +2264,71 @@ function BrandRegistryManager() {
     if (confirm(`Delete brand "${name}"? This cannot be undone.`)) {
       deleteMutation.mutate(id);
     }
+  };
+
+  // Product editing handlers
+  const handleStartEditProductType = (product: any) => {
+    setEditingProductId(product.id);
+    setEditingProductType(product.collectionType || "");
+  };
+
+  const handleSaveProductType = (productId: string) => {
+    updateProductMutation.mutate({
+      productId,
+      updates: { collectionType: editingProductType.trim() || null }
+    });
+  };
+
+  const handleCancelEditProductType = () => {
+    setEditingProductId(null);
+    setEditingProductType("");
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, productId: string) => {
+    setDraggedProductId(productId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, productId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDraggedOverProductId(productId);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedProductId(null);
+    setDraggedOverProductId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetProductId: string, brandName: string) => {
+    e.preventDefault();
+    
+    if (!draggedProductId || draggedProductId === targetProductId) {
+      setDraggedProductId(null);
+      setDraggedOverProductId(null);
+      return;
+    }
+
+    // Get the products for this brand
+    const brandProducts = productsByBrand?.[brandName] || [];
+    const draggedIndex = brandProducts.findIndex(p => p.id === draggedProductId);
+    const targetIndex = brandProducts.findIndex(p => p.id === targetProductId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // Reorder the products array
+    const reorderedProducts = [...brandProducts];
+    const [draggedProduct] = reorderedProducts.splice(draggedIndex, 1);
+    reorderedProducts.splice(targetIndex, 0, draggedProduct);
+
+    // Update each product's order in the backend
+    // For now, we'll just show a toast. In a full implementation, 
+    // you'd save the new order to the pricelist
+    toast({ title: "Product reordered", description: "Drag-and-drop ordering coming soon!" });
+
+    setDraggedProductId(null);
+    setDraggedOverProductId(null);
   };
 
   const categoryLabels: Record<BrandCategory, string> = {
@@ -2422,35 +2517,94 @@ function BrandRegistryManager() {
                                   <div className="text-xs text-muted-foreground mb-2">
                                     Products from latest pricelist:
                                   </div>
-                                  {brandProducts.map((product, idx) => (
-                                    <div
-                                      key={product.id}
-                                      className="flex items-center gap-3 p-3 bg-muted/30 rounded border text-sm"
-                                    >
-                                      <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
-                                      <div className="flex-1 grid grid-cols-4 gap-3">
-                                        <div>
-                                          <div className="font-medium">{product.product}</div>
-                                          <div className="text-xs text-muted-foreground">{product.sku}</div>
-                                        </div>
-                                        <div className="text-muted-foreground">{product.format}</div>
-                                        <div>
-                                          <span className="text-xs text-muted-foreground">Type: </span>
-                                          <span className="font-medium">
-                                            {product.collectionType || "—"}
-                                          </span>
-                                        </div>
-                                        <div className="font-medium">{product.price}</div>
-                                      </div>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-xs"
+                                  {brandProducts.map((product, idx) => {
+                                    const isEditing = editingProductId === product.id;
+                                    const isDragging = draggedProductId === product.id;
+                                    const isDraggedOver = draggedOverProductId === product.id;
+                                    
+                                    return (
+                                      <div
+                                        key={product.id}
+                                        draggable={!isEditing}
+                                        onDragStart={(e) => handleDragStart(e, product.id)}
+                                        onDragOver={(e) => handleDragOver(e, product.id)}
+                                        onDragEnd={handleDragEnd}
+                                        onDrop={(e) => handleDrop(e, product.id, brand.brandName)}
+                                        className={`flex items-center gap-3 p-3 rounded border text-sm transition-all ${
+                                          isDragging ? 'opacity-50 bg-muted' : 'bg-muted/30'
+                                        } ${isDraggedOver ? 'border-primary border-2' : ''}`}
                                       >
-                                        Edit Type
-                                      </Button>
-                                    </div>
-                                  ))}
+                                        <GripVertical 
+                                          className="w-4 h-4 text-muted-foreground cursor-grab active:cursor-grabbing" 
+                                        />
+                                        <div className="flex-1 grid grid-cols-4 gap-3">
+                                          <div>
+                                            <div className="font-medium">{product.product}</div>
+                                            <div className="text-xs text-muted-foreground">{product.sku}</div>
+                                          </div>
+                                          <div className="text-muted-foreground">{product.format}</div>
+                                          <div>
+                                            {isEditing ? (
+                                              <div className="flex items-center gap-2">
+                                                <Input
+                                                  value={editingProductType}
+                                                  onChange={(e) => setEditingProductType(e.target.value)}
+                                                  className="h-8 text-sm"
+                                                  placeholder="e.g., Red, White, Rosé"
+                                                  autoFocus
+                                                  onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                      handleSaveProductType(product.id);
+                                                    } else if (e.key === 'Escape') {
+                                                      handleCancelEditProductType();
+                                                    }
+                                                  }}
+                                                />
+                                              </div>
+                                            ) : (
+                                              <div>
+                                                <span className="text-xs text-muted-foreground">Type: </span>
+                                                <span className="font-medium">
+                                                  {product.collectionType || "—"}
+                                                </span>
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="font-medium">{product.price}</div>
+                                        </div>
+                                        {isEditing ? (
+                                          <div className="flex gap-2">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="text-xs"
+                                              onClick={() => handleSaveProductType(product.id)}
+                                              disabled={updateProductMutation.isPending}
+                                            >
+                                              Save
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="text-xs"
+                                              onClick={handleCancelEditProductType}
+                                            >
+                                              Cancel
+                                            </Button>
+                                          </div>
+                                        ) : (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-xs"
+                                            onClick={() => handleStartEditProductType(product)}
+                                          >
+                                            Edit Type
+                                          </Button>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               )}
                             </AccordionContent>

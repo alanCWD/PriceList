@@ -777,6 +777,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== BRAND REGISTRY ROUTES (Admin & Company Admin) =====
 
+  // Update products in latest pricelist (type and/or order)
+  app.patch("/api/brands/products", isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Determine target company
+      let targetCompanyId: number;
+      if (user.role === "superAdmin" && req.body.companyId) {
+        targetCompanyId = parseInt(req.body.companyId);
+        if (isNaN(targetCompanyId)) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+      } else {
+        const effectiveCompanyId = getEffectiveCompanyId(req, user);
+        if (!effectiveCompanyId) {
+          return res.status(400).json({ error: "No company associated with user" });
+        }
+        targetCompanyId = effectiveCompanyId;
+      }
+
+      // Get latest pricelist
+      const latestPricelist = await storage.getLatestPricelistByCompanyId(targetCompanyId);
+      
+      if (!latestPricelist) {
+        return res.status(404).json({ error: "No pricelist found for this company" });
+      }
+
+      const { productId, updates } = req.body; // updates can contain: collectionType, order, etc.
+      
+      if (!productId) {
+        return res.status(400).json({ error: "Product ID is required" });
+      }
+
+      // Update the product in the products array
+      const updatedProducts = latestPricelist.products.map((p: any) => {
+        if (p.id === productId) {
+          return { ...p, ...updates };
+        }
+        return p;
+      });
+
+      // Save updated pricelist
+      await storage.updatePricelist(latestPricelist.id, {
+        products: updatedProducts,
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating product:", error);
+      res.status(500).json({ error: "Failed to update product" });
+    }
+  });
+
   // Get products grouped by brand from latest pricelist
   // Returns products from the most recent pricelist for the company
   app.get("/api/brands/products", isAdmin, async (req: any, res) => {
