@@ -2069,6 +2069,14 @@ function BrandRegistryManager() {
   const [displayOrder, setDisplayOrder] = useState<number | undefined>(undefined);
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
 
+  // Debug logging
+  console.log('[BrandRegistry] Render state:', { 
+    isSuperAdmin, 
+    selectedCompanyId, 
+    isAddDialogOpen,
+    hasUser: !!user 
+  });
+
   // Fetch all companies (for Super Admins)
   const { data: companies, isLoading: companiesLoading } = useQuery<Company[]>({
     queryKey: ["/api/companies"],
