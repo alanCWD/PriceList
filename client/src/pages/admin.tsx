@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
+import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical, ArrowUpDown } from "lucide-react";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { CSVUpload } from "@/components/csv-upload";
 import { ColorPicker } from "@/components/color-picker";
@@ -2217,6 +2217,31 @@ function BrandRegistryManager() {
     },
   });
 
+  // Regenerate sortKeys mutation
+  const regenerateSortKeysMutation = useMutation({
+    mutationFn: async () => {
+      const payload = isSuperAdmin && selectedCompanyId
+        ? { companyId: selectedCompanyId }
+        : {};
+      const res = await apiRequest("POST", "/api/brands/products/regenerate-sortkeys", payload);
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
+      toast({ 
+        title: "Sort order updated!", 
+        description: data.message || "Product sort keys regenerated successfully" 
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to regenerate sort keys", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const resetForm = () => {
     setBrandName("");
     setCategory("wine");
@@ -2444,10 +2469,25 @@ function BrandRegistryManager() {
                 Manage your company's brand list for consistent categorization and sorting
               </CardDescription>
             </div>
-            <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-brand">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Brand
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => regenerateSortKeysMutation.mutate()} 
+                variant="outline"
+                disabled={regenerateSortKeysMutation.isPending}
+                data-testid="button-regenerate-sortkeys"
+              >
+                {regenerateSortKeysMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <ArrowUpDown className="w-4 h-4 mr-2" />
+                )}
+                Fix Sort Order
+              </Button>
+              <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-brand">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Brand
+              </Button>
+            </div>
           </div>
           {isSuperAdmin && (
             <div className="mt-4">

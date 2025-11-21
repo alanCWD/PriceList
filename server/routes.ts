@@ -851,6 +851,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Regenerate sortKeys for all products in latest pricelist
+  app.post("/api/brands/products/regenerate-sortkeys", isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Determine target company
+      let targetCompanyId: number;
+      if (user.role === "superAdmin" && req.body.companyId) {
+        targetCompanyId = parseInt(req.body.companyId);
+        if (isNaN(targetCompanyId)) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+      } else {
+        const effectiveCompanyId = getEffectiveCompanyId(req, user);
+        if (!effectiveCompanyId) {
+          return res.status(400).json({ error: "No company associated with user" });
+        }
+        targetCompanyId = effectiveCompanyId;
+      }
+
+      // Get latest pricelist
+      const latestPricelist = await storage.getLatestPricelistByCompanyId(targetCompanyId);
+      
+      if (!latestPricelist) {
+        return res.status(404).json({ error: "No pricelist found for this company" });
+      }
+
+      // Category order: Wine (1), Spirits (2), Cider (3), NonAlc (4)
+      const categoryOrder: Record<string, string> = {
+        wine: '1',
+        spirits: '2',
+        cider: '3',
+        nonAlc: '4',
+      };
+
+      const wineTypeOrder: Record<string, string> = {
+        sparkling: '1',
+        white: '2',
+        rose: '3',
+        rosé: '3',
+        red: '4',
+      };
+
+      // Regenerate sortKey (category field) for each product
+      const updatedProducts = latestPricelist.products.map((product: any) => {
+        const category = product.collectionCategory;
+        const brand = product.collectionBrand;
+        const wineType = product.collectionType;
+
+        if (!category || !brand) {
+          // If no category or brand, keep original
+          return product;
+        }
+
+        // Build new sortKey
+        let newSortKey = `${categoryOrder[category]}-${category}`;
+        
+        if (wineType && category === 'wine') {
+          const typeOrder = wineTypeOrder[wineType.toLowerCase()] || '99';
+          newSortKey += `-${typeOrder}-${wineType}`;
+        }
+        
+        newSortKey += `-${brand}`;
+
+        return {
+          ...product,
+          category: newSortKey, // Update the category field which stores the sortKey
+        };
+      });
+
+      // Save updated pricelist
+      await storage.updatePricelist(latestPricelist.id, {
+        products: updatedProducts,
+      });
+
+      res.json({ 
+        success: true, 
+        message: `Regenerated sortKeys for ${updatedProducts.length} products` 
+      });
+    } catch (error) {
+      console.error("Error regenerating sortKeys:", error);
+      res.status(500).json({ error: "Failed to regenerate sortKeys" });
+    }
+  });
+
   // Get products grouped by brand from latest pricelist
   // Returns products from the most recent pricelist for the company
   app.get("/api/brands/products", isAdmin, async (req: any, res) => {
