@@ -2059,7 +2059,7 @@ function CompanySalesAgentsManager() {
 function BrandRegistryManager() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const isSuperAdmin = user?.role === "super_admin";
+  const isSuperAdmin = user?.role === "superAdmin";
   
   const [editingBrand, setEditingBrand] = useState<BrandRegistry | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
