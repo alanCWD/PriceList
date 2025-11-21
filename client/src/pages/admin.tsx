@@ -2062,6 +2062,7 @@ function BrandRegistryManager() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [brandName, setBrandName] = useState("");
   const [category, setCategory] = useState<BrandCategory>("wine");
+  const [type, setType] = useState("");
   const [displayOrder, setDisplayOrder] = useState<number | undefined>(undefined);
 
   // Fetch brands for current company
@@ -2071,7 +2072,7 @@ function BrandRegistryManager() {
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: async (data: { brandName: string; category: BrandCategory; displayOrder?: number }) => {
+    mutationFn: async (data: { brandName: string; category: BrandCategory; type?: string; displayOrder?: number }) => {
       const res = await apiRequest("POST", "/api/brands", data);
       return await res.json();
     },
@@ -2092,7 +2093,7 @@ function BrandRegistryManager() {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async (data: { id: number; brandName?: string; category?: BrandCategory; displayOrder?: number | null }) => {
+    mutationFn: async (data: { id: number; brandName?: string; category?: BrandCategory; type?: string | null; displayOrder?: number | null }) => {
       const { id, ...updates } = data;
       const res = await apiRequest("PATCH", `/api/brands/${id}`, updates);
       return await res.json();
@@ -2133,6 +2134,7 @@ function BrandRegistryManager() {
   const resetForm = () => {
     setBrandName("");
     setCategory("wine");
+    setType("");
     setDisplayOrder(undefined);
   };
 
@@ -2141,13 +2143,19 @@ function BrandRegistryManager() {
       toast({ title: "Error", description: "Brand name is required", variant: "destructive" });
       return;
     }
-    createMutation.mutate({ brandName: brandName.trim(), category, displayOrder });
+    createMutation.mutate({ 
+      brandName: brandName.trim(), 
+      category, 
+      type: type.trim() || undefined,
+      displayOrder 
+    });
   };
 
   const handleEdit = (brand: BrandRegistry) => {
     setEditingBrand(brand);
     setBrandName(brand.brandName);
     setCategory(brand.category as BrandCategory);
+    setType(brand.type || "");
     setDisplayOrder(brand.displayOrder || undefined);
   };
 
@@ -2161,6 +2169,7 @@ function BrandRegistryManager() {
       id: editingBrand.id,
       brandName: brandName.trim(),
       category,
+      type: type.trim() || null,
       displayOrder: displayOrder || null,
     });
   };
@@ -2236,6 +2245,7 @@ function BrandRegistryManager() {
                         <thead className="bg-muted/50">
                           <tr>
                             <th className="text-left px-4 py-2 font-medium text-sm">Brand Name</th>
+                            <th className="text-left px-4 py-2 font-medium text-sm">Type</th>
                             <th className="text-left px-4 py-2 font-medium text-sm">Display Order</th>
                             <th className="text-right px-4 py-2 font-medium text-sm">Actions</th>
                           </tr>
@@ -2244,6 +2254,9 @@ function BrandRegistryManager() {
                           {categoryBrands.map((brand) => (
                             <tr key={brand.id} className="border-t hover-elevate" data-testid={`brand-row-${brand.id}`}>
                               <td className="px-4 py-3">{brand.brandName}</td>
+                              <td className="px-4 py-3 text-muted-foreground text-sm">
+                                {brand.type || "—"}
+                              </td>
                               <td className="px-4 py-3 text-muted-foreground text-sm">
                                 {brand.displayOrder || "Auto (A-Z)"}
                               </td>
@@ -2314,6 +2327,19 @@ function BrandRegistryManager() {
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label htmlFor="add-type">Type (optional)</Label>
+                <Input
+                  id="add-type"
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  placeholder="e.g., Red, White, Rosé, Sparkling"
+                  data-testid="input-type"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Product type within the category (e.g., for wine: red, white, rosé, sparkling)
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="add-display-order">Display Order (optional)</Label>
                 <Input
                   id="add-display-order"
@@ -2371,6 +2397,19 @@ function BrandRegistryManager() {
                     <SelectItem value="nonAlc">Non-Alcoholic</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-type">Type (optional)</Label>
+                <Input
+                  id="edit-type"
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  placeholder="e.g., Red, White, Rosé, Sparkling"
+                  data-testid="input-edit-type"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Product type within the category (e.g., for wine: red, white, rosé, sparkling)
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-display-order">Display Order (optional)</Label>
