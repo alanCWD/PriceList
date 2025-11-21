@@ -2340,7 +2340,7 @@ function BrandRegistryManager() {
             </div>
           ) : (
             <div className="space-y-6">
-              {(["cider", "wine", "spirits", "nonAlc"] as BrandCategory[]).map((cat) => {
+              {(["wine", "spirits", "cider", "nonAlc"] as BrandCategory[]).map((cat) => {
                 const categoryBrands = brandsByCategory?.[cat] || [];
                 if (categoryBrands.length === 0) return null;
 
