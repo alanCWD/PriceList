@@ -8,8 +8,8 @@ import { PreviewPanel } from "@/components/preview-panel";
 import type { Pricelist, Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
 
 export default function PricelistView() {
-  const [location, setLocation] = useLocation();
-  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const [, setLocation] = useLocation();
+  const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const pricelistId = urlParams.get('id') ? parseInt(urlParams.get('id')!) : null;
 
   // Load pricelist
