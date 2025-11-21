@@ -22,6 +22,7 @@ const CATEGORY_INDICATORS = {
 const WINE_TYPES = {
   sparkling: ['sparkling', 'cuvée', 'cuvee', 'prosecco', 'champagne'],
   white: ['white', 'blanc', 'riesling', 'chardonnay', 'pinot gris', 'sauvignon blanc'],
+  rose: ['rosé', 'rose', 'pink', 'blush'],
   red: ['red', 'noir', 'merlot', 'cabernet', 'syrah', 'pinot noir'],
 };
 
@@ -37,13 +38,27 @@ const REGIONS = [
   'british columbia',
 ];
 
+// Regions to ignore completely (blacklisted - won't be stored)
+const BLACKLISTED_REGIONS = [
+  'lower mainland',
+];
+
 // Noise words to ignore
 const NOISE_WORDS = ['keg', 'bottle', 'can'];
+
+// Known wineries/brands to explicitly recognize
+const KNOWN_WINERIES = [
+  'cannon estate',
+  'synchromesh',
+  'salt spring wild',
+  'cobble hill winery',
+  'ones+ non-alc bc wine',
+];
 
 interface ParsedCollection {
   brand: string;
   primaryCategory: 'cider' | 'wine' | 'spirits' | 'nonAlc';
-  wineType?: 'sparkling' | 'white' | 'red';
+  wineType?: 'sparkling' | 'white' | 'rose' | 'red';
   region?: string;
   sortKey: string; // e.g., "1-Cider-Salt Spring Wild" or "2-Wine-White-Synchromesh"
 }
@@ -86,7 +101,7 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
   if (!primaryCategory) return null;
 
   // Determine wine type if it's wine category
-  let wineType: 'sparkling' | 'white' | 'red' | undefined;
+  let wineType: 'sparkling' | 'white' | 'rose' | 'red' | undefined;
   if (primaryCategory === 'wine') {
     for (const term of terms) {
       if (WINE_TYPES.sparkling.some(indicator => term.includes(indicator))) {
@@ -95,6 +110,10 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
       }
       if (WINE_TYPES.white.some(indicator => term.includes(indicator))) {
         wineType = 'white';
+        break;
+      }
+      if (WINE_TYPES.rose.some(indicator => term.includes(indicator))) {
+        wineType = 'rose';
         break;
       }
       if (WINE_TYPES.red.some(indicator => term.includes(indicator))) {
@@ -109,14 +128,32 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
   let region: string | undefined;
   const originalTerms = collectionString.split(';').map(t => t.trim()).filter(t => t.length > 0);
   
+  // First pass: check for known wineries (exact match)
+  for (const term of originalTerms) {
+    const termLower = term.toLowerCase();
+    if (KNOWN_WINERIES.some(w => termLower === w)) {
+      brand = term; // Store original case
+      break;
+    }
+  }
+  
+  // Second pass: identify legitimate regions (skip blacklisted ones) and extract brand if not found
   for (const term of originalTerms) {
     const termLower = term.toLowerCase();
     
-    // Check if it's a region
-    if (REGIONS.some(r => termLower === r)) {
-      region = term; // Store original case
+    // Skip blacklisted regions entirely (don't store them)
+    if (BLACKLISTED_REGIONS.some(r => termLower === r)) {
       continue;
     }
+    
+    // Check if it's a legitimate region (store first legitimate region found)
+    if (REGIONS.some(r => termLower === r)) {
+      if (!region) region = term; // Store original case
+      continue;
+    }
+    
+    // If brand already found (from known wineries), just continue processing regions
+    if (brand) continue;
     
     // Skip if it's a category indicator
     const isCategory = Object.values(CATEGORY_INDICATORS).some(indicators =>
@@ -135,7 +172,6 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
     
     // This must be the brand
     brand = term;
-    break;
   }
 
   if (!brand) return null;
@@ -151,7 +187,8 @@ export function parseCollection(collectionString: string): ParsedCollection | nu
   const wineTypeSortOrder = {
     sparkling: '1',
     white: '2',
-    red: '3',
+    rose: '3',
+    red: '4',
   };
 
   let sortKey = `${primarySortOrder[primaryCategory]}-${primaryCategory}`;
