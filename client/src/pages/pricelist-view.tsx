@@ -14,7 +14,7 @@ export default function PricelistView() {
 
   // Load pricelist
   const { data: pricelist, isLoading, error } = useQuery<Pricelist>({
-    queryKey: pricelistId ? ['/api/pricelists', pricelistId] : [],
+    queryKey: pricelistId ? [`/api/pricelists/${pricelistId}`] : [],
     enabled: !!pricelistId,
   });
 
