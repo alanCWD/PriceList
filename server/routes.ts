@@ -809,8 +809,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "No pricelist found for this company" });
       }
 
+      // Debug: log what we received
+      console.log('[PATCH /api/brands/products] Request body keys:', Object.keys(req.body));
+      console.log('[PATCH /api/brands/products] Has reorderedProducts?', 'reorderedProducts' in req.body);
+      console.log('[PATCH /api/brands/products] reorderedProducts type:', typeof req.body.reorderedProducts);
+      console.log('[PATCH /api/brands/products] reorderedProducts length:', req.body.reorderedProducts?.length);
+
       // Check if this is a bulk reorder (reorderedProducts array) or single update (productId + updates)
-      if (req.body.reorderedProducts) {
+      if (req.body.reorderedProducts && Array.isArray(req.body.reorderedProducts)) {
         // Bulk reorder: replace entire products array with new order
         await storage.updatePricelist(latestPricelist.id, {
           products: req.body.reorderedProducts,
