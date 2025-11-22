@@ -182,20 +182,17 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     
     const centerX = pageWidth / 2;
     
-    // Title centered horizontally - measure width for agent boundary calculation
+    // Title centered horizontally
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    const titleWidth = doc.getTextWidth(branding.companyName);
     doc.text(branding.companyName, centerX, titleBaseline, { align: "center" });
 
     // Tagline centered below title with minimal spacing
-    let taglineWidth = 0;
     if (branding.tagline) {
       doc.setFontSize(11);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
-      taglineWidth = doc.getTextWidth(branding.tagline);
       doc.text(branding.tagline, centerX, taglineBaseline, { align: "center" });
     }
 
@@ -208,53 +205,30 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       const agentRightX = pageWidth - headerPadding;
       let agentSpacing = 30; // Space between agent columns (default)
       
-      // Calculate widths for all agents first
-      const agentWidths = salesAgents.map(agent => {
-        const lines = [];
-        if (agent.region) lines.push(agent.region);
-        lines.push(agent.name, agent.email, agent.phone);
-        return Math.max(...lines.map(line => doc.getTextWidth(line)));
-      });
-      
-      // Calculate actual title footprint (max of title/tagline width)
-      const maxTitleWidth = Math.max(titleWidth, taglineWidth);
-      const titleHalfWidth = maxTitleWidth / 2;
-      
-      // Available width for agents: right half minus padding minus title footprint
-      const availableWidth = (pageWidth / 2) - headerPadding - titleHalfWidth;
-      const leftBoundary = (pageWidth / 2) + titleHalfWidth;
-      
-      // Position agents from right to left, stopping if we run out of space
+      // Position agents from right to left
       let cumulativeOffset = 0;
-      salesAgents.slice().reverse().forEach((agent, agentIndex) => {
+      salesAgents.slice().reverse().forEach((agent) => {
         const lines = [];
         if (agent.region) lines.push(agent.region);
         lines.push(agent.name, agent.email, agent.phone);
         
-        // Get the width for this agent (from reversed array)
-        const reversedIndex = salesAgents.length - 1 - agentIndex;
-        const agentWidth = agentWidths[reversedIndex];
+        // Calculate width for this agent
+        const agentWidth = Math.max(...lines.map(line => doc.getTextWidth(line)));
         
-        // Calculate where this agent's left edge would be
-        const agentLeftEdge = agentRightX - cumulativeOffset - agentWidth;
+        // Calculate starting Y for this agent block (bottom-aligned)
+        let agentY = headerHeight - bottomPadding - (lines.length - 1) * lineHeight;
         
-        // Only draw this agent if it fits within available space
-        if (agentLeftEdge >= leftBoundary) {
-          // Calculate starting Y for this agent block (bottom-aligned)
-          let agentY = headerHeight - bottomPadding - (lines.length - 1) * lineHeight;
-          
-          // Position this agent using cumulative offset
-          const agentX = agentRightX - cumulativeOffset;
-          
-          // Draw agent info right-aligned
-          lines.forEach(line => {
-            doc.text(line, agentX, agentY, { align: "right" });
-            agentY += lineHeight;
-          });
-          
-          // Add this agent's width + spacing to cumulative offset for next agent
-          cumulativeOffset += agentWidth + agentSpacing;
-        }
+        // Position this agent using cumulative offset
+        const agentX = agentRightX - cumulativeOffset;
+        
+        // Draw agent info right-aligned
+        lines.forEach(line => {
+          doc.text(line, agentX, agentY, { align: "right" });
+          agentY += lineHeight;
+        });
+        
+        // Add this agent's width + spacing to cumulative offset for next agent
+        cumulativeOffset += agentWidth + agentSpacing;
       });
     }
   };
@@ -801,15 +775,12 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     doc.setFontSize(16); // Smaller than Modern template
     doc.setFont("helvetica", "bold");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    const titleWidth = doc.getTextWidth(branding.companyName);
     doc.text(branding.companyName, centerX, titleBaseline, { align: "center" });
 
-    let taglineWidth = 0;
     if (branding.tagline) {
       doc.setFontSize(9);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
-      taglineWidth = doc.getTextWidth(branding.tagline);
       doc.text(branding.tagline, centerX, taglineBaseline, { align: "center" });
     }
 
@@ -822,51 +793,28 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       const agentRightX = pageWidth - headerPadding;
       let agentSpacing = 20; // Space between agent columns (default)
       
-      // Calculate widths for all agents first
-      const agentWidths = salesAgents.map(agent => {
-        const lines = [];
-        if (agent.region) lines.push(agent.region);
-        lines.push(agent.name, agent.email, agent.phone);
-        return Math.max(...lines.map(line => doc.getTextWidth(line)));
-      });
-      
-      // Calculate actual title footprint (max of title/tagline width)
-      const maxTitleWidth = Math.max(titleWidth, taglineWidth);
-      const titleHalfWidth = maxTitleWidth / 2;
-      
-      // Available width for agents: right half minus padding minus title footprint
-      const availableWidth = (pageWidth / 2) - headerPadding - titleHalfWidth;
-      const leftBoundary = (pageWidth / 2) + titleHalfWidth;
-      
-      // Position agents from right to left, stopping if we run out of space
+      // Position agents from right to left
       let cumulativeOffset = 0;
-      salesAgents.slice().reverse().forEach((agent, agentIndex) => {
+      salesAgents.slice().reverse().forEach((agent) => {
         const lines = [];
         if (agent.region) lines.push(agent.region);
         lines.push(agent.name, agent.email, agent.phone);
         
-        // Get the width for this agent (from reversed array)
-        const reversedIndex = salesAgents.length - 1 - agentIndex;
-        const agentWidth = agentWidths[reversedIndex];
+        // Calculate width for this agent
+        const agentWidth = Math.max(...lines.map(line => doc.getTextWidth(line)));
         
-        // Calculate where this agent's left edge would be
-        const agentLeftEdge = agentRightX - cumulativeOffset - agentWidth;
+        let agentY = headerHeight - headerPadding - (lines.length - 1) * lineHeight;
         
-        // Only draw this agent if it fits within available space
-        if (agentLeftEdge >= leftBoundary) {
-          let agentY = headerHeight - headerPadding - (lines.length - 1) * lineHeight;
-          
-          // Position this agent using cumulative offset
-          const agentX = agentRightX - cumulativeOffset;
-          
-          lines.forEach(line => {
-            doc.text(line, agentX, agentY, { align: "right" });
-            agentY += lineHeight;
-          });
-          
-          // Add this agent's width + spacing to cumulative offset for next agent
-          cumulativeOffset += agentWidth + agentSpacing;
-        }
+        // Position this agent using cumulative offset
+        const agentX = agentRightX - cumulativeOffset;
+        
+        lines.forEach(line => {
+          doc.text(line, agentX, agentY, { align: "right" });
+          agentY += lineHeight;
+        });
+        
+        // Add this agent's width + spacing to cumulative offset for next agent
+        cumulativeOffset += agentWidth + agentSpacing;
       });
     }
   };
