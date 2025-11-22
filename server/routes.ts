@@ -821,6 +821,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updatePricelist(latestPricelist.id, {
           products: req.body.reorderedProducts,
         });
+        
+        // Also persist product order to brand registry for each brand
+        // Group products by brand to save productOrder per brand
+        const productsByBrand: Record<string, string[]> = {};
+        req.body.reorderedProducts.forEach((product: any) => {
+          const brandName = product.collectionBrand;
+          if (brandName) {
+            if (!productsByBrand[brandName]) {
+              productsByBrand[brandName] = [];
+            }
+            productsByBrand[brandName].push(product.id);
+          }
+        });
+        
+        // Update productOrder for each brand in registry
+        for (const [brandName, productIds] of Object.entries(productsByBrand)) {
+          try {
+            // Find existing brand registry entry
+            const existingBrand = await storage.getBrandByName(targetCompanyId, brandName);
+            
+            if (existingBrand) {
+              // Update existing brand with productOrder
+              await storage.updateBrand(existingBrand.id, {
+                productOrder: productIds,
+              });
+            }
+            // If brand doesn't exist in registry, we don't create it automatically
+            // Brands should be added via the brand registry UI first
+          } catch (error) {
+            console.error(`Error updating productOrder for brand ${brandName}:`, error);
+            // Continue processing other brands even if one fails
+          }
+        }
+        
         res.json({ success: true });
       } else {
         // Single product update

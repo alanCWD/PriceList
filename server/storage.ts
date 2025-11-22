@@ -65,6 +65,7 @@ export interface IStorage {
   // Brand Registry operations
   getBrandsByCompanyId(companyId: number): Promise<BrandRegistry[]>;
   getBrandById(id: number): Promise<BrandRegistry | undefined>;
+  getBrandByName(companyId: number, brandName: string): Promise<BrandRegistry | undefined>;
   createBrand(brand: InsertBrandRegistry): Promise<BrandRegistry>;
   updateBrand(id: number, brand: Partial<InsertBrandRegistry>): Promise<BrandRegistry | undefined>;
   deleteBrand(id: number): Promise<boolean>;
@@ -365,6 +366,20 @@ export class DatabaseStorage implements IStorage {
   
   async getBrandById(id: number): Promise<BrandRegistry | undefined> {
     const result = await db.select().from(brandRegistry).where(eq(brandRegistry.id, id));
+    return result[0];
+  }
+  
+  async getBrandByName(companyId: number, brandName: string): Promise<BrandRegistry | undefined> {
+    const result = await db
+      .select()
+      .from(brandRegistry)
+      .where(
+        and(
+          eq(brandRegistry.companyId, companyId),
+          eq(brandRegistry.brandName, brandName)
+        )
+      )
+      .limit(1);
     return result[0];
   }
   
