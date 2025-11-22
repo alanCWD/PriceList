@@ -32,15 +32,14 @@ export function UserProfileMenu() {
     setLocation("/admin");
   };
 
-  const handleViewToggle = () => {
-    const newViewMode = viewMode === "admin" ? "client" : "admin";
-    setViewMode(newViewMode);
-    // Navigate to appropriate view
-    if (newViewMode === "admin") {
-      setLocation("/dashboard");
-    } else {
-      setLocation("/");
-    }
+  const handleViewAsClient = () => {
+    setViewMode("client");
+    setLocation("/");
+  };
+
+  const handleViewAsAdmin = () => {
+    setViewMode("admin");
+    setLocation("/dashboard");
   };
 
   // Get user initials for avatar fallback
@@ -102,20 +101,18 @@ export function UserProfileMenu() {
         {isSuperAdmin && (
           <>
             <DropdownMenuItem 
-              onClick={handleViewToggle}
-              data-testid={viewMode === "admin" ? "button-view-as-client" : "button-view-as-admin"}
+              onClick={handleViewAsClient}
+              data-testid="button-view-as-client"
             >
-              {viewMode === "admin" ? (
-                <>
-                  <Eye className="mr-2 h-4 w-4" />
-                  <span>View as Client</span>
-                </>
-              ) : (
-                <>
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  <span>View as Admin</span>
-                </>
-              )}
+              <Eye className="mr-2 h-4 w-4" />
+              <span>View as Client</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={handleViewAsAdmin}
+              data-testid="button-view-as-admin"
+            >
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              <span>View as Admin</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>

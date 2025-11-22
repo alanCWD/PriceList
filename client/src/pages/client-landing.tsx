@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Upload, FileText, Download, Printer, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -17,6 +18,7 @@ export default function ClientLanding() {
   const { impersonatedCompanyId } = useViewMode();
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [selectedBrand, setSelectedBrand] = useState<string>("");
 
   // Fetch latest pricelist (includes impersonatedCompanyId in queryKey to refetch when company changes)
   const { data: latestPricelist, isLoading, error } = useQuery<Pricelist>({
@@ -380,6 +382,159 @@ export default function ClientLanding() {
   // Main state - pricelist exists
   const products = latestPricelist.products as Product[];
 
+  // Extract unique brands from visible products
+  const uniqueBrands = useMemo(() => {
+    const visibleProducts = products.filter(p => !p.isHidden);
+    const brandSet = new Set<string>();
+    
+    visibleProducts.forEach(product => {
+      // Try to get brand from collectionBrand first, then fall back to parsing category
+      const brand = product.collectionBrand || product.category || "Uncategorized";
+      if (brand && brand !== "Uncategorized") {
+        brandSet.add(brand);
+      }
+    });
+    
+    // Convert to array and sort alphabetically
+    return Array.from(brandSet).sort((a, b) => a.localeCompare(b));
+  }, [products]);
+
+  // Handler for downloading a single brand
+  const handleDownloadBrandPDF = async () => {
+    if (!latestPricelist || !selectedBrand) return;
+
+    setIsGeneratingPDF(true);
+    try {
+      // Filter products by selected brand and exclude hidden products
+      const allProducts = latestPricelist.products as Product[];
+      const brandProducts = allProducts.filter(p => 
+        !p.isHidden && 
+        (p.collectionBrand === selectedBrand || p.category === selectedBrand)
+      );
+      
+      if (brandProducts.length === 0) {
+        toast({
+          title: "No products found",
+          description: `No visible products found for brand "${selectedBrand}"`,
+          variant: "destructive",
+        });
+        setIsGeneratingPDF(false);
+        return;
+      }
+      
+      await generatePDF({
+        products: brandProducts,
+        branding: latestPricelist.branding as CompanyBranding,
+        salesAgents: latestPricelist.salesAgents as SalesAgent[],
+        qrCodeConfig: latestPricelist.qrCode as QRCodeConfig | undefined,
+        template: latestPricelist.template as Template,
+        pricelistName: `${latestPricelist.name} - ${selectedBrand}`,
+      });
+      
+      toast({
+        title: "PDF Generated",
+        description: `Price list for ${selectedBrand} has been downloaded`,
+      });
+    } catch (error: any) {
+      console.error("PDF generation error:", error);
+      toast({
+        title: "Download Failed",
+        description: error.message || "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  // Handler for printing a single brand
+  const handlePrintBrand = async () => {
+    if (!latestPricelist || !selectedBrand) return;
+
+    setIsGeneratingPDF(true);
+    try {
+      // Filter products by selected brand and exclude hidden products
+      const allProducts = latestPricelist.products as Product[];
+      const brandProducts = allProducts.filter(p => 
+        !p.isHidden && 
+        (p.collectionBrand === selectedBrand || p.category === selectedBrand)
+      );
+      
+      if (brandProducts.length === 0) {
+        toast({
+          title: "No products found",
+          description: `No visible products found for brand "${selectedBrand}"`,
+          variant: "destructive",
+        });
+        setIsGeneratingPDF(false);
+        return;
+      }
+      
+      // Import jsPDF and generate PDF
+      const jsPDF = (await import('jspdf')).default;
+      const autoTable = (await import('jspdf-autotable')).default;
+      
+      // Create a temporary PDF document and generate it
+      // We'll use the same logic as generatePDF but output to blob instead of saving
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "letter",
+      });
+      
+      // For simplicity, we'll use a basic table layout for printing
+      // Add title
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${latestPricelist.branding.companyName} - ${selectedBrand}`, 40, 40);
+      
+      // Add table with products
+      const tableData = brandProducts.map(p => [
+        p.product || "",
+        p.sku || "",
+        p.format || "",
+        p.price || "",
+      ]);
+      
+      autoTable(doc, {
+        head: [["Product", "SKU", "Format", "Price"]],
+        body: tableData,
+        startY: 60,
+        margin: { top: 60, right: 40, bottom: 40, left: 40 },
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [66, 66, 66] },
+      });
+      
+      // Open PDF in new window and trigger print dialog
+      const pdfBlob = doc.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      const printWindow = window.open(pdfUrl, '_blank');
+      
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+          // Clean up the URL after a delay to ensure print dialog has opened
+          setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
+        };
+      } else {
+        toast({
+          title: "Print blocked",
+          description: "Please allow pop-ups to print pricelists",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("PDF generation error:", error);
+      toast({
+        title: "Print Failed",
+        description: error.message || "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted">
       {/* Header */}
@@ -463,15 +618,68 @@ export default function ClientLanding() {
               data-testid="button-download-pdf"
             >
               <Download className="mr-2 h-5 w-5" />
-              {isGeneratingPDF ? "Generating..." : "Download PDF"}
+              {isGeneratingPDF ? "Generating..." : "Download All Brands"}
             </Button>
+
+            {uniqueBrands.length > 0 && (
+              <>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Or Download Single Brand</span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+                    <SelectTrigger className="w-full" data-testid="select-brand">
+                      <SelectValue placeholder="Select a brand" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {uniqueBrands.map((brand) => (
+                        <SelectItem key={brand} value={brand} data-testid={`select-item-${brand}`}>
+                          {brand}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex gap-3">
+                    <Button
+                      size="lg"
+                      onClick={handleDownloadBrandPDF}
+                      disabled={isGeneratingPDF || !selectedBrand}
+                      className="flex-1"
+                      variant="outline"
+                      data-testid="button-download-brand-pdf"
+                    >
+                      <Download className="mr-2 h-5 w-5" />
+                      {isGeneratingPDF ? "Generating..." : "Download"}
+                    </Button>
+                    <Button
+                      size="lg"
+                      onClick={handlePrintBrand}
+                      disabled={isGeneratingPDF || !selectedBrand}
+                      className="flex-1"
+                      variant="outline"
+                      data-testid="button-print-brand"
+                    >
+                      <Printer className="mr-2 h-5 w-5" />
+                      Print
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Or</span>
+                <span className="bg-card px-2 text-muted-foreground">Update Pricelist</span>
               </div>
             </div>
 
