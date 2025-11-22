@@ -13,6 +13,7 @@ export const productSchema = z.object({
   format: z.string(), // Package format (e.g., "12 x 750 ml")
   price: z.string(), // Price as string to preserve formatting
   productImageUrl: z.string().optional(), // Product image URL for thumbnail display
+  isHidden: z.boolean().default(false), // Visibility flag - hidden products excluded from preview/PDF
   
   // Parsed collection data (from WIX collection field)
   collectionRaw: z.string().optional(), // Original unparsed collection string
