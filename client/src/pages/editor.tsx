@@ -164,6 +164,16 @@ export default function Editor() {
   };
 
   const handleApplyMapping = () => {
+    // Build a map of existing products by SKU to preserve hidden state
+    const existingProductsBySKU = new Map<string, Product>();
+    if (pricelistData?.products) {
+      pricelistData.products.forEach((product: Product) => {
+        if (product.sku) {
+          existingProductsBySKU.set(product.sku, product);
+        }
+      });
+    }
+
     const mappedProducts: Product[] = csvData.map((row, index) => {
       let imageUrl = fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "";
       
@@ -213,16 +223,24 @@ export default function Editor() {
         }
       }
       
+      // Get SKU for reconciliation
+      const sku = stripHtml(row[fieldMapping.sku] || "");
+      
+      // Check if this product exists in the previous pricelist (by SKU)
+      const existingProduct = existingProductsBySKU.get(sku);
+      const isHidden = existingProduct?.isHidden ?? false;
+      
       // Strip HTML tags from all text fields (Wix exports include HTML markup)
       return {
         id: `product-${index}`,
         category,
         notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
         product: stripHtml(row[fieldMapping.product] || ""),
-        sku: stripHtml(row[fieldMapping.sku] || ""),
+        sku,
         format: stripHtml(format),
         price: stripHtml(row[fieldMapping.price] || ""),
         productImageUrl: imageUrl,
+        isHidden, // Preserve hidden state from previous pricelist
         collectionRaw,
         collectionCategory,
         collectionType,
