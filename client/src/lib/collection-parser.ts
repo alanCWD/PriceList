@@ -128,9 +128,9 @@ export function parseCollection(
 
   if (!primaryCategory) return null;
 
-  // Determine wine type if it's wine category
+  // Determine wine type if it's wine or nonAlc category
   let wineType: 'sparkling' | 'white' | 'rosé' | 'red' | undefined;
-  if (primaryCategory === 'wine') {
+  if (primaryCategory === 'wine' || primaryCategory === 'nonAlc') {
     for (const term of terms) {
       if (WINE_TYPES.sparkling.some(indicator => term.includes(indicator))) {
         wineType = 'sparkling';
@@ -255,6 +255,34 @@ export function formatCollection(parsed: ParsedCollection): string {
   // Note: Region is stored in the data but NOT displayed in the formatted string
   
   return parts.join(' | ');
+}
+
+/**
+ * Extract wine type from product name (fallback for when collection string doesn't have it)
+ * Used primarily for non-alcoholic wines where type is in the product name
+ * 
+ * Example: "Ones Sparkling White 200 ml" → "sparkling" or "white"
+ */
+export function extractWineTypeFromProductName(productName: string): 'sparkling' | 'white' | 'rosé' | 'red' | undefined {
+  if (!productName) return undefined;
+  
+  const nameLower = productName.toLowerCase();
+  
+  // Check in priority order (sparkling is most specific, red is least specific)
+  if (WINE_TYPES.sparkling.some(indicator => nameLower.includes(indicator))) {
+    return 'sparkling';
+  }
+  if (WINE_TYPES.rosé.some(indicator => nameLower.includes(indicator))) {
+    return 'rosé';
+  }
+  if (WINE_TYPES.white.some(indicator => nameLower.includes(indicator))) {
+    return 'white';
+  }
+  if (WINE_TYPES.red.some(indicator => nameLower.includes(indicator))) {
+    return 'red';
+  }
+  
+  return undefined;
 }
 
 /**

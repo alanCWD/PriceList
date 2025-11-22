@@ -15,7 +15,7 @@ import { CollectionEditor } from "@/components/collection-editor";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { stripHtml } from "@/lib/text-utils";
-import { parseCollection, type BrandRegistryEntry } from "@/lib/collection-parser";
+import { parseCollection, extractWineTypeFromProductName, type BrandRegistryEntry } from "@/lib/collection-parser";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template, BrandRegistry } from "@shared/schema";
 
 export default function Editor() {
@@ -226,6 +226,15 @@ export default function Editor() {
       // Get SKU for reconciliation
       const sku = stripHtml(row[fieldMapping.sku] || "");
       
+      // Get product name (we'll need it for fallback wine type extraction)
+      const productName = stripHtml(row[fieldMapping.product] || "");
+      
+      // FALLBACK: If collectionType is not set but category is wine or nonAlc,
+      // try to extract wine type from product name (common for non-alcoholic wines)
+      if (!collectionType && (collectionCategory === 'wine' || collectionCategory === 'nonAlc')) {
+        collectionType = extractWineTypeFromProductName(productName);
+      }
+      
       // Check if this product exists in the previous pricelist (by SKU)
       const existingProduct = existingProductsBySKU.get(sku);
       const isHidden = existingProduct?.isHidden ?? false;
@@ -235,7 +244,7 @@ export default function Editor() {
         id: `product-${index}`,
         category,
         notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
-        product: stripHtml(row[fieldMapping.product] || ""),
+        product: productName,
         sku,
         format: stripHtml(format),
         price: stripHtml(row[fieldMapping.price] || ""),

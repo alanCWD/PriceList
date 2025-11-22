@@ -308,16 +308,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     'red': 4,
   };
 
-  Object.entries(groupedProducts).forEach(([brandName, brandProducts]) => {
-    // DEBUG: Log product types BEFORE sorting
-    console.log(`[PDF] Brand "${brandName}" BEFORE sorting:`, 
-      brandProducts.map(p => ({ 
-        name: p.product, 
-        type: p.collectionType,
-        category: p.collectionCategory 
-      }))
-    );
-    
+  Object.values(groupedProducts).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
       const typeA = a.collectionType?.toLowerCase() || '';
       const typeB = b.collectionType?.toLowerCase() || '';
@@ -330,15 +321,6 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       
       return (a.product || '').localeCompare(b.product || '');
     });
-    
-    // DEBUG: Log product types AFTER sorting
-    console.log(`[PDF] Brand "${brandName}" AFTER sorting:`, 
-      brandProducts.map(p => ({ 
-        name: p.product, 
-        type: p.collectionType,
-        order: wineTypeOrder[p.collectionType?.toLowerCase() || ''] || 999
-      }))
-    );
   });
 
   // Load product images as base64 in parallel
@@ -614,16 +596,7 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     'red': 4,
   };
 
-  Object.entries(groupedProducts).forEach(([brandName, brandProducts]) => {
-    // DEBUG: Log product types BEFORE sorting
-    console.log(`[PDF] Brand "${brandName}" BEFORE sorting:`, 
-      brandProducts.map(p => ({ 
-        name: p.product, 
-        type: p.collectionType,
-        category: p.collectionCategory 
-      }))
-    );
-    
+  Object.values(groupedProducts).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
       const typeA = a.collectionType?.toLowerCase() || '';
       const typeB = b.collectionType?.toLowerCase() || '';
@@ -636,15 +609,6 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
       
       return (a.product || '').localeCompare(b.product || '');
     });
-    
-    // DEBUG: Log product types AFTER sorting
-    console.log(`[PDF] Brand "${brandName}" AFTER sorting:`, 
-      brandProducts.map(p => ({ 
-        name: p.product, 
-        type: p.collectionType,
-        order: wineTypeOrder[p.collectionType?.toLowerCase() || ''] || 999
-      }))
-    );
   });
 
   Object.entries(groupedProducts)
@@ -975,16 +939,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     'red': 4,
   };
 
-  Object.entries(groupedProducts).forEach(([brandName, brandProducts]) => {
-    // DEBUG: Log product types BEFORE sorting
-    console.log(`[PDF] Brand "${brandName}" BEFORE sorting:`, 
-      brandProducts.map(p => ({ 
-        name: p.product, 
-        type: p.collectionType,
-        category: p.collectionCategory 
-      }))
-    );
-    
+  Object.values(groupedProducts).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
       const typeA = a.collectionType?.toLowerCase() || '';
       const typeB = b.collectionType?.toLowerCase() || '';
@@ -997,15 +952,6 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       
       return (a.product || '').localeCompare(b.product || '');
     });
-    
-    // DEBUG: Log product types AFTER sorting
-    console.log(`[PDF] Brand "${brandName}" AFTER sorting:`, 
-      brandProducts.map(p => ({ 
-        name: p.product, 
-        type: p.collectionType,
-        order: wineTypeOrder[p.collectionType?.toLowerCase() || ''] || 999
-      }))
-    );
   });
 
   // Load product images as base64 in parallel

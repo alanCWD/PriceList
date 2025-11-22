@@ -5,7 +5,7 @@ import { Download, Printer } from "lucide-react";
 import { PricelistDocument } from "@/components/pricelist-document";
 import { generatePDF } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
-import { parseCollection, type BrandRegistryEntry } from "@/lib/collection-parser";
+import { parseCollection, extractWineTypeFromProductName, type BrandRegistryEntry } from "@/lib/collection-parser";
 import { sortBrandGroups } from "@/lib/sort-utils";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
@@ -43,43 +43,45 @@ export function PreviewPanel({
     }));
     
     return products.map(product => {
-      // If all parsed fields are present, use product as-is
-      if (product.collectionBrand && product.collectionCategory) {
-        return product;
+      // Start with the existing product
+      let normalized = { ...product };
+      
+      // Re-parse if ANY key field is missing (brand, category, OR type)
+      if (!product.collectionBrand || !product.collectionCategory || !product.collectionType) {
+        const collectionString = product.collectionRaw || product.category || "";
+        const parsed = parseCollection(collectionString, brandRegistryEntries);
+        
+        if (parsed) {
+          // Apply all parsed fields (only if not already present)
+          normalized.collectionBrand = normalized.collectionBrand || parsed.brand;
+          normalized.collectionCategory = normalized.collectionCategory || parsed.primaryCategory;
+          normalized.collectionType = normalized.collectionType || parsed.wineType;
+          normalized.collectionRegion = normalized.collectionRegion || parsed.region;
+        } else if (!product.collectionBrand) {
+          // Parsing failed - extract a clean brand name from the category string
+          const terms = collectionString
+            .split(';')
+            .map(t => t.trim())
+            .filter(t => t.length > 0);
+          
+          // Find first term that's not a region, wine type, or category
+          const brandTerm = terms.find(t => {
+            const lower = t.toLowerCase();
+            return !lower.match(/okanagan|vancouver island|lower mainland|gulf islands|cider|wine|spirits|sparkling|white|ros[eé]|red|non alcoholic|keg/i);
+          }) || terms[0] || "Uncategorized";
+          
+          normalized.collectionBrand = brandTerm;
+        }
       }
       
-      // Re-parse collection data from collectionRaw or category
-      const collectionString = product.collectionRaw || product.category || "";
-      const parsed = parseCollection(collectionString, brandRegistryEntries);
-      
-      // If parsing failed, extract a clean brand name from the category string
-      if (!parsed) {
-        // Try to extract the first non-region, non-type term as the brand
-        const terms = collectionString
-          .split(';')
-          .map(t => t.trim())
-          .filter(t => t.length > 0);
-        
-        // Find first term that's not a region, wine type, or category
-        const brandTerm = terms.find(t => {
-          const lower = t.toLowerCase();
-          return !lower.match(/okanagan|vancouver island|lower mainland|gulf islands|cider|wine|spirits|sparkling|white|ros[eé]|red|non alcoholic|keg/i);
-        }) || terms[0] || "Uncategorized";
-        
-        return {
-          ...product,
-          collectionBrand: brandTerm,
-        };
+      // FINAL FALLBACK: If collectionType is STILL missing for wine/nonAlc products,
+      // extract it from product name (handles cases where collection string lacks type info)
+      if (!normalized.collectionType && 
+          (normalized.collectionCategory === 'wine' || normalized.collectionCategory === 'nonAlc')) {
+        normalized.collectionType = extractWineTypeFromProductName(product.product || '');
       }
       
-      // Return product with parsed fields populated
-      return {
-        ...product,
-        collectionBrand: parsed.brand,
-        collectionCategory: parsed.primaryCategory,
-        collectionType: parsed.wineType,
-        collectionRegion: parsed.region,
-      };
+      return normalized;
     });
   }, [products, brandRegistry]);
 
@@ -136,16 +138,7 @@ export function PreviewPanel({
     'red': 4,
   };
 
-  Object.entries(groupedProducts).forEach(([brandName, brandProducts]) => {
-    // DEBUG: Log product types BEFORE sorting
-    console.log(`[Preview] Brand "${brandName}" BEFORE sorting:`, 
-      brandProducts.map(p => ({ 
-        name: p.product, 
-        type: p.collectionType,
-        category: p.collectionCategory 
-      }))
-    );
-    
+  Object.values(groupedProducts).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
       // First sort by wine type
       const typeA = a.collectionType?.toLowerCase() || '';
@@ -160,15 +153,6 @@ export function PreviewPanel({
       // Then by product name as secondary sort
       return (a.product || '').localeCompare(b.product || '');
     });
-    
-    // DEBUG: Log product types AFTER sorting
-    console.log(`[Preview] Brand "${brandName}" AFTER sorting:`, 
-      brandProducts.map(p => ({ 
-        name: p.product, 
-        type: p.collectionType,
-        order: wineTypeOrder[p.collectionType?.toLowerCase() || ''] || 999
-      }))
-    );
   });
 
   // Sort brand groups using shared utility
