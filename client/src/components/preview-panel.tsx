@@ -99,9 +99,10 @@ export function PreviewPanel({
     });
   }, [products, brandRegistry]);
 
-  // Filter products by category if filter is set, and exclude hidden products
+  // Filter products: exclude hidden, uncategorized, and apply category filter if set
   const filteredProducts = normalizedProducts
     .filter((p) => !p.isHidden) // Exclude hidden products
+    .filter((p) => !p.category || p.category.toLowerCase() !== "uncategorized") // Exclude uncategorized products
     .filter((p) => !categoryFilter || p.category === categoryFilter); // Apply category filter if set
 
   const handleDownloadPDF = async () => {
