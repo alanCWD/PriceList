@@ -888,30 +888,28 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     doc.text(displayName, margin + 8, yPosition + 12);
     yPosition += 22;
 
-    // Check if this category has any products with images or notes
+    // Check if this category has any products with images
     const hasImages = categoryProducts.some(p => p.productImageUrl);
-    const hasNotes = categoryProducts.some(p => p.notes);
     const currentCategoryProducts = [...categoryProducts];
 
-    // Products table with compressed spacing - only include columns that have data
+    // Products table with compressed spacing - consistent column order: Image, SKU, Product, Format, Price, Notes
     const tableData = currentCategoryProducts.map(product => {
       const row: any[] = [];
       if (hasImages) row.push("");  // Placeholder for image
-      if (hasNotes) row.push(product.notes || "");
       row.push(
-        product.product,
         product.sku,
+        product.product,
         product.format,
-        product.price
+        product.price,
+        product.notes || ""
       );
       return row;
     });
 
-    // Build header row dynamically based on which columns have data
+    // Build header row - always include all columns for consistency
     const headRow: string[] = [];
     if (hasImages) headRow.push("Image");
-    if (hasNotes) headRow.push("Notes");
-    headRow.push("Product", "SKU", "Format", "Price");
+    headRow.push("SKU", "Product", "Format", "Price", "Notes");
 
     autoTable(doc, {
       startY: yPosition,
@@ -940,19 +938,17 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         const styles: any = {};
         let colIndex = 0;
         
+        // Column order: Image (if hasImages), SKU, Product, Format, Price, Notes
         if (hasImages) {
           styles[colIndex] = { cellWidth: 30, halign: "center" };
           colIndex++;
         }
-        if (hasNotes) {
-          styles[colIndex] = { cellWidth: 60 };
-          colIndex++;
-        }
-        // Product, SKU, Format, Price
-        styles[colIndex] = { cellWidth: hasImages && hasNotes ? 140 : hasImages || hasNotes ? 160 : 180 };
-        styles[colIndex + 1] = { cellWidth: 70 };
-        styles[colIndex + 2] = { cellWidth: 80 };
-        styles[colIndex + 3] = { cellWidth: 60 };
+        // SKU, Product, Format, Price, Notes
+        styles[colIndex] = { cellWidth: 70 };      // SKU
+        styles[colIndex + 1] = { cellWidth: hasImages ? 150 : 170 }; // Product
+        styles[colIndex + 2] = { cellWidth: 70 };  // Format
+        styles[colIndex + 3] = { cellWidth: 50 };  // Price
+        styles[colIndex + 4] = { cellWidth: hasImages ? 80 : 90 }; // Notes
         
         return styles;
       })(),
