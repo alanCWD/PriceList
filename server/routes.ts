@@ -1092,6 +1092,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         productOrder: b.productOrder,
       }));
       
+      // Prevent HTTP caching to ensure fresh data after reordering
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
       res.json(brandOrdering);
     } catch (error) {
       console.error("Error fetching brand ordering:", error);
