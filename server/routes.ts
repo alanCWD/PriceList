@@ -1063,6 +1063,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get brand product ordering for current user's company (Client-accessible for PDF generation)
+  app.get("/api/brands/ordering", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const effectiveCompanyId = getEffectiveCompanyId(req, user);
+      if (!effectiveCompanyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      // Fetch brands and return only brandName + productOrder (safe for clients)
+      const brands = await storage.getBrandsByCompanyId(effectiveCompanyId);
+      const brandOrdering = brands.map(b => ({
+        brandName: b.brandName,
+        productOrder: b.productOrder,
+      }));
+      
+      res.json(brandOrdering);
+    } catch (error) {
+      console.error("Error fetching brand ordering:", error);
+      res.status(500).json({ error: "Failed to fetch brand ordering" });
+    }
+  });
+
   // Get brands for current user's company (Admin & Company Admin)
   // Super Admins can optionally pass companyId query parameter to view any company's brands
   app.get("/api/brands", isAdmin, async (req: any, res) => {

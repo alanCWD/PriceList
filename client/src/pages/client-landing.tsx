@@ -10,7 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { generatePDF } from "@/lib/pdf-generator";
 import { stripHtml } from "@/lib/text-utils";
 import { useViewMode } from "@/contexts/ViewModeContext";
-import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template } from "@shared/schema";
+import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template, BrandRegistry } from "@shared/schema";
 import Papa from "papaparse";
 
 export default function ClientLanding() {
@@ -32,6 +32,12 @@ export default function ClientLanding() {
     defaultBranding: CompanyBranding | null;
   }>({
     queryKey: ['/api/companies/defaults', { impersonatedCompanyId }],
+  });
+
+  // Fetch brand ordering data for manual product ordering (client-accessible endpoint)
+  // Returns lightweight payload with just brandName + productOrder for PDF generation
+  const { data: brandOrderingData, isLoading: isBrandOrderingLoading, isError: isBrandOrderingError } = useQuery<{ brandName: string; productOrder: string[] | null }[]>({
+    queryKey: ['/api/brands/ordering', { impersonatedCompanyId }],
   });
 
   // Extract unique brands from visible products (must be before early returns due to Rules of Hooks)
@@ -264,6 +270,16 @@ export default function ClientLanding() {
   const handleDownloadPDF = async () => {
     if (!latestPricelist) return;
 
+    // Block PDF generation if brand ordering data failed to load
+    if (isBrandOrderingError) {
+      toast({
+        title: "Cannot generate PDF",
+        description: "Failed to load product ordering data. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGeneratingPDF(true);
     try {
       // Filter out hidden products before PDF generation
@@ -277,6 +293,7 @@ export default function ClientLanding() {
         qrCodeConfig: latestPricelist.qrCode as QRCodeConfig | undefined,
         template: latestPricelist.template as Template,
         pricelistName: latestPricelist.name,
+        brandRegistry: brandOrderingData as any || [], // Pass brand ordering for manual product ordering (only brandName + productOrder needed)
       });
       
       toast({
@@ -406,6 +423,16 @@ export default function ClientLanding() {
   const handleDownloadBrandPDF = async () => {
     if (!latestPricelist || !selectedBrand) return;
 
+    // Block PDF generation if brand ordering data failed to load
+    if (isBrandOrderingError) {
+      toast({
+        title: "Cannot generate PDF",
+        description: "Failed to load product ordering data. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGeneratingPDF(true);
     try {
       // Filter products by selected brand and exclude hidden products
@@ -433,6 +460,7 @@ export default function ClientLanding() {
         template: latestPricelist.template as Template,
         pricelistName: `${latestPricelist.name} - ${selectedBrand}`,
         brandName: selectedBrand,
+        brandRegistry: brandOrderingData as any || [], // Pass brand ordering for manual product ordering (only brandName + productOrder needed)
       });
       
       toast({
@@ -617,12 +645,12 @@ export default function ClientLanding() {
             <Button
               size="lg"
               onClick={handleDownloadPDF}
-              disabled={isGeneratingPDF}
+              disabled={isGeneratingPDF || isBrandOrderingLoading}
               className="w-full"
               data-testid="button-download-pdf"
             >
               <Download className="mr-2 h-5 w-5" />
-              {isGeneratingPDF ? "Generating..." : "Download All Brands"}
+              {isBrandOrderingLoading ? "Loading..." : isGeneratingPDF ? "Generating..." : "Download All Brands"}
             </Button>
 
             {uniqueBrands.length > 0 && (
@@ -654,13 +682,13 @@ export default function ClientLanding() {
                     <Button
                       size="lg"
                       onClick={handleDownloadBrandPDF}
-                      disabled={isGeneratingPDF || !selectedBrand}
+                      disabled={isGeneratingPDF || !selectedBrand || isBrandOrderingLoading}
                       className="flex-1"
                       variant="outline"
                       data-testid="button-download-brand-pdf"
                     >
                       <Download className="mr-2 h-5 w-5" />
-                      {isGeneratingPDF ? "Generating..." : "Download"}
+                      {isBrandOrderingLoading ? "Loading..." : isGeneratingPDF ? "Generating..." : "Download"}
                     </Button>
                     <Button
                       size="lg"

@@ -2397,8 +2397,10 @@ function BrandRegistryManager() {
       
       await apiRequest("PATCH", "/api/brands/products", payload);
       
-      // Invalidate the products query to refetch with new order
+      // Invalidate products, brands, and brand ordering queries to refetch with new order
       queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/ordering"] });
       
       toast({ title: "Products reordered successfully!" });
     } catch (error: any) {
