@@ -876,22 +876,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
+        console.log('[Brand Reorder] Products grouped by brand:', Object.keys(productsByBrand).map(b => `${b}: ${productsByBrand[b].length} products`));
+        
         // Update productOrder for each brand in registry
         for (const [brandName, productIds] of Object.entries(productsByBrand)) {
           try {
             // Find existing brand registry entry
             const existingBrand = await storage.getBrandByName(targetCompanyId, brandName);
             
+            console.log(`[Brand Reorder] Brand "${brandName}": found=${!!existingBrand}, productIds=${productIds.length}`);
+            
             if (existingBrand) {
               // Update existing brand with productOrder
-              await storage.updateBrand(existingBrand.id, {
+              const updated = await storage.updateBrand(existingBrand.id, {
                 productOrder: productIds,
               });
+              console.log(`[Brand Reorder] Updated brand "${brandName}" productOrder:`, updated?.productOrder?.slice(0, 3));
+            } else {
+              console.log(`[Brand Reorder] Brand "${brandName}" NOT FOUND in registry - skipping productOrder save`);
             }
             // If brand doesn't exist in registry, we don't create it automatically
             // Brands should be added via the brand registry UI first
           } catch (error) {
-            console.error(`Error updating productOrder for brand ${brandName}:`, error);
+            console.error(`[Brand Reorder] Error updating productOrder for brand ${brandName}:`, error);
             // Continue processing other brands even if one fails
           }
         }
