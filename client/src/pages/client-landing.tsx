@@ -432,6 +432,7 @@ export default function ClientLanding() {
         qrCodeConfig: latestPricelist.qrCode as QRCodeConfig | undefined,
         template: latestPricelist.template as Template,
         pricelistName: `${latestPricelist.name} - ${selectedBrand}`,
+        brandName: selectedBrand,
       });
       
       toast({

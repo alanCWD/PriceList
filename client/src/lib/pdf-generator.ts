@@ -17,6 +17,7 @@ interface PDFConfig {
   qrCodeConfig?: QRCodeConfig;
   template?: Template;
   pricelistName?: string;
+  brandName?: string; // For single-brand downloads
 }
 
 // Helper to extract image format from data URL
@@ -33,7 +34,7 @@ const getImageFormat = (dataUrl: string): string => {
 };
 
 export async function generatePDF(config: PDFConfig): Promise<void> {
-  const { products, branding, salesAgents, qrCodeConfig, template = "modern", pricelistName } = config;
+  const { products, branding, salesAgents, qrCodeConfig, template = "modern", pricelistName, brandName } = config;
   
   if (template === "classic") {
     return await generateClassicPDF(config);
@@ -490,13 +491,24 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     yPosition = (doc as any).lastAutoTable.finalY + 10;
   });
 
-  // Save the PDF
-  const fileName = `${displayName.replace(/[^a-z0-9]/gi, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;
+  // Save the PDF with descriptive filename
+  const dateStr = new Date().toISOString().split("T")[0];
+  let fileName: string;
+  
+  if (brandName) {
+    // Single-brand download: CompanyName_BrandName_Date.pdf
+    const companyName = branding.companyName.replace(/[^a-z0-9]/gi, "_");
+    fileName = `${companyName}_${brandName.replace(/[^a-z0-9]/gi, "_")}_${dateStr}.pdf`;
+  } else {
+    // Full pricelist: use original naming with pricelistName
+    fileName = `${displayName.replace(/[^a-z0-9]/gi, "_")}_${dateStr}.pdf`;
+  }
+  
   doc.save(fileName);
 }
 
 async function generateClassicPDF(config: PDFConfig): Promise<void> {
-  const { products, branding, salesAgents, pricelistName } = config;
+  const { products, branding, salesAgents, pricelistName, brandName } = config;
   
   const doc = new jsPDF({
     orientation: "portrait",
@@ -657,12 +669,24 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     yPosition = (doc as any).lastAutoTable.finalY + 10;
   });
 
-  const fileName = `${displayName.replace(/[^a-z0-9]/gi, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;
+  // Save the PDF with descriptive filename
+  const dateStr = new Date().toISOString().split("T")[0];
+  let fileName: string;
+  
+  if (brandName) {
+    // Single-brand download: CompanyName_BrandName_Date.pdf
+    const companyName = branding.companyName.replace(/[^a-z0-9]/gi, "_");
+    fileName = `${companyName}_${brandName.replace(/[^a-z0-9]/gi, "_")}_${dateStr}.pdf`;
+  } else {
+    // Full pricelist: use original naming with pricelistName
+    fileName = `${displayName.replace(/[^a-z0-9]/gi, "_")}_${dateStr}.pdf`;
+  }
+  
   doc.save(fileName);
 }
 
 async function generateMinimalPDF(config: PDFConfig): Promise<void> {
-  const { products, branding, salesAgents, pricelistName, qrCodeConfig } = config;
+  const { products, branding, salesAgents, pricelistName, qrCodeConfig, brandName } = config;
   
   const doc = new jsPDF({
     orientation: "portrait",
@@ -1093,6 +1117,18 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     yPosition = (doc as any).lastAutoTable.finalY + 8;
   });
 
-  const fileName = `${displayName.replace(/[^a-z0-9]/gi, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;
+  // Save the PDF with descriptive filename
+  const dateStr = new Date().toISOString().split("T")[0];
+  let fileName: string;
+  
+  if (brandName) {
+    // Single-brand download: CompanyName_BrandName_Date.pdf
+    const companyName = branding.companyName.replace(/[^a-z0-9]/gi, "_");
+    fileName = `${companyName}_${brandName.replace(/[^a-z0-9]/gi, "_")}_${dateStr}.pdf`;
+  } else {
+    // Full pricelist: use original naming with pricelistName
+    fileName = `${displayName.replace(/[^a-z0-9]/gi, "_")}_${dateStr}.pdf`;
+  }
+  
   doc.save(fileName);
 }
