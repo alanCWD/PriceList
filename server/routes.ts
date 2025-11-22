@@ -884,6 +884,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Category order: Wine (1), Spirits (2), Cider (3), NonAlc (4)
+      // Note: Wine type is NOT included in sortKey so brands are alphabetized across all wine types
       const categoryOrder: Record<string, string> = {
         wine: '1',
         spirits: '2',
@@ -891,34 +892,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nonAlc: '4',
       };
 
-      const wineTypeOrder: Record<string, string> = {
-        sparkling: '1',
-        white: '2',
-        rose: '3',
-        rosé: '3',
-        red: '4',
-      };
-
       // Regenerate sortKey (category field) for each product
       const updatedProducts = latestPricelist.products.map((product: any) => {
         const category = product.collectionCategory;
         const brand = product.collectionBrand;
-        const wineType = product.collectionType;
 
         if (!category || !brand) {
           // If no category or brand, keep original
           return product;
         }
 
-        // Build new sortKey
-        let newSortKey = `${categoryOrder[category]}-${category}`;
-        
-        if (wineType && category === 'wine') {
-          const typeOrder = wineTypeOrder[wineType.toLowerCase()] || '99';
-          newSortKey += `-${typeOrder}-${wineType}`;
-        }
-        
-        newSortKey += `-${brand}`;
+        // Build new sortKey: {categoryNum}-{category}-{brandName}
+        // Example: "1-wine-Synchromesh"
+        const newSortKey = `${categoryOrder[category]}-${category}-${brand}`;
 
         return {
           ...product,

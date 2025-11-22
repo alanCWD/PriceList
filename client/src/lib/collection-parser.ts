@@ -212,6 +212,7 @@ export function parseCollection(
   if (!brand) return null;
 
   // Build sort key based on hierarchy (Wine → Spirits → Cider → Non-Alc)
+  // Note: Wine type is NOT included in sortKey so brands are alphabetized across all wine types
   const primarySortOrder = {
     wine: '1',
     spirits: '2',
@@ -219,20 +220,9 @@ export function parseCollection(
     nonAlc: '4',
   };
 
-  const wineTypeSortOrder = {
-    sparkling: '1',
-    white: '2',
-    rose: '3',
-    red: '4',
-  };
-
-  let sortKey = `${primarySortOrder[primaryCategory]}-${primaryCategory}`;
-  
-  if (wineType) {
-    sortKey += `-${wineTypeSortOrder[wineType]}-${wineType}`;
-  }
-  
-  sortKey += `-${brand}`;
+  // SortKey format: {categoryNum}-{category}-{brandName}
+  // Example: "1-wine-Synchromesh"
+  let sortKey = `${primarySortOrder[primaryCategory]}-${primaryCategory}-${brand}`;
 
   return {
     brand,
