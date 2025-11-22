@@ -233,7 +233,7 @@ export function PricelistDocument({
                   <th 
                     className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide text-gray-700"
                     style={{ 
-                      width: '20%', 
+                      width: '17%', 
                       padding: '12px 16px',
                       fontSize: '11px',
                       fontWeight: 600,
@@ -248,7 +248,7 @@ export function PricelistDocument({
                   <th 
                     className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide text-gray-700"
                     style={{ 
-                      width: '15%', 
+                      width: '12%', 
                       padding: '12px 16px',
                       fontSize: '11px',
                       fontWeight: 600,
@@ -516,10 +516,10 @@ function ClassicTemplate({
                   <th style={{ width: categoryProducts.some(p => p.productImageUrl) ? '35%' : '40%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     Product
                   </th>
-                  <th style={{ width: '18%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
+                  <th style={{ width: '15%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     Format
                   </th>
-                  <th style={{ width: '12%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'right', border: '1px solid #9ca3af' }}>
+                  <th style={{ width: '10%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'right', border: '1px solid #9ca3af' }}>
                     Price
                   </th>
                   <th style={{ width: categoryProducts.some(p => p.productImageUrl) ? '15%' : '18%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
@@ -776,7 +776,7 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: '18%'
+                      width: '15%'
                     }}
                   >
                     Format
@@ -788,7 +788,7 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'right',
-                      width: hasImages ? '10%' : '12%'
+                      width: hasImages ? '8%' : '10%'
                     }}
                   >
                     Price
