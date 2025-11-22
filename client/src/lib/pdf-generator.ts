@@ -417,14 +417,14 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         2: { cellWidth: 171 }, // Product (increased from 150 to use full width)
         3: { cellWidth: 75 },  // SKU
         4: { cellWidth: 90 },  // Format
-        5: { cellWidth: 70 },  // Price
+        5: { cellWidth: 70, halign: "right" },  // Price - right-aligned
         // Total: 40 + 70 + 171 + 75 + 90 + 70 = 516pt (full available width)
       } : {
         0: { cellWidth: 80 },  // Notes
         1: { cellWidth: 181 }, // Product (increased from 180 to use full width)
         2: { cellWidth: 80 },  // SKU
         3: { cellWidth: 100 }, // Format
-        4: { cellWidth: 75 },  // Price
+        4: { cellWidth: 75, halign: "right" },  // Price - right-aligned
         // Total: 80 + 181 + 80 + 100 + 75 = 516pt (full available width)
       },
       margin: { left: margin, right: margin, top: 50, bottom: margin + footerHeight },
@@ -1063,14 +1063,14 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
           styles[colIndex] = { cellWidth: 70 };      // SKU
           styles[colIndex + 1] = { cellWidth: 222 }; // Product (increased to use full width)
           styles[colIndex + 2] = { cellWidth: 70 };  // Format
-          styles[colIndex + 3] = { cellWidth: 50 };  // Price
+          styles[colIndex + 3] = { cellWidth: 50, halign: "right" };  // Price - right-aligned
           styles[colIndex + 4] = { cellWidth: 90 };  // Notes
         } else {
           // Without images: 70 + 242 + 70 + 50 + 100 = 532pt
           styles[colIndex] = { cellWidth: 70 };      // SKU
           styles[colIndex + 1] = { cellWidth: 242 }; // Product (increased to use full width)
           styles[colIndex + 2] = { cellWidth: 70 };  // Format
-          styles[colIndex + 3] = { cellWidth: 50 };  // Price
+          styles[colIndex + 3] = { cellWidth: 50, halign: "right" };  // Price - right-aligned
           styles[colIndex + 4] = { cellWidth: 100 }; // Notes (increased slightly)
         }
         
