@@ -130,8 +130,8 @@ export function PreviewPanel({
   const wineTypeOrder: Record<string, number> = {
     'sparkling': 1,
     'white': 2,
-    'rose': 3,
     'rosé': 3,
+    'rose': 3,
     'red': 4,
   };
 

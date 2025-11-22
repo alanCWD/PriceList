@@ -22,7 +22,7 @@ const CATEGORY_INDICATORS = {
 const WINE_TYPES = {
   sparkling: ['sparkling', 'cuvée', 'cuvee', 'prosecco', 'champagne'],
   white: ['white', 'blanc', 'riesling', 'chardonnay', 'pinot gris', 'sauvignon blanc'],
-  rose: ['rosé', 'rose', 'pink', 'blush'],
+  rosé: ['rosé', 'rose', 'pink', 'blush'],
   red: ['red', 'noir', 'merlot', 'cabernet', 'syrah', 'pinot noir'],
 };
 
@@ -54,7 +54,7 @@ const KNOWN_WINERIES = [
 interface ParsedCollection {
   brand: string;
   primaryCategory: 'cider' | 'wine' | 'spirits' | 'nonAlc';
-  wineType?: 'sparkling' | 'white' | 'rose' | 'red';
+  wineType?: 'sparkling' | 'white' | 'rosé' | 'red';
   region?: string;
   sortKey: string; // e.g., "1-Cider-Salt Spring Wild" or "2-Wine-White-Synchromesh"
 }
