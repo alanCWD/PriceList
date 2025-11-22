@@ -168,6 +168,7 @@ export default function ClientLanding() {
             category: stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : ""),
             notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
             productImageUrl: imageUrl,
+            isHidden: false, // New products are visible by default
           };
         });
 
@@ -226,8 +227,12 @@ export default function ClientLanding() {
 
     setIsGeneratingPDF(true);
     try {
+      // Filter out hidden products before PDF generation
+      const allProducts = latestPricelist.products as Product[];
+      const visibleProducts = allProducts.filter(p => !p.isHidden);
+      
       await generatePDF({
-        products: latestPricelist.products as Product[],
+        products: visibleProducts,
         branding: latestPricelist.branding as CompanyBranding,
         salesAgents: latestPricelist.salesAgents as SalesAgent[],
         qrCodeConfig: latestPricelist.qrCode as QRCodeConfig | undefined,

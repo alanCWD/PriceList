@@ -83,10 +83,10 @@ export function PreviewPanel({
     });
   }, [products, brandRegistry]);
 
-  // Filter products by category if filter is set
-  const filteredProducts = categoryFilter
-    ? normalizedProducts.filter((p) => p.category === categoryFilter)
-    : normalizedProducts;
+  // Filter products by category if filter is set, and exclude hidden products
+  const filteredProducts = normalizedProducts
+    .filter((p) => !p.isHidden) // Exclude hidden products
+    .filter((p) => !categoryFilter || p.category === categoryFilter); // Apply category filter if set
 
   const handleDownloadPDF = async () => {
     try {
