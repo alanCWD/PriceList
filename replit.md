@@ -78,6 +78,12 @@ The system features a robust, database-centric security model where all authoriz
   - **Persistent Storage**: Parsed collection components stored in database JSONB column and survive save/load cycles
   - **Dynamic SortKey Generation**: Brand grouping sortKeys automatically regenerated when collection data is edited
   - **Clean Brand Headers**: Brand headers display only brand names (e.g., "Cobble Hill Winery") without compound terms or sortKey prefixes
+  - **Runtime Wine Type Normalization**: Product name is prioritized as source of truth for wine types over CSV collection data
+    - **Problem**: Wix CSV collection strings sometimes contain incorrect wine types (e.g., product "Ones Sparkling White 200ml" has "Rosé" in collection field)
+    - **Solution**: For nonAlc products, `extractWineTypeFromProductName()` extracts wine types from product names BEFORE parsing collection strings
+    - **Priority Order**: Product name extraction → Registry lookup → Collection string parsing → Heuristic fallback
+    - **Implementation**: `preview-panel.tsx` normalizes all products at runtime before display/PDF generation
+    - **Benefit**: Ensures correct sort order (sparkling → white → rosé → red) even when source data is inconsistent
 - **Template System**: Three professional, print-optimized templates (Modern, Classic, Minimal).
   - **Modern template**: Full header (logo left, title/tagline center, sales agents right) on page 1 (~120pt height); simple centered title bar on pages 2+
   - **Minimal template**: Compact header matching Modern layout (logo left, title/tagline center, agents right) with reduced fonts and height (~40-50pt), shown only on page 1; very compressed row spacing (8pt body font, 7pt headers) to minimize page count; dynamic column inclusion (Image/Notes columns only when data present); reduced margins (40pt vs 48pt) for maximum content density; brand separator bars using branding.headerBackgroundColor with #D8DBD9 grey text
