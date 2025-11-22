@@ -308,17 +308,41 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     'red': 4,
   };
 
+  // Helper to extract secondary wine type from "Sparkling X" product names
+  const getSecondaryWineType = (productName: string, primaryType: string): string => {
+    if (primaryType !== 'sparkling') return primaryType;
+    
+    const lower = productName.toLowerCase();
+    // Check for secondary types in order of priority
+    if (lower.includes('white')) return 'white';
+    if (lower.includes('rosé') || lower.includes('rose') || lower.includes('pink')) return 'rosé';
+    if (lower.includes('red')) return 'red';
+    
+    return primaryType; // fallback to primary
+  };
+
   Object.values(groupedProducts).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
+      // Get primary wine types
       const typeA = a.collectionType?.toLowerCase() || '';
       const typeB = b.collectionType?.toLowerCase() || '';
-      const orderA = wineTypeOrder[typeA] || 999;
-      const orderB = wineTypeOrder[typeB] || 999;
+      
+      // For sparkling products, use secondary type from product name
+      const effectiveTypeA = getSecondaryWineType(a.product || '', typeA);
+      const effectiveTypeB = getSecondaryWineType(b.product || '', typeB);
+      
+      const orderA = wineTypeOrder[effectiveTypeA] || 999;
+      const orderB = wineTypeOrder[effectiveTypeB] || 999;
       
       if (orderA !== orderB) {
         return orderA - orderB;
       }
       
+      // Tertiary sort: prioritize sparkling variants over non-sparkling when effective type is the same
+      if (typeA === 'sparkling' && typeB !== 'sparkling') return -1;
+      if (typeA !== 'sparkling' && typeB === 'sparkling') return 1;
+      
+      // Finally by product name
       return (a.product || '').localeCompare(b.product || '');
     });
   });
@@ -596,17 +620,41 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     'red': 4,
   };
 
+  // Helper to extract secondary wine type from "Sparkling X" product names
+  const getSecondaryWineType = (productName: string, primaryType: string): string => {
+    if (primaryType !== 'sparkling') return primaryType;
+    
+    const lower = productName.toLowerCase();
+    // Check for secondary types in order of priority
+    if (lower.includes('white')) return 'white';
+    if (lower.includes('rosé') || lower.includes('rose') || lower.includes('pink')) return 'rosé';
+    if (lower.includes('red')) return 'red';
+    
+    return primaryType; // fallback to primary
+  };
+
   Object.values(groupedProducts).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
+      // Get primary wine types
       const typeA = a.collectionType?.toLowerCase() || '';
       const typeB = b.collectionType?.toLowerCase() || '';
-      const orderA = wineTypeOrder[typeA] || 999;
-      const orderB = wineTypeOrder[typeB] || 999;
+      
+      // For sparkling products, use secondary type from product name
+      const effectiveTypeA = getSecondaryWineType(a.product || '', typeA);
+      const effectiveTypeB = getSecondaryWineType(b.product || '', typeB);
+      
+      const orderA = wineTypeOrder[effectiveTypeA] || 999;
+      const orderB = wineTypeOrder[effectiveTypeB] || 999;
       
       if (orderA !== orderB) {
         return orderA - orderB;
       }
       
+      // Tertiary sort: prioritize sparkling variants over non-sparkling when effective type is the same
+      if (typeA === 'sparkling' && typeB !== 'sparkling') return -1;
+      if (typeA !== 'sparkling' && typeB === 'sparkling') return 1;
+      
+      // Finally by product name
       return (a.product || '').localeCompare(b.product || '');
     });
   });
@@ -939,17 +987,41 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     'red': 4,
   };
 
+  // Helper to extract secondary wine type from "Sparkling X" product names
+  const getSecondaryWineType = (productName: string, primaryType: string): string => {
+    if (primaryType !== 'sparkling') return primaryType;
+    
+    const lower = productName.toLowerCase();
+    // Check for secondary types in order of priority
+    if (lower.includes('white')) return 'white';
+    if (lower.includes('rosé') || lower.includes('rose') || lower.includes('pink')) return 'rosé';
+    if (lower.includes('red')) return 'red';
+    
+    return primaryType; // fallback to primary
+  };
+
   Object.values(groupedProducts).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
+      // Get primary wine types
       const typeA = a.collectionType?.toLowerCase() || '';
       const typeB = b.collectionType?.toLowerCase() || '';
-      const orderA = wineTypeOrder[typeA] || 999;
-      const orderB = wineTypeOrder[typeB] || 999;
+      
+      // For sparkling products, use secondary type from product name
+      const effectiveTypeA = getSecondaryWineType(a.product || '', typeA);
+      const effectiveTypeB = getSecondaryWineType(b.product || '', typeB);
+      
+      const orderA = wineTypeOrder[effectiveTypeA] || 999;
+      const orderB = wineTypeOrder[effectiveTypeB] || 999;
       
       if (orderA !== orderB) {
         return orderA - orderB;
       }
       
+      // Tertiary sort: prioritize sparkling variants over non-sparkling when effective type is the same
+      if (typeA === 'sparkling' && typeB !== 'sparkling') return -1;
+      if (typeA !== 'sparkling' && typeB === 'sparkling') return 1;
+      
+      // Finally by product name
       return (a.product || '').localeCompare(b.product || '');
     });
   });
