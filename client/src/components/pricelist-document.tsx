@@ -5,7 +5,7 @@ import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } fro
 
 interface PricelistDocumentProps {
   products: Product[];
-  groupedProducts: Record<string, Product[]>;
+  groupedProducts: [string, Product[]][];  // Ordered array of [brandName, products[]]
   branding: CompanyBranding;
   salesAgents: SalesAgent[];
   qrCodeConfig?: QRCodeConfig;
@@ -132,14 +132,7 @@ export function PricelistDocument({
 
       {/* Products by Brand */}
       <main className="px-12 py-8" style={{ paddingTop: '32px', paddingBottom: '32px' }}>
-        {Object.entries(groupedProducts)
-          .sort(([brandA, productsA], [brandB, productsB]) => {
-            // Sort brand groups by sortKey to maintain category hierarchy
-            const sortKeyA = productsA[0]?.category || brandA;
-            const sortKeyB = productsB[0]?.category || brandB;
-            return sortKeyA.localeCompare(sortKeyB);
-          })
-          .map(([brandName, categoryProducts], categoryIndex) => (
+        {groupedProducts.map(([brandName, categoryProducts], categoryIndex) => (
           <div 
             key={brandName} 
             className={categoryIndex > 0 ? "mt-12" : ""}
@@ -405,7 +398,7 @@ export function PricelistDocument({
 
 interface TemplateProps {
   products: Product[];
-  groupedProducts: Record<string, Product[]>;
+  groupedProducts: [string, Product[]][];  // Ordered array of [brandName, products[]]
   branding: CompanyBranding;
   salesAgents: SalesAgent[];
   qrCodeConfig?: QRCodeConfig;
@@ -496,14 +489,7 @@ function ClassicTemplate({
       </header>
 
       <main className="px-12 py-8" style={{ paddingTop: '32px', paddingBottom: '32px' }}>
-        {Object.entries(groupedProducts)
-          .sort(([brandA, productsA], [brandB, productsB]) => {
-            // Sort brand groups by sortKey to maintain category hierarchy
-            const sortKeyA = productsA[0]?.category || brandA;
-            const sortKeyB = productsB[0]?.category || brandB;
-            return sortKeyA.localeCompare(sortKeyB);
-          })
-          .map(([brandName, categoryProducts], categoryIndex) => (
+        {groupedProducts.map(([brandName, categoryProducts], categoryIndex) => (
           <div key={brandName} className={categoryIndex > 0 ? "mt-10" : ""} style={{ marginTop: categoryIndex > 0 ? '40px' : '0' }}>
             <h2 
               className="text-xl font-bold text-gray-900 mb-3 pb-2 border-b-2 border-gray-400"
@@ -631,7 +617,7 @@ function MinimalTemplate({
   const headerTextColor = branding.headerTextColor || '#1a1a1a';
 
   // Check if any products have images
-  const hasImages = Object.values(groupedProducts).some(products =>
+  const hasImages = groupedProducts.some(([_brandName, products]) =>
     products.some(p => p.productImageUrl)
   );
 
@@ -710,14 +696,7 @@ function MinimalTemplate({
 
       {/* Ultra-Compact Table Layout */}
       <main className="px-8 py-4" style={{ paddingTop: '16px', paddingBottom: '16px', paddingLeft: '32px', paddingRight: '32px' }}>
-        {Object.entries(groupedProducts)
-          .sort(([brandA, productsA], [brandB, productsB]) => {
-            // Sort brand groups by sortKey from first product in each group (maintains category hierarchy)
-            const sortKeyA = productsA[0]?.category || brandA;
-            const sortKeyB = productsB[0]?.category || brandB;
-            return sortKeyA.localeCompare(sortKeyB);
-          })
-          .map(([brandName, categoryProducts], categoryIndex) => {
+        {groupedProducts.map(([brandName, categoryProducts], categoryIndex) => {
             // brandName is now the clean brand name (e.g., "Mt. Boucherie Estate Winery")
             const displayName = brandName;
             

@@ -129,7 +129,7 @@ export function parseCollection(
   if (!primaryCategory) return null;
 
   // Determine wine type if it's wine category
-  let wineType: 'sparkling' | 'white' | 'rose' | 'red' | undefined;
+  let wineType: 'sparkling' | 'white' | 'rosé' | 'red' | undefined;
   if (primaryCategory === 'wine') {
     for (const term of terms) {
       if (WINE_TYPES.sparkling.some(indicator => term.includes(indicator))) {
@@ -140,8 +140,8 @@ export function parseCollection(
         wineType = 'white';
         break;
       }
-      if (WINE_TYPES.rose.some(indicator => term.includes(indicator))) {
-        wineType = 'rose';
+      if (WINE_TYPES.rosé.some(indicator => term.includes(indicator))) {
+        wineType = 'rosé';
         break;
       }
       if (WINE_TYPES.red.some(indicator => term.includes(indicator))) {

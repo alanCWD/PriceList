@@ -152,6 +152,15 @@ export function PreviewPanel({
     });
   });
 
+  // Create ordered array of [brandName, products[]] sorted by sortKey
+  // This ensures brand sections appear in correct order: Wine → Spirits → Cider → NonAlc
+  // with brands alphabetized within each category
+  const orderedBrandGroups = Object.entries(groupedProducts).sort(([_brandA, productsA], [_brandB, productsB]) => {
+    const sortKeyA = productsA[0]?.category || '';
+    const sortKeyB = productsB[0]?.category || '';
+    return sortKeyA.localeCompare(sortKeyB);
+  });
+
   return (
     <div className="space-y-6">
       {/* Action Buttons */}
@@ -194,7 +203,7 @@ export function PreviewPanel({
         >
           <PricelistDocument
             products={filteredProducts}
-            groupedProducts={groupedProducts}
+            groupedProducts={orderedBrandGroups}
             branding={branding}
             salesAgents={salesAgents}
             qrCodeConfig={qrCodeConfig}
