@@ -5,7 +5,7 @@ import { Download, Printer } from "lucide-react";
 import { PricelistDocument } from "@/components/pricelist-document";
 import { generatePDF } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
-import { parseCollection, extractWineTypeFromProductName, type BrandRegistryEntry } from "@/lib/collection-parser";
+import { parseCollection, extractWineTypeFromProductName, injectManualSortIndex, type BrandRegistryEntry } from "@/lib/collection-parser";
 import { sortBrandGroups } from "@/lib/sort-utils";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
@@ -132,8 +132,16 @@ export function PreviewPanel({
     window.print();
   };
 
-  // Group filtered products by brand (collectionBrand) for single brand bars
-  const groupedProducts = filteredProducts.reduce((acc, product) => {
+  // Inject manualSortIndex from brand registry productOrder
+  const productsWithSortIndex = useMemo(() => {
+    if (!brandRegistry || brandRegistry.length === 0) {
+      return filteredProducts;
+    }
+    return injectManualSortIndex(filteredProducts, brandRegistry);
+  }, [filteredProducts, brandRegistry]);
+
+  // Group products by brand (collectionBrand) for single brand bars
+  const groupedProducts = productsWithSortIndex.reduce((acc, product) => {
     // Use collectionBrand as the key to group all products from same brand together
     const brandKey = product.collectionBrand || product.category || "Uncategorized";
     if (!acc[brandKey]) {
@@ -141,9 +149,11 @@ export function PreviewPanel({
     }
     acc[brandKey].push(product);
     return acc;
-  }, {} as Record<string, Product[]>);
+  }, {} as Record<string, any[]>);
 
-  // Sort products within each brand group by wine type (Sparkling → White → Rosé → Red)
+  // Sort products within each brand group
+  // Priority 1: Manual order (via brand registry productOrder)
+  // Priority 2: Automatic wine type sorting (Sparkling → White → Rosé → Red)
   const wineTypeOrder: Record<string, number> = {
     'sparkling': 1,
     'white': 2,
@@ -167,6 +177,22 @@ export function PreviewPanel({
 
   Object.values(groupedProducts).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
+      // PRIORITY 1: Check for manual ordering first
+      const hasManualA = typeof a.manualSortIndex === 'number';
+      const hasManualB = typeof b.manualSortIndex === 'number';
+      
+      // Both have manual order - sort by manualSortIndex
+      if (hasManualA && hasManualB) {
+        return a.manualSortIndex - b.manualSortIndex;
+      }
+      
+      // Only A has manual order - A comes first
+      if (hasManualA && !hasManualB) return -1;
+      
+      // Only B has manual order - B comes first
+      if (!hasManualA && hasManualB) return 1;
+      
+      // PRIORITY 2: Neither has manual order - fall back to automatic wine type sorting
       // Get primary wine types
       const typeA = a.collectionType?.toLowerCase() || '';
       const typeB = b.collectionType?.toLowerCase() || '';
