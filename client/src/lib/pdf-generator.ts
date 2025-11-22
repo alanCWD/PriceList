@@ -111,6 +111,13 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       const aspectRatio = img.width / img.height;
       logoHeight = Math.min(img.height, maxLogoHeight);
       logoWidth = logoHeight * aspectRatio;
+      
+      // Scale down logo width if it exceeds gutter (Modern template uses 180pt gutter)
+      const maxLogoGutterWidth = 180;
+      if (logoWidth > maxLogoGutterWidth) {
+        logoWidth = maxLogoGutterWidth;
+        logoHeight = logoWidth / aspectRatio;
+      }
     } catch (error) {
       console.error('Failed to load logo for PDF:', error);
       logoBase64 = null;
@@ -135,8 +142,9 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     ? hexToRgb(branding.headerBackgroundColor)
     : null;
 
-  // Header height conforms exactly to logo height (no padding)
-  const headerHeight = logoBase64 ? logoHeight : 50;
+  // Header height with minimum to ensure space for sales agents
+  const minHeaderHeight = 70;
+  const headerHeight = logoBase64 ? Math.max(logoHeight, minHeaderHeight) : minHeaderHeight;
   
   // Function to draw header on every page
   const drawHeader = () => {
@@ -176,24 +184,26 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     const agentBlockHeight = maxAgentLines * lineHeight;
     const agentTop = headerHeight - bottomPadding - agentBlockHeight;
     
-    // Position title/tagline centered between top and agents
+    // Position title/tagline in fixed left column to the right of logo gutter
     const titleBaseline = 28; // Safe top padding + font ascent
     const taglineBaseline = 46; // Below title with minimal spacing
     
-    const centerX = pageWidth / 2;
+    // Title X position: use gutter only when logo present, otherwise start at headerPadding
+    const logoGutter = 180;
+    const titleX = logoBase64 ? (headerPadding + logoGutter) : headerPadding;
     
-    // Title centered horizontally
+    // Title left-aligned
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.text(branding.companyName, centerX, titleBaseline, { align: "center" });
+    doc.text(branding.companyName, titleX, titleBaseline, { align: "left" });
 
-    // Tagline centered below title with minimal spacing
+    // Tagline left-aligned below title
     if (branding.tagline) {
       doc.setFontSize(11);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
-      doc.text(branding.tagline, centerX, taglineBaseline, { align: "center" });
+      doc.text(branding.tagline, titleX, taglineBaseline, { align: "left" });
     }
 
     // Sales agents at bottom-right with right alignment
@@ -691,6 +701,13 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       const aspectRatio = img.width / img.height;
       logoHeight = 40; // Compact height for minimal template
       logoWidth = logoHeight * aspectRatio;
+      
+      // Scale down logo width if it exceeds gutter (Minimal template uses 140pt gutter)
+      const maxLogoGutterWidth = 140;
+      if (logoWidth > maxLogoGutterWidth) {
+        logoWidth = maxLogoGutterWidth;
+        logoHeight = logoWidth / aspectRatio;
+      }
     } catch (error) {
       console.error('Failed to load logo:', error);
     }
@@ -730,8 +747,9 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     ? hexToRgb(branding.headerBackgroundColor)
     : null;
 
-  // Compact header height
-  const headerHeight = logoBase64 ? logoHeight + 10 : 35;
+  // Compact header height with minimum to ensure space for sales agents
+  const minHeaderHeight = 45;
+  const headerHeight = logoBase64 ? Math.max(logoHeight + 10, minHeaderHeight) : minHeaderHeight;
   
   // Function to draw compact header (only on first page)
   const drawHeader = () => {
@@ -767,21 +785,24 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     const agentBlockHeight = maxAgentLines * lineHeight;
     const agentTop = headerHeight - headerPadding - agentBlockHeight;
     
-    // Title/tagline centered - measure width for agent boundary calculation
+    // Title/tagline in fixed left column to the right of logo gutter
     const titleBaseline = 20;
     const taglineBaseline = 30;
-    const centerX = pageWidth / 2;
+    
+    // Title X position: use gutter only when logo present, otherwise start at headerPadding
+    const logoGutter = 140;
+    const titleX = logoBase64 ? (headerPadding + logoGutter) : headerPadding;
     
     doc.setFontSize(16); // Smaller than Modern template
     doc.setFont("helvetica", "bold");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.text(branding.companyName, centerX, titleBaseline, { align: "center" });
+    doc.text(branding.companyName, titleX, titleBaseline, { align: "left" });
 
     if (branding.tagline) {
       doc.setFontSize(9);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
-      doc.text(branding.tagline, centerX, taglineBaseline, { align: "center" });
+      doc.text(branding.tagline, titleX, taglineBaseline, { align: "left" });
     }
 
     // Sales agents at bottom-right
