@@ -1,7 +1,7 @@
 # Product Pricelist Generator
 
 ## Overview
-This project is a professional web application designed to generate stylish, print-ready pricelists from CSV files, primarily sourced from Wix. It aims to streamline the pricelist creation process for businesses, offering features like database persistence, customizable templates, branding options, sales agent integration, QR codes, category-based product grouping, flexible field mapping, and PDF export. The application supports multi-user and multi-company environments through Google OAuth authentication, company management, and role-based access control, positioning itself as a valuable tool for businesses needing professional and efficient pricelist generation.
+This project is a professional web application designed to generate stylish, print-ready pricelists from CSV files, primarily sourced from Wix. It aims to streamline the pricelist creation process for businesses by offering features like database persistence, customizable templates, branding options, sales agent integration, QR codes, category-based product grouping, flexible field mapping, and PDF export. The application supports multi-user and multi-company environments through Google OAuth authentication, company management, and role-based access control, positioning itself as a valuable tool for businesses needing professional and efficient pricelist generation.
 
 ## User Preferences
 
@@ -27,23 +27,19 @@ The application employs a React (TypeScript) frontend and a Node.js Express back
 - **Frontend**: React with TypeScript, Wouter, Shadcn UI + Radix UI, Tailwind CSS
 - **Backend**: Node.js with Express, Drizzle ORM
 - **Database**: PostgreSQL (Neon serverless)
-- **Authentication**: Replit Auth with Google OAuth, express-session
+- **Authentication**: Replit Auth with Google OAuth
 - **PDF Generation**: jsPDF with jspdf-autotable
 - **CSV Parsing**: PapaParse
 - **QR Codes**: qrcode.react
 - **Form Handling**: React Hook Form with Zod validation
-- **Styling**: Tailwind CSS, Inter font family
 
 ### Data Models
-Key data models include `Product`, `FieldMapping`, `CompanyBranding`, `SalesAgent`, `QRCodeConfig`, `Template`, and `BrandRegistry`. User and company management are handled via `sessions`, `users`, and `companies` tables, while pricelist-specific data is stored in `pricelists`, `companyProfiles`, and `salesAgentProfiles` for reusability. Brand registry data is stored in `brandRegistry` table with company-scoped multi-tenant design.
+Key data models include `Product`, `FieldMapping`, `CompanyBranding`, `SalesAgent`, `QRCodeConfig`, `Template`, and `BrandRegistry`. User and company management are handled via `sessions`, `users`, and `companies` tables, while pricelist-specific data is stored in `pricelists`, `companyProfiles`, and `salesAgentProfiles`. Brand registry data is stored in a `brandRegistry` table with a company-scoped multi-tenant design.
 
 ### Authentication & Authorization
 The system features a robust, database-centric security model where all authorization decisions rely on fresh database lookups. Sessions only contain user IDs, with roles and company affiliations dynamically fetched from the database.
-- **Roles**:
-    - **Super Admin**: System-wide access, managed via environment variable allowlist.
-    - **Company Admin**: Company-scoped access, managing branding and sales agents for their company.
-    - **Client**: Read-only access to their company's pricelists, with CSV upload capabilities.
-- **Google OAuth**: Integrated via Replit Auth for secure login.
+- **Roles**: Super Admin (system-wide), Company Admin (company-scoped), Client (read-only with upload).
+- **Google OAuth**: Integrated via Replit Auth.
 - **Domain-based User Assignment**: New users are automatically assigned to companies based on email domains.
 - **Multi-Tenancy**: Supports multiple companies with isolated data and configurations.
 
@@ -54,109 +50,19 @@ The system features a robust, database-centric security model where all authoriz
 ### Key Features
 - **Admin System**: Manages companies, users, branding, and sales agent teams.
 - **Role-Based UX**: Tailored interfaces for Admins (full dashboard) and Clients (simplified landing page).
-- **Latest Price List API**: Provides the most recent pricelist for a user's company.
 - **Inline CSV Upload**: Allows clients to easily update pricelists.
 - **CSV-Based Field Mapping**: Admins configure default mappings that clients inherit.
-- **Auto-Generated Pricelist Names**: Consistent naming convention.
-- **Brand Registry System**: Company-scoped master brand list for explicit brand categorization and consistent product grouping.
-  - **Database-Driven**: Brands stored in PostgreSQL with company isolation, category assignment, optional type field, and optional display order
-  - **Type Field**: Optional varchar(100) field for product types within categories (e.g., for wine: red, white, rosé, sparkling) - provides flexibility for categorizing products beyond the main category
-  - **Admin UI**: Complete CRUD interface for Company Admins to add, edit, and delete brands with full support for type field in both Add and Edit dialogs
-  - **Priority Lookup**: During CSV upload, brands are looked up in registry FIRST before falling back to pattern matching
-  - **Category Override**: Registry category takes precedence over collection string parsing for consistent categorization
-  - **Alphabetical Sorting**: Brands sorted A-Z within each category group (Cider → Wine → Spirits → NonAlc) unless custom display order set
-  - **Table Display**: Brand registry table shows Brand Name, Type (displays "—" when unset), Display Order, and Actions columns
-  - **Future-Ready**: Infrastructure in place for client filtering feature (all brands or specific brand selection), and type field can be utilized for filtering or display purposes in pricelists
-- **Intelligent Collection Parsing & Standardization**: Wix CSV "collection" field parser that extracts brand names and product categories from variable-order semicolon-delimited strings. Handles Canadian wine industry categorization: Cider → Wine (Sparkling/White/Rosé/Red) → Spirits → Non-Alc BC Wine. Products sorted by brand within each category group. Preserves hyphenated brand names (e.g., "Ones+ Non-Alc BC Wine").
-  - **Registry Integration**: parseCollection() now accepts optional brand registry parameter for priority brand lookup
-  - **Automatic Standardization**: On CSV upload, messy collection strings are parsed into structured components (category, type, brand, region) and stored in the product data
-  - **Wine Type Recognition**: Supports sparkling, white, rosé (rosé/rose/pink/blush), and red wine types with proper sort ordering
-  - **Region Recognition**: Recognizes regions (Okanagan, Vancouver Island, Lower Mainland, etc.) to distinguish them from brands - regions are stored but not displayed in output
-  - **Fallback Pattern Matching**: If brand not found in registry, uses known wineries list and heuristic extraction
-  - **Manual Override UI**: "Review" tab in editor allows inline editing of parsed collection data with table interface showing original collection string alongside editable fields
-  - **Complete Product Coverage**: All products displayed in review table, including those where parsing failed, allowing manual data entry from scratch
-  - **Persistent Storage**: Parsed collection components stored in database JSONB column and survive save/load cycles
-  - **Dynamic SortKey Generation**: Brand grouping sortKeys automatically regenerated when collection data is edited
-  - **Clean Brand Headers**: Brand headers display only brand names (e.g., "Cobble Hill Winery") without compound terms or sortKey prefixes
-  - **Runtime Wine Type Normalization**: Product name is prioritized as source of truth for wine types over CSV collection data
-    - **Problem**: Wix CSV collection strings sometimes contain incorrect wine types (e.g., product "Ones Sparkling White 200ml" has "Rosé" in collection field)
-    - **Solution**: For nonAlc products, `extractWineTypeFromProductName()` extracts wine types from product names BEFORE parsing collection strings
-    - **Priority Order**: Product name extraction → Registry lookup → Collection string parsing → Heuristic fallback
-    - **Implementation**: `preview-panel.tsx` normalizes all products at runtime before display/PDF generation
-    - **Benefit**: Ensures correct sort order (sparkling → white → rosé → red) even when source data is inconsistent
-- **Template System**: Three professional, print-optimized templates (Modern, Classic, Minimal).
-  - **Modern template**: Full header (logo left, title/tagline center, sales agents right) on page 1 (~120pt height); simple centered title bar on pages 2+
-  - **Minimal template**: Compact header matching Modern layout (logo left, title/tagline center, agents right) with reduced fonts and height (~40-50pt), shown only on page 1; very compressed row spacing (8pt body font, 7pt headers) to minimize page count; dynamic column inclusion (Image/Notes columns only when data present); reduced margins (40pt vs 48pt) for maximum content density; brand separator bars using branding.headerBackgroundColor with #D8DBD9 grey text
-  - **Classic template**: Traditional layout with centered branding
-  - **All templates**: Products grouped by brand (ONE bar per brand); within each brand, products sorted by wine type (Sparkling → White → Rosé → Red); brand headers display clean names only (e.g., "Mt. Boucherie Estate Winery"); brand groups ordered by category hierarchy (Wine → Spirits → Cider → NonAlc) with alphabetical sorting within each category; "Uncategorized" products excluded from output; branding colours applied to headers; Format and Price columns positioned closer together for better readability
+- **Brand Registry System**: Company-scoped master brand list for explicit brand categorization and consistent product grouping. It is database-driven with category assignment, optional type field, display order, and manual product ordering. During CSV upload, brands are looked up in the registry first.
+- **Intelligent Collection Parsing & Standardization**: Parses Wix CSV "collection" fields to extract brand names and product categories, handling Canadian wine industry categorization (Cider → Wine → Spirits → Non-Alc). It includes automatic standardization, wine type and region recognition, and a "Review" tab for manual overrides. Product names are prioritized for wine type normalization to ensure correct sorting.
+- **Template System**: Three professional, print-optimized templates (Modern, Classic, Minimal) that apply branding colors and group products by brand, sorted by wine type within each brand.
 - **Database Persistence**: Full CRUD operations for pricelists with company isolation.
-- **Professional Document Design**: High-quality, print-ready PDF exports with template-specific styling.
-- **Validation & UX**: Comprehensive validation, error handling, and notifications.
-
-### Routing Structure
-- `/`: Role-based routing to admin dashboard or client landing page.
-- `/dashboard`: Admin dashboard with pricelist cards showing "View" buttons.
-- `/client`: Client landing page with inline preview and CSV upload.
-- `/view`: View-only page for saved pricelists (preview, download, print). No CSV upload required.
-- `/editor`: Full pricelist editor for creating new pricelists or editing existing ones.
-- `/admin`: Admin interface (admin role only).
-- `/login`: Login page.
-
-### Pricelist Viewing Workflow
-**Problem Solved**: Users no longer need to re-upload CSV files to view or download saved pricelists.
-
-**New Workflow**:
-1. **Dashboard** → Click "View" on any pricelist card
-2. **View Page** (`/view?id={pricelistId}`) displays:
-   - Pricelist name and description in header
-   - Full preview with all formatting and branding
-   - Download PDF button (works immediately, no CSV needed)
-   - Print button for direct printing
-   - Edit button to switch to full editor if changes are needed
-3. **Editor** (optional) → Accessed via "Edit" button from view page for modifications
-
-**Technical Details**:
-- View page loads complete pricelist data from database
-- All product data, branding, sales agents, QR codes, and templates restored from database
-- PreviewPanel component renders exactly as it appears in editor with brand groups sorted by canonical sortKey
-- **Brand Ordering**: `getGroupSortKey()` helper ensures Wine → Spirits → Cider → Non-Alc order with alphabetical sorting within each category, handling both new sortKey format (`1-wine-Brand`) and legacy data by constructing sortKeys from `collectionCategory` and `collectionBrand`
-- PDF generation uses same data source as preview (database, not CSV)
-- Client landing page (`/client`) continues to show inline preview for latest pricelist
-
-### User Profile Menu & View Switching
-**Component**: `client/src/components/user-profile-menu.tsx`
-
-**Features:**
-- Avatar with initials fallback
-- Dropdown showing user name, email, and role
-- **Super Admin only**: "View as Client" toggle for switching between admin and client views
-- **All admin users** (Super Admin + Company Admin): "Admin Settings" menu item for quick navigation to /admin
-- Logout functionality with cache invalidation
-- Available on all authenticated pages (Dashboard, Editor, Admin)
-
-**View Switching Implementation:**
-- **ViewModeContext** (`client/src/contexts/ViewModeContext.tsx`): Manages view mode state ("admin" or "client")
-- **localStorage Persistence**: View preference persists across sessions with key "viewMode"
-- **SSR-Safe Lazy Initialization**: Uses lazy initializer in useState to read localStorage before first render
-- **Super Admin Toggle**: 
-  - Shows "View as Client" when in admin mode (switches to client view)
-  - Shows "View as Admin" when in client mode (switches back to admin view)
-  - Navigates appropriately: admin view → /dashboard, client view → /
-- **Company Admin**: No view toggle (always sees company-scoped data)
-- **Client Users**: Never see view toggle or admin settings (always in client mode)
-
-**Implementation:**
-- Uses `useAuth()` hook for role detection (`isSuperAdmin`, `isCompanyAdmin`, `isAdmin`)
-- Uses `useViewMode()` hook for view mode state management
-- Conditional rendering: `{isSuperAdmin && <ViewToggle />}` and `{isAdmin && <AdminSettings />}`
-- View toggle has dynamic data-testid based on current mode
-- Logout clears TanStack Query cache before redirect
-- Integrated in top-right corner of all page headers
+- **Pricelist Viewing Workflow**: Users can view and download saved pricelists directly from the database without re-uploading CSVs via dedicated view pages.
+- **User Profile Menu & View Switching**: A user profile menu allows Super Admins to toggle between "admin" and "client" views, with preferences persisting in local storage.
 
 ## External Dependencies
 
 -   **Google OAuth**: For user authentication via Replit Auth.
--   **PostgreSQL (Neon serverless)**: Primary database for all application data.
+-   **PostgreSQL (Neon serverless)**: Primary database.
 -   **PapaParse**: Client-side CSV parsing.
 -   **jsPDF**: Client-side PDF generation.
 -   **qrcode.react**: Client-side QR code generation.
