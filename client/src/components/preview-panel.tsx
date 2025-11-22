@@ -35,6 +35,8 @@ export function PreviewPanel({
 
   // Normalize products: re-parse collection data for any product missing parsed fields
   const normalizedProducts = useMemo(() => {
+    console.log('[Normalization] Starting normalization for', products.length, 'products');
+    
     // Convert brand registry to the format expected by parseCollection
     const brandRegistryEntries: BrandRegistryEntry[] = (brandRegistry || []).map(b => ({
       brandName: b.brandName,
@@ -45,6 +47,18 @@ export function PreviewPanel({
     return products.map(product => {
       // Start with the existing product
       let normalized = { ...product };
+      
+      // DEBUG: Log Ones+ products before normalization
+      if (product.product?.toLowerCase().includes('ones')) {
+        console.log('[Normalization] BEFORE:', {
+          product: product.product,
+          collectionBrand: product.collectionBrand,
+          collectionCategory: product.collectionCategory,
+          collectionType: product.collectionType,
+          collectionRaw: product.collectionRaw,
+          category: product.category,
+        });
+      }
       
       // Re-parse if ANY key field is missing (brand, category, OR type)
       if (!product.collectionBrand || !product.collectionCategory || !product.collectionType) {
@@ -78,7 +92,21 @@ export function PreviewPanel({
       // extract it from product name (handles cases where collection string lacks type info)
       if (!normalized.collectionType && 
           (normalized.collectionCategory === 'wine' || normalized.collectionCategory === 'nonAlc')) {
-        normalized.collectionType = extractWineTypeFromProductName(product.product || '');
+        const extractedType = extractWineTypeFromProductName(product.product || '');
+        if (extractedType) {
+          normalized.collectionType = extractedType;
+        }
+      }
+      
+      // DEBUG: Log Ones+ products after normalization
+      if (product.product?.toLowerCase().includes('ones')) {
+        console.log('[Normalization] AFTER:', {
+          product: product.product,
+          collectionBrand: normalized.collectionBrand,
+          collectionCategory: normalized.collectionCategory,
+          collectionType: normalized.collectionType,
+          extracted: normalized.collectionType !== product.collectionType,
+        });
       }
       
       return normalized;
