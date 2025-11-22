@@ -184,23 +184,35 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     const agentBlockHeight = maxAgentLines * lineHeight;
     const agentTop = headerHeight - bottomPadding - agentBlockHeight;
     
-    // Position title/tagline in fixed left column to the right of logo gutter
-    const titleBaseline = 28; // Safe top padding + font ascent
-    const taglineBaseline = 46; // Below title with minimal spacing
-    
-    // Title X position: use gutter only when logo present, otherwise start at headerPadding
+    // Position title/tagline - move 0.5 inches (36pt) to the right from gutter edge
     const logoGutter = 180;
-    const titleX = logoBase64 ? (headerPadding + logoGutter) : headerPadding;
+    const additionalOffset = 36;
+    const titleX = logoBase64 ? (headerPadding + logoGutter + additionalOffset) : (headerPadding + additionalOffset);
+    
+    // Vertically center the title/tagline block within header
+    const titleFontSize = 22;
+    const taglineFontSize = 11;
+    const lineSpacing = 4; // Space between title and tagline
+    
+    // Calculate total block height (font sizes approximate line heights)
+    const titleHeight = titleFontSize * 0.8; // Approximate ascent
+    const taglineHeight = branding.tagline ? taglineFontSize * 0.8 : 0;
+    const blockHeight = titleHeight + (branding.tagline ? lineSpacing + taglineHeight : 0);
+    
+    // Center the block vertically
+    const topPadding = (headerHeight - blockHeight) / 2;
+    const titleBaseline = topPadding + titleHeight;
+    const taglineBaseline = titleBaseline + lineSpacing + taglineHeight;
     
     // Title left-aligned
-    doc.setFontSize(22);
+    doc.setFontSize(titleFontSize);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
     doc.text(branding.companyName, titleX, titleBaseline, { align: "left" });
 
     // Tagline left-aligned below title
     if (branding.tagline) {
-      doc.setFontSize(11);
+      doc.setFontSize(taglineFontSize);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
       doc.text(branding.tagline, titleX, taglineBaseline, { align: "left" });
@@ -785,21 +797,33 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     const agentBlockHeight = maxAgentLines * lineHeight;
     const agentTop = headerHeight - headerPadding - agentBlockHeight;
     
-    // Title/tagline in fixed left column to the right of logo gutter
-    const titleBaseline = 20;
-    const taglineBaseline = 30;
-    
-    // Title X position: use gutter only when logo present, otherwise start at headerPadding
+    // Position title/tagline - move 0.5 inches (36pt) to the right from gutter edge
     const logoGutter = 140;
-    const titleX = logoBase64 ? (headerPadding + logoGutter) : headerPadding;
+    const additionalOffset = 36;
+    const titleX = logoBase64 ? (headerPadding + logoGutter + additionalOffset) : (headerPadding + additionalOffset);
     
-    doc.setFontSize(16); // Smaller than Modern template
+    // Vertically center the title/tagline block within header
+    const titleFontSize = 16;
+    const taglineFontSize = 9;
+    const lineSpacing = 3; // Space between title and tagline
+    
+    // Calculate total block height (font sizes approximate line heights)
+    const titleHeight = titleFontSize * 0.8; // Approximate ascent
+    const taglineHeight = branding.tagline ? taglineFontSize * 0.8 : 0;
+    const blockHeight = titleHeight + (branding.tagline ? lineSpacing + taglineHeight : 0);
+    
+    // Center the block vertically
+    const topPadding = (headerHeight - blockHeight) / 2;
+    const titleBaseline = topPadding + titleHeight;
+    const taglineBaseline = titleBaseline + lineSpacing + taglineHeight;
+    
+    doc.setFontSize(titleFontSize);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
     doc.text(branding.companyName, titleX, titleBaseline, { align: "left" });
 
     if (branding.tagline) {
-      doc.setFontSize(9);
+      doc.setFontSize(taglineFontSize);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
       doc.text(branding.tagline, titleX, taglineBaseline, { align: "left" });
