@@ -136,7 +136,16 @@ export function PreviewPanel({
     'red': 4,
   };
 
-  Object.values(groupedProducts).forEach(brandProducts => {
+  Object.entries(groupedProducts).forEach(([brandName, brandProducts]) => {
+    // DEBUG: Log product types BEFORE sorting
+    console.log(`[Preview] Brand "${brandName}" BEFORE sorting:`, 
+      brandProducts.map(p => ({ 
+        name: p.product, 
+        type: p.collectionType,
+        category: p.collectionCategory 
+      }))
+    );
+    
     brandProducts.sort((a, b) => {
       // First sort by wine type
       const typeA = a.collectionType?.toLowerCase() || '';
@@ -151,6 +160,15 @@ export function PreviewPanel({
       // Then by product name as secondary sort
       return (a.product || '').localeCompare(b.product || '');
     });
+    
+    // DEBUG: Log product types AFTER sorting
+    console.log(`[Preview] Brand "${brandName}" AFTER sorting:`, 
+      brandProducts.map(p => ({ 
+        name: p.product, 
+        type: p.collectionType,
+        order: wineTypeOrder[p.collectionType?.toLowerCase() || ''] || 999
+      }))
+    );
   });
 
   // Sort brand groups using shared utility
