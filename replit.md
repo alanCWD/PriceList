@@ -70,7 +70,7 @@ The system features a robust, database-centric security model where all authoriz
 - **Intelligent Collection Parsing & Standardization**: Wix CSV "collection" field parser that extracts brand names and product categories from variable-order semicolon-delimited strings. Handles Canadian wine industry categorization: Cider → Wine (Sparkling/White/Rosé/Red) → Spirits → Non-Alc BC Wine. Products sorted by brand within each category group. Preserves hyphenated brand names (e.g., "Ones+ Non-Alc BC Wine").
   - **Registry Integration**: parseCollection() now accepts optional brand registry parameter for priority brand lookup
   - **Automatic Standardization**: On CSV upload, messy collection strings are parsed into structured components (category, type, brand, region) and stored in the product data
-  - **Wine Type Recognition**: Supports sparkling, white, rosé (rose/pink/blush), and red wine types with proper sort ordering
+  - **Wine Type Recognition**: Supports sparkling, white, rosé (rosé/rose/pink/blush), and red wine types with proper sort ordering
   - **Region Recognition**: Recognizes regions (Okanagan, Vancouver Island, Lower Mainland, etc.) to distinguish them from brands - regions are stored but not displayed in output
   - **Fallback Pattern Matching**: If brand not found in registry, uses known wineries list and heuristic extraction
   - **Manual Override UI**: "Review" tab in editor allows inline editing of parsed collection data with table interface showing original collection string alongside editable fields
@@ -82,7 +82,7 @@ The system features a robust, database-centric security model where all authoriz
   - **Modern template**: Full header (logo left, title/tagline center, sales agents right) on page 1 (~120pt height); simple centered title bar on pages 2+
   - **Minimal template**: Compact header matching Modern layout (logo left, title/tagline center, agents right) with reduced fonts and height (~40-50pt), shown only on page 1; very compressed row spacing (8pt body font, 7pt headers) to minimize page count; dynamic column inclusion (Image/Notes columns only when data present); reduced margins (40pt vs 48pt) for maximum content density; brand separator bars using branding.headerBackgroundColor with #D8DBD9 grey text
   - **Classic template**: Traditional layout with centered branding
-  - **All templates**: Products grouped by brand (ONE bar per brand); within each brand, products sorted by wine type (Sparkling → White → Rosé → Red); brand headers display clean names only (e.g., "Mt. Boucherie Estate Winery"); brand groups ordered by category hierarchy (Cider → Wine → Spirits → NonAlc); "Uncategorized" products excluded from output; branding colours applied to headers
+  - **All templates**: Products grouped by brand (ONE bar per brand); within each brand, products sorted by wine type (Sparkling → White → Rosé → Red); brand headers display clean names only (e.g., "Mt. Boucherie Estate Winery"); brand groups ordered by category hierarchy (Wine → Spirits → Cider → NonAlc) with alphabetical sorting within each category; "Uncategorized" products excluded from output; branding colours applied to headers; Format and Price columns positioned closer together for better readability
 - **Database Persistence**: Full CRUD operations for pricelists with company isolation.
 - **Professional Document Design**: High-quality, print-ready PDF exports with template-specific styling.
 - **Validation & UX**: Comprehensive validation, error handling, and notifications.
@@ -112,7 +112,8 @@ The system features a robust, database-centric security model where all authoriz
 **Technical Details**:
 - View page loads complete pricelist data from database
 - All product data, branding, sales agents, QR codes, and templates restored from database
-- PreviewPanel component renders exactly as it appears in editor
+- PreviewPanel component renders exactly as it appears in editor with brand groups sorted by canonical sortKey
+- **Brand Ordering**: `getGroupSortKey()` helper ensures Wine → Spirits → Cider → Non-Alc order with alphabetical sorting within each category, handling both new sortKey format (`1-wine-Brand`) and legacy data by constructing sortKeys from `collectionCategory` and `collectionBrand`
 - PDF generation uses same data source as preview (database, not CSV)
 - Client landing page (`/client`) continues to show inline preview for latest pricelist
 

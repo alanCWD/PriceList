@@ -6,6 +6,7 @@ import { PricelistDocument } from "@/components/pricelist-document";
 import { generatePDF } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
 import { parseCollection, type BrandRegistryEntry } from "@/lib/collection-parser";
+import { sortBrandGroups } from "@/lib/sort-utils";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
 interface PreviewPanelProps {
@@ -152,14 +153,9 @@ export function PreviewPanel({
     });
   });
 
-  // Create ordered array of [brandName, products[]] sorted by sortKey
-  // This ensures brand sections appear in correct order: Wine → Spirits → Cider → NonAlc
-  // with brands alphabetized within each category
-  const orderedBrandGroups = Object.entries(groupedProducts).sort(([_brandA, productsA], [_brandB, productsB]) => {
-    const sortKeyA = productsA[0]?.category || '';
-    const sortKeyB = productsB[0]?.category || '';
-    return sortKeyA.localeCompare(sortKeyB);
-  });
+  // Sort brand groups using shared utility
+  // Ensures Wine → Spirits → Cider → NonAlc order with alphabetical brands within each category
+  const orderedBrandGroups = sortBrandGroups(Object.entries(groupedProducts));
 
   return (
     <div className="space-y-6">

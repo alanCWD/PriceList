@@ -1,6 +1,7 @@
 import { Mail, Phone } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { getDisplayName } from "@/lib/collection-parser";
+import { sortBrandGroups } from "@/lib/sort-utils";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
 
 interface PricelistDocumentProps {
@@ -27,10 +28,14 @@ export function PricelistDocument({
     year: "numeric",
   });
 
+  // Defensive sorting: ensure brand groups are in correct order
+  // even if caller bypasses PreviewPanel sorting
+  const sortedGroupedProducts = sortBrandGroups([...groupedProducts]);
+
   if (template === "classic") {
     return <ClassicTemplate 
       products={products}
-      groupedProducts={groupedProducts}
+      groupedProducts={sortedGroupedProducts}
       branding={branding}
       salesAgents={salesAgents}
       qrCodeConfig={qrCodeConfig}
@@ -41,7 +46,7 @@ export function PricelistDocument({
   if (template === "minimal") {
     return <MinimalTemplate 
       products={products}
-      groupedProducts={groupedProducts}
+      groupedProducts={sortedGroupedProducts}
       branding={branding}
       salesAgents={salesAgents}
       qrCodeConfig={qrCodeConfig}
@@ -132,7 +137,7 @@ export function PricelistDocument({
 
       {/* Products by Brand */}
       <main className="px-12 py-8" style={{ paddingTop: '32px', paddingBottom: '32px' }}>
-        {groupedProducts.map(([brandName, categoryProducts], categoryIndex) => (
+        {sortedGroupedProducts.map(([brandName, categoryProducts], categoryIndex) => (
           <div 
             key={brandName} 
             className={categoryIndex > 0 ? "mt-12" : ""}
