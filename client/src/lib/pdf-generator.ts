@@ -626,12 +626,17 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 30;
 
-  // Inject manual sort index from brand registry
+  // Inject manual sort index from brand registry FIRST (before filtering)
   const productsWithSortIndex = config.brandRegistry && config.brandRegistry.length > 0
     ? injectManualSortIndex(products, config.brandRegistry)
     : products;
+  
+  // THEN filter out uncategorized products
+  const filteredProducts = productsWithSortIndex.filter(product => {
+    return !product.category || product.category.toLowerCase() !== "uncategorized";
+  });
 
-  const groupedProducts = productsWithSortIndex.reduce((acc, product) => {
+  const groupedProducts = filteredProducts.reduce((acc, product) => {
     const brandKey = product.collectionBrand || product.category || "Uncategorized";
     if (!acc[brandKey]) {
       acc[brandKey] = [];
@@ -1019,7 +1024,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
   });
 
   // Group products by brand, excluding only explicitly "Uncategorized" items
-  const groupedProducts = productsWithSortIndex
+  const groupedProducts = filteredProducts
     .reduce((acc, product) => {
       // Group by brand to get single bar per brand
       const brandKey = product.collectionBrand || product.category || "";

@@ -836,10 +836,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
+        // Build a map of existing complete products by ID
+        const existingProductsMap = new Map(
+          latestPricelist.products.map(p => [p.id, p])
+        );
+        
         // Verify all product IDs exist in the current pricelist
-        const existingProductIds = new Set(latestPricelist.products.map(p => p.id));
         const reorderedIds = req.body.reorderedProducts.map((p: any) => p.id);
-        const invalidIds = reorderedIds.filter((id: string) => !existingProductIds.has(id));
+        const invalidIds = reorderedIds.filter((id: string) => !existingProductsMap.has(id));
         
         if (invalidIds.length > 0) {
           return res.status(400).json({
@@ -848,9 +852,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Bulk reorder: replace entire products array with new order
+        // Reorder existing complete products based on ID order from request
+        // This preserves all product fields while applying the new order
+        const reorderedCompleteProducts = reorderedIds.map((id: string) => 
+          existingProductsMap.get(id)!
+        );
+        
+        // Save the reordered complete products
         await storage.updatePricelist(latestPricelist.id, {
-          products: req.body.reorderedProducts,
+          products: reorderedCompleteProducts,
         });
         
         // Also persist product order to brand registry for each brand
