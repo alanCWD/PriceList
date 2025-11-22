@@ -310,3 +310,60 @@ export function getDisplayName(sortKey: string): string {
   // Fallback: if format doesn't match, return as-is
   return sortKey;
 }
+
+/**
+ * Inject manualSortIndex onto products based on brand registry productOrder
+ * 
+ * @param products - Array of products to process
+ * @param brandRegistry - Brand registry data with productOrder field
+ * @returns Products with manualSortIndex injected (undefined if no manual order set)
+ */
+export interface ProductWithSortIndex {
+  id: string;
+  category: string;
+  product: string;
+  collectionBrand?: string;
+  manualSortIndex?: number;
+  [key: string]: any;
+}
+
+export interface BrandWithOrder {
+  brandName: string;
+  productOrder?: string[] | null;
+  [key: string]: any;
+}
+
+export function injectManualSortIndex(
+  products: any[],
+  brandRegistry: BrandWithOrder[]
+): ProductWithSortIndex[] {
+  // Create lookup map: brandName -> productOrder array
+  const brandOrderMap = new Map<string, string[]>();
+  
+  brandRegistry.forEach(brand => {
+    if (brand.productOrder && Array.isArray(brand.productOrder) && brand.productOrder.length > 0) {
+      brandOrderMap.set(brand.brandName, brand.productOrder);
+    }
+  });
+  
+  // Inject manualSortIndex onto each product
+  return products.map(product => {
+    const brandName = product.collectionBrand;
+    
+    if (brandName && brandOrderMap.has(brandName)) {
+      const productOrder = brandOrderMap.get(brandName)!;
+      const sortIndex = productOrder.indexOf(product.id);
+      
+      // Only set manualSortIndex if product is found in the order array
+      if (sortIndex !== -1) {
+        return {
+          ...product,
+          manualSortIndex: sortIndex,
+        };
+      }
+    }
+    
+    // No manual order set for this product's brand, or product not in order array
+    return product;
+  });
+}
