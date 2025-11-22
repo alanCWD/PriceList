@@ -166,8 +166,8 @@ export default function Editor() {
   const handleApplyMapping = () => {
     // Build a map of existing products by SKU to preserve hidden state
     const existingProductsBySKU = new Map<string, Product>();
-    if (pricelistData?.products) {
-      pricelistData.products.forEach((product: Product) => {
+    if (loadedPricelist?.products) {
+      loadedPricelist.products.forEach((product: Product) => {
         if (product.sku) {
           existingProductsBySKU.set(product.sku, product);
         }

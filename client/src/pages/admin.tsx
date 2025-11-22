@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical, ArrowUpDown } from "lucide-react";
+import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical, ArrowUpDown, Eye, EyeOff } from "lucide-react";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { CSVUpload } from "@/components/csv-upload";
 import { ColorPicker } from "@/components/color-picker";
@@ -2217,6 +2217,33 @@ function BrandRegistryManager() {
     },
   });
 
+  // Toggle product visibility mutation
+  const toggleVisibilityMutation = useMutation({
+    mutationFn: async (data: { productId: string; isHidden: boolean }) => {
+      const payload = isSuperAdmin && selectedCompanyId
+        ? { productId: data.productId, updates: { isHidden: data.isHidden }, companyId: selectedCompanyId }
+        : { productId: data.productId, updates: { isHidden: data.isHidden } };
+      const res = await apiRequest("PATCH", "/api/brands/products", payload);
+      return await res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
+      toast({ 
+        title: variables.isHidden ? "Product hidden" : "Product visible",
+        description: variables.isHidden 
+          ? "Product will be excluded from pricelists" 
+          : "Product will be included in pricelists"
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to toggle product visibility", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   // Regenerate sortKeys mutation
   const regenerateSortKeysMutation = useMutation({
     mutationFn: async () => {
@@ -2602,7 +2629,9 @@ function BrandRegistryManager() {
                                         onDrop={(e) => handleDrop(e, product.id, brand.brandName)}
                                         className={`flex items-center gap-3 p-3 rounded border text-sm transition-all ${
                                           isDragging ? 'opacity-50 bg-muted' : 'bg-muted/30'
-                                        } ${isDraggedOver ? 'border-primary border-2' : ''}`}
+                                        } ${isDraggedOver ? 'border-primary border-2' : ''} ${
+                                          product.isHidden ? 'opacity-50 line-through' : ''
+                                        }`}
                                       >
                                         <GripVertical 
                                           className="w-4 h-4 text-muted-foreground cursor-grab active:cursor-grabbing" 
@@ -2663,14 +2692,29 @@ function BrandRegistryManager() {
                                             </Button>
                                           </div>
                                         ) : (
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="text-xs"
-                                            onClick={() => handleStartEditProductType(product)}
-                                          >
-                                            Edit Type
-                                          </Button>
+                                          <div className="flex gap-2">
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={() => toggleVisibilityMutation.mutate({
+                                                productId: product.id,
+                                                isHidden: !product.isHidden
+                                              })}
+                                              disabled={toggleVisibilityMutation.isPending}
+                                              data-testid={`button-toggle-visibility-${product.sku}`}
+                                              title={product.isHidden ? "Show product" : "Hide product"}
+                                            >
+                                              {product.isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="text-xs"
+                                              onClick={() => handleStartEditProductType(product)}
+                                            >
+                                              Edit Type
+                                            </Button>
+                                          </div>
                                         )}
                                       </div>
                                     );
