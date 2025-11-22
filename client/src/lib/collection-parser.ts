@@ -346,13 +346,22 @@ export function injectManualSortIndex(
     }
   });
   
+  // Debug logging
+  console.log('[injectManualSortIndex] Brand order map keys:', Array.from(brandOrderMap.keys()));
+  console.log('[injectManualSortIndex] Total products to process:', products.length);
+  
   // Inject manualSortIndex onto each product
-  return products.map(product => {
+  const result = products.map(product => {
     const brandName = product.collectionBrand;
     
     if (brandName && brandOrderMap.has(brandName)) {
       const productOrder = brandOrderMap.get(brandName)!;
       const sortIndex = productOrder.indexOf(product.id);
+      
+      // Debug logging for Ones+ products
+      if (brandName.toLowerCase().includes('ones')) {
+        console.log(`[injectManualSortIndex] Ones+ product "${product.product}" (id: ${product.id}) -> sortIndex: ${sortIndex}, productOrder length: ${productOrder.length}`);
+      }
       
       // Only set manualSortIndex if product is found in the order array
       if (sortIndex !== -1) {
@@ -366,4 +375,14 @@ export function injectManualSortIndex(
     // No manual order set for this product's brand, or product not in order array
     return product;
   });
+  
+  // Debug: Log Ones+ products in result
+  const onesProducts = result.filter(p => p.collectionBrand?.toLowerCase().includes('ones'));
+  if (onesProducts.length > 0) {
+    console.log('[injectManualSortIndex] Ones+ products with sort indices:', 
+      onesProducts.map(p => ({ name: p.product, id: p.id, manualSortIndex: p.manualSortIndex }))
+    );
+  }
+  
+  return result;
 }
