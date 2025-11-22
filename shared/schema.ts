@@ -312,6 +312,10 @@ export const brandRegistry = pgTable("brand_registry", {
   // Optional display order override (null = alphabetical, integer = custom sort)
   displayOrder: integer("display_order"),
   
+  // Optional manual product ordering (array of product IDs in desired order)
+  // When set, overrides automatic wine type sorting for this brand's products
+  productOrder: text("product_order").array(),
+  
   // Metadata
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -332,6 +336,7 @@ export const insertBrandRegistrySchema = createInsertSchema(brandRegistry, {
   category: brandCategoryEnum,
   type: z.string().optional(),
   displayOrder: z.number().int().positive().optional(),
+  productOrder: z.array(z.string()).optional(),
 }).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertBrandRegistry = z.infer<typeof insertBrandRegistrySchema>;
@@ -341,4 +346,5 @@ export const updateBrandRegistrySchema = insertBrandRegistrySchema.partial().ext
   brandName: z.string().min(1).optional(),
   category: brandCategoryEnum.optional(),
   type: z.string().optional(),
+  productOrder: z.array(z.string()).optional(),
 });
