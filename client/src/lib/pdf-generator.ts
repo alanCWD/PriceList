@@ -465,25 +465,16 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         doc.setLineWidth(0.5);
         doc.line(margin, separatorY, pageWidth - margin, separatorY);
         
-        // Footer text with hyperlink to CityWide Digital
+        // Footer text - include brand name for single-brand downloads
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(100, 100, 100);
         
-        // Calculate positions for clickable "CityWide Digital" text
-        const part1 = "© 2025 ";
-        const part2 = "CityWide Digital";
-        const part3 = " Pricelist Generator";
-        
-        const width1 = doc.getStringUnitWidth(part1) * (10 / doc.internal.scaleFactor);
-        const width2 = doc.getStringUnitWidth(part2) * (10 / doc.internal.scaleFactor);
-        
-        doc.text(part1, margin, footerY);
-        // Create link for "CityWide Digital"
-        const link = (doc as any).addLink();
-        (doc as any).setLink(link, { url: "https://citywidedigital.ca/" });
-        (doc as any).textWithLink(part2, margin + width1, footerY, link);
-        doc.text(part3, margin + width1 + width2, footerY);
+        const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
+        const footerText = brandName 
+          ? `Page: ${pageNum} | ${branding.companyName} - ${brandName} - ${dayMonthDate}`
+          : `Page: ${pageNum} | ${branding.companyName} Pricelist - ${dayMonthDate}`;
+        doc.text(footerText, margin, footerY);
         
         // QR code on the right side, just below the separator line
         if (qrCodeBase64) {
@@ -666,25 +657,16 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
         doc.setLineWidth(0.5);
         doc.line(margin, footerY - 10, pageWidth - margin, footerY - 10);
         
-        // Footer text with hyperlink to CityWide Digital
+        // Footer text - include brand name for single-brand downloads
         doc.setFontSize(10);
         doc.setFont("times", "normal");
         doc.setTextColor(100, 100, 100);
         
-        // Calculate positions for clickable "CityWide Digital" text
-        const part1 = "© 2025 ";
-        const part2 = "CityWide Digital";
-        const part3 = " Pricelist Generator";
-        
-        const width1 = doc.getStringUnitWidth(part1) * (10 / doc.internal.scaleFactor);
-        const width2 = doc.getStringUnitWidth(part2) * (10 / doc.internal.scaleFactor);
-        
-        doc.text(part1, margin, footerY);
-        // Create link for "CityWide Digital"
-        const link = (doc as any).addLink();
-        (doc as any).setLink(link, { url: "https://citywidedigital.ca/" });
-        (doc as any).textWithLink(part2, margin + width1, footerY, link);
-        doc.text(part3, margin + width1 + width2, footerY);
+        const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
+        const footerText = brandName 
+          ? `Page: ${pageNum}    ${branding.companyName} - ${brandName} - ${dayMonthDate}`
+          : `Page: ${pageNum}    ${branding.companyName} Pricelist - ${dayMonthDate}`;
+        doc.text(footerText, margin, footerY);
       },
     });
 
@@ -1119,20 +1101,11 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         doc.setFont("helvetica", "normal");
         doc.setTextColor(100, 100, 100);
         
-        // Calculate positions for clickable "CityWide Digital" text
-        const part1 = "© 2025 ";
-        const part2 = "CityWide Digital";
-        const part3 = " Pricelist Generator";
-        
-        const width1 = doc.getStringUnitWidth(part1) * (8 / doc.internal.scaleFactor);
-        const width2 = doc.getStringUnitWidth(part2) * (8 / doc.internal.scaleFactor);
-        
-        doc.text(part1, margin, footerY);
-        // Create link for "CityWide Digital"
-        const link = (doc as any).addLink();
-        (doc as any).setLink(link, { url: "https://citywidedigital.ca/" });
-        (doc as any).textWithLink(part2, margin + width1, footerY, link);
-        doc.text(part3, margin + width1 + width2, footerY);
+        const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
+        const footerText = brandName 
+          ? `Page: ${pageNum} | ${branding.companyName} - ${brandName} - ${dayMonthDate}`
+          : `Page: ${pageNum} | ${branding.companyName} Pricelist - ${dayMonthDate}`;
+        doc.text(footerText, margin, footerY);
         
         // Tiny QR code on the right
         if (qrCodeBase64) {
