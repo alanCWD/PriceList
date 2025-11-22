@@ -3,6 +3,13 @@ import autoTable from "jspdf-autotable";
 import { getDisplayName } from "./collection-parser";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
 
+// Helper function to format price with 2 decimal places
+function formatPrice(price: string): string {
+  const num = parseFloat(price);
+  if (isNaN(num)) return price; // Return as-is if not a number
+  return num.toFixed(2);
+}
+
 interface PDFConfig {
   products: Product[];
   branding: CompanyBranding;
@@ -327,7 +334,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         product.product,
         product.sku,
         product.format,
-        product.price
+        formatPrice(product.price)
       );
       return row;
     });
@@ -566,7 +573,7 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
       product.sku,
       product.product,
       product.format,
-      product.price,
+      formatPrice(product.price),
       product.notes || "",
     ]);
 
@@ -900,7 +907,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         product.sku,
         product.product,
         product.format,
-        product.price,
+        formatPrice(product.price),
         product.notes || ""
       );
       return row;

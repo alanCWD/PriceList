@@ -4,6 +4,13 @@ import { getDisplayName } from "@/lib/collection-parser";
 import { sortBrandGroups } from "@/lib/sort-utils";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
 
+// Helper function to format price with 2 decimal places
+function formatPrice(price: string): string {
+  const num = parseFloat(price);
+  if (isNaN(num)) return price; // Return as-is if not a number
+  return num.toFixed(2);
+}
+
 interface PricelistDocumentProps {
   products: Product[];
   groupedProducts: [string, Product[]][];  // Ordered array of [brandName, products[]]
@@ -364,7 +371,7 @@ export function PricelistDocument({
                         fontVariantNumeric: 'tabular-nums'
                       }}
                     >
-                      {product.price}
+                      {formatPrice(product.price)}
                     </td>
                   </tr>
                 ))}
@@ -570,7 +577,7 @@ function ClassicTemplate({
                       {product.format}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: '12px', textAlign: 'right', border: '1px solid #9ca3af' }}>
-                      {product.price}
+                      {formatPrice(product.price)}
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: '12px', border: '1px solid #9ca3af' }}>
                       {product.notes}
@@ -850,7 +857,7 @@ function MinimalTemplate({
                       {product.format}
                     </td>
                     <td style={{ padding: '1px 4px', fontSize: '8.5px', fontWeight: 500, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      {product.price}
+                      {formatPrice(product.price)}
                     </td>
                     <td style={{ padding: '1px 4px', fontSize: '8.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {product.notes}
