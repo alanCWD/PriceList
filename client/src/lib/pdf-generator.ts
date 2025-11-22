@@ -182,17 +182,20 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     
     const centerX = pageWidth / 2;
     
-    // Title centered horizontally
+    // Title centered horizontally - measure width for agent boundary calculation
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
+    const titleWidth = doc.getTextWidth(branding.companyName);
     doc.text(branding.companyName, centerX, titleBaseline, { align: "center" });
 
     // Tagline centered below title with minimal spacing
+    let taglineWidth = 0;
     if (branding.tagline) {
       doc.setFontSize(11);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
+      taglineWidth = doc.getTextWidth(branding.tagline);
       doc.text(branding.tagline, centerX, taglineBaseline, { align: "center" });
     }
 
@@ -213,9 +216,13 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         return Math.max(...lines.map(line => doc.getTextWidth(line)));
       });
       
-      // Available width for agents (right half of page minus padding for buffer)
-      const availableWidth = (pageWidth / 2) - (headerPadding * 2);
-      const leftBoundary = pageWidth - headerPadding - availableWidth;
+      // Calculate actual title footprint (max of title/tagline width)
+      const maxTitleWidth = Math.max(titleWidth, taglineWidth);
+      const titleHalfWidth = maxTitleWidth / 2;
+      
+      // Available width for agents: right half minus padding minus title footprint
+      const availableWidth = (pageWidth / 2) - headerPadding - titleHalfWidth;
+      const leftBoundary = (pageWidth / 2) + titleHalfWidth;
       
       // Position agents from right to left, stopping if we run out of space
       let cumulativeOffset = 0;
@@ -786,7 +793,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     const agentBlockHeight = maxAgentLines * lineHeight;
     const agentTop = headerHeight - headerPadding - agentBlockHeight;
     
-    // Title/tagline centered
+    // Title/tagline centered - measure width for agent boundary calculation
     const titleBaseline = 20;
     const taglineBaseline = 30;
     const centerX = pageWidth / 2;
@@ -794,12 +801,15 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     doc.setFontSize(16); // Smaller than Modern template
     doc.setFont("helvetica", "bold");
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
+    const titleWidth = doc.getTextWidth(branding.companyName);
     doc.text(branding.companyName, centerX, titleBaseline, { align: "center" });
 
+    let taglineWidth = 0;
     if (branding.tagline) {
       doc.setFontSize(9);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(textColor.r, textColor.g, textColor.b);
+      taglineWidth = doc.getTextWidth(branding.tagline);
       doc.text(branding.tagline, centerX, taglineBaseline, { align: "center" });
     }
 
@@ -820,9 +830,13 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         return Math.max(...lines.map(line => doc.getTextWidth(line)));
       });
       
-      // Available width for agents (right half of page minus padding for buffer)
-      const availableWidth = (pageWidth / 2) - (headerPadding * 2);
-      const leftBoundary = pageWidth - headerPadding - availableWidth;
+      // Calculate actual title footprint (max of title/tagline width)
+      const maxTitleWidth = Math.max(titleWidth, taglineWidth);
+      const titleHalfWidth = maxTitleWidth / 2;
+      
+      // Available width for agents: right half minus padding minus title footprint
+      const availableWidth = (pageWidth / 2) - headerPadding - titleHalfWidth;
+      const leftBoundary = (pageWidth / 2) + titleHalfWidth;
       
       // Position agents from right to left, stopping if we run out of space
       let cumulativeOffset = 0;
