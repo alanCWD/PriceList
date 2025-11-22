@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { getDisplayName } from "./collection-parser";
-import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
+import { getDisplayName, injectManualSortIndex, type BrandWithOrder } from "./collection-parser";
+import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
 // Helper function to format price with 2 decimal places
 function formatPrice(price: string): string {
@@ -38,6 +38,7 @@ interface PDFConfig {
   template?: Template;
   pricelistName?: string;
   brandName?: string; // For single-brand downloads
+  brandRegistry?: BrandRegistry[]; // For manual product ordering
 }
 
 // Helper to extract image format from data URL
@@ -282,13 +283,18 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   // Move yPosition to after header (add small spacing)
   yPosition = headerHeight + 20;
 
+  // Inject manual sort index from brand registry FIRST (before filtering)
+  const productsWithSortIndex = config.brandRegistry && config.brandRegistry.length > 0
+    ? injectManualSortIndex(products, config.brandRegistry)
+    : products;
+  
+  // THEN filter out uncategorized products
+  const filteredProducts = productsWithSortIndex.filter(product => {
+    return !product.category || product.category.toLowerCase() !== "uncategorized";
+  });
+
   // Group products by brand (collectionBrand), excluding only explicitly "Uncategorized" items
-  const groupedProducts = products
-    .filter(product => {
-      // Only exclude if explicitly labeled "Uncategorized" (case-insensitive)
-      // Allow empty categories - they'll be shown under their category name or producer
-      return !product.category || product.category.toLowerCase() !== "uncategorized";
-    })
+  const groupedProducts = filteredProducts
     .reduce((acc, product) => {
       // Group by brand to get single bar per brand
       const brandKey = product.collectionBrand || product.category || "";
@@ -297,9 +303,11 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       }
       acc[brandKey].push(product);
       return acc;
-    }, {} as Record<string, Product[]>);
+    }, {} as Record<string, any[]>);
 
-  // Sort products within each brand by wine type
+  // Sort products within each brand
+  // Priority 1: Manual order (via brand registry productOrder)
+  // Priority 2: Automatic wine type sorting (Sparkling → White → Rosé → Red)
   const wineTypeOrder: Record<string, number> = {
     'sparkling': 1,
     'white': 2,
@@ -323,6 +331,22 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
 
   Object.values(groupedProducts).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
+      // PRIORITY 1: Check for manual ordering first
+      const hasManualA = typeof a.manualSortIndex === 'number';
+      const hasManualB = typeof b.manualSortIndex === 'number';
+      
+      // Both have manual order - sort by manualSortIndex
+      if (hasManualA && hasManualB) {
+        return a.manualSortIndex - b.manualSortIndex;
+      }
+      
+      // Only A has manual order - A comes first
+      if (hasManualA && !hasManualB) return -1;
+      
+      // Only B has manual order - B comes first
+      if (!hasManualA && hasManualB) return 1;
+      
+      // PRIORITY 2: Neither has manual order - fall back to automatic wine type sorting
       // Get primary wine types
       const typeA = a.collectionType?.toLowerCase() || '';
       const typeB = b.collectionType?.toLowerCase() || '';
@@ -602,16 +626,23 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 30;
 
-  const groupedProducts = products.reduce((acc, product) => {
+  // Inject manual sort index from brand registry
+  const productsWithSortIndex = config.brandRegistry && config.brandRegistry.length > 0
+    ? injectManualSortIndex(products, config.brandRegistry)
+    : products;
+
+  const groupedProducts = productsWithSortIndex.reduce((acc, product) => {
     const brandKey = product.collectionBrand || product.category || "Uncategorized";
     if (!acc[brandKey]) {
       acc[brandKey] = [];
     }
     acc[brandKey].push(product);
     return acc;
-  }, {} as Record<string, Product[]>);
+  }, {} as Record<string, any[]>);
 
-  // Sort products within each brand by wine type
+  // Sort products within each brand
+  // Priority 1: Manual order (via brand registry productOrder)
+  // Priority 2: Automatic wine type sorting (Sparkling → White → Rosé → Red)
   const wineTypeOrder: Record<string, number> = {
     'sparkling': 1,
     'white': 2,
@@ -635,6 +666,22 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
 
   Object.values(groupedProducts).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
+      // PRIORITY 1: Check for manual ordering first
+      const hasManualA = typeof a.manualSortIndex === 'number';
+      const hasManualB = typeof b.manualSortIndex === 'number';
+      
+      // Both have manual order - sort by manualSortIndex
+      if (hasManualA && hasManualB) {
+        return a.manualSortIndex - b.manualSortIndex;
+      }
+      
+      // Only A has manual order - A comes first
+      if (hasManualA && !hasManualB) return -1;
+      
+      // Only B has manual order - B comes first
+      if (!hasManualA && hasManualB) return 1;
+      
+      // PRIORITY 2: Neither has manual order - fall back to automatic wine type sorting
       // Get primary wine types
       const typeA = a.collectionType?.toLowerCase() || '';
       const typeB = b.collectionType?.toLowerCase() || '';
@@ -961,13 +1008,18 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
   drawHeader();
   yPosition = headerHeight + 15;
 
+  // Inject manual sort index from brand registry FIRST (before filtering)
+  const productsWithSortIndex = config.brandRegistry && config.brandRegistry.length > 0
+    ? injectManualSortIndex(products, config.brandRegistry)
+    : products;
+  
+  // THEN filter out uncategorized products
+  const filteredProducts = productsWithSortIndex.filter(product => {
+    return !product.category || product.category.toLowerCase() !== "uncategorized";
+  });
+
   // Group products by brand, excluding only explicitly "Uncategorized" items
-  const groupedProducts = products
-    .filter(product => {
-      // Only exclude if explicitly labeled "Uncategorized" (case-insensitive)
-      // Allow empty categories - they'll be shown under their category name or empty string
-      return !product.category || product.category.toLowerCase() !== "uncategorized";
-    })
+  const groupedProducts = productsWithSortIndex
     .reduce((acc, product) => {
       // Group by brand to get single bar per brand
       const brandKey = product.collectionBrand || product.category || "";
@@ -976,9 +1028,11 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       }
       acc[brandKey].push(product);
       return acc;
-    }, {} as Record<string, Product[]>);
+    }, {} as Record<string, any[]>);
 
-  // Sort products within each brand by wine type
+  // Sort products within each brand
+  // Priority 1: Manual order (via brand registry productOrder)
+  // Priority 2: Automatic wine type sorting (Sparkling → White → Rosé → Red)
   const wineTypeOrder: Record<string, number> = {
     'sparkling': 1,
     'white': 2,
@@ -1002,6 +1056,22 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
 
   Object.values(groupedProducts).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
+      // PRIORITY 1: Check for manual ordering first
+      const hasManualA = typeof a.manualSortIndex === 'number';
+      const hasManualB = typeof b.manualSortIndex === 'number';
+      
+      // Both have manual order - sort by manualSortIndex
+      if (hasManualA && hasManualB) {
+        return a.manualSortIndex - b.manualSortIndex;
+      }
+      
+      // Only A has manual order - A comes first
+      if (hasManualA && !hasManualB) return -1;
+      
+      // Only B has manual order - B comes first
+      if (!hasManualA && hasManualB) return 1;
+      
+      // PRIORITY 2: Neither has manual order - fall back to automatic wine type sorting
       // Get primary wine types
       const typeA = a.collectionType?.toLowerCase() || '';
       const typeB = b.collectionType?.toLowerCase() || '';

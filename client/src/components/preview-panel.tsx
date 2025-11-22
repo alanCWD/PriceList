@@ -113,6 +113,7 @@ export function PreviewPanel({
         qrCodeConfig,
         template,
         pricelistName,
+        brandRegistry, // Pass brandRegistry for manual product ordering
       });
       toast({
         title: "PDF Downloaded",

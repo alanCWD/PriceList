@@ -13,6 +13,7 @@ import {
   updateUserSchema,
   insertBrandRegistrySchema,
   updateBrandRegistrySchema,
+  productSchema,
   type Pricelist,
   type User
 } from "@shared/schema";
@@ -817,6 +818,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if this is a bulk reorder (reorderedProducts array) or single update (productId + updates)
       if (req.body.reorderedProducts && Array.isArray(req.body.reorderedProducts)) {
+        // Validate reorderedProducts - only require id field for reordering
+        // Other fields should already exist from original CSV upload
+        const reorderProductSchema = z.object({
+          id: z.string(),
+          // All other product fields are optional for reorder validation
+        }).passthrough(); // Allow additional fields without strict validation
+        
+        const reorderedProductsSchema = z.array(reorderProductSchema);
+        
+        const validation = reorderedProductsSchema.safeParse(req.body.reorderedProducts);
+        if (!validation.success) {
+          console.error('[PATCH /api/brands/products] Validation error:', validation.error);
+          return res.status(400).json({ 
+            error: "Invalid products array",
+            details: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+          });
+        }
+        
+        // Verify all product IDs exist in the current pricelist
+        const existingProductIds = new Set(latestPricelist.products.map(p => p.id));
+        const reorderedIds = req.body.reorderedProducts.map((p: any) => p.id);
+        const invalidIds = reorderedIds.filter((id: string) => !existingProductIds.has(id));
+        
+        if (invalidIds.length > 0) {
+          return res.status(400).json({
+            error: "Invalid product IDs",
+            details: `The following product IDs do not exist in the pricelist: ${invalidIds.join(', ')}`
+          });
+        }
+        
         // Bulk reorder: replace entire products array with new order
         await storage.updatePricelist(latestPricelist.id, {
           products: req.body.reorderedProducts,
