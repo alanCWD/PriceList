@@ -286,6 +286,11 @@ export default function ClientLanding() {
       const allProducts = latestPricelist.products as Product[];
       const visibleProducts = allProducts.filter(p => !p.isHidden);
       
+      // Debug: Log brand ordering data
+      console.log('[PDF Download] Brand ordering data:', brandOrderingData);
+      console.log('[PDF Download] Is loading?', isBrandOrderingLoading);
+      console.log('[PDF Download] Visible products count:', visibleProducts.length);
+      
       await generatePDF({
         products: visibleProducts,
         branding: latestPricelist.branding as CompanyBranding,
@@ -441,6 +446,13 @@ export default function ClientLanding() {
         !p.isHidden && 
         (p.collectionBrand === selectedBrand || p.category === selectedBrand)
       );
+      
+      // Debug: Log brand ordering data for single brand
+      console.log('[PDF Brand Download] Selected brand:', selectedBrand);
+      console.log('[PDF Brand Download] Brand ordering data:', brandOrderingData);
+      console.log('[PDF Brand Download] Is loading?', isBrandOrderingLoading);
+      console.log('[PDF Brand Download] Brand products count:', brandProducts.length);
+      console.log('[PDF Brand Download] First 3 product IDs:', brandProducts.slice(0, 3).map(p => ({ id: p.id, name: p.product })));
       
       if (brandProducts.length === 0) {
         toast({
