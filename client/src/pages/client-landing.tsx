@@ -34,6 +34,26 @@ export default function ClientLanding() {
     queryKey: ['/api/companies/defaults', { impersonatedCompanyId }],
   });
 
+  // Extract unique brands from visible products (must be before early returns due to Rules of Hooks)
+  const uniqueBrands = useMemo(() => {
+    if (!latestPricelist?.products) return [];
+    
+    const products = latestPricelist.products as Product[];
+    const visibleProducts = products.filter(p => !p.isHidden);
+    const brandSet = new Set<string>();
+    
+    visibleProducts.forEach(product => {
+      // Try to get brand from collectionBrand first, then fall back to parsing category
+      const brand = product.collectionBrand || product.category || "Uncategorized";
+      if (brand && brand !== "Uncategorized") {
+        brandSet.add(brand);
+      }
+    });
+    
+    // Convert to array and sort alphabetically
+    return Array.from(brandSet).sort((a, b) => a.localeCompare(b));
+  }, [latestPricelist?.products]);
+
   // Update pricelist mutation
   const updateMutation = useMutation({
     mutationFn: async (data: { products: Product[] }) => {
@@ -381,23 +401,6 @@ export default function ClientLanding() {
 
   // Main state - pricelist exists
   const products = latestPricelist.products as Product[];
-
-  // Extract unique brands from visible products
-  const uniqueBrands = useMemo(() => {
-    const visibleProducts = products.filter(p => !p.isHidden);
-    const brandSet = new Set<string>();
-    
-    visibleProducts.forEach(product => {
-      // Try to get brand from collectionBrand first, then fall back to parsing category
-      const brand = product.collectionBrand || product.category || "Uncategorized";
-      if (brand && brand !== "Uncategorized") {
-        brandSet.add(brand);
-      }
-    });
-    
-    // Convert to array and sort alphabetically
-    return Array.from(brandSet).sort((a, b) => a.localeCompare(b));
-  }, [products]);
 
   // Handler for downloading a single brand
   const handleDownloadBrandPDF = async () => {
