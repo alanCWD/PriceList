@@ -769,7 +769,7 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: hasImages ? '35%' : '40%'
+                      width: hasImages ? '38%' : '42%'
                     }}
                   >
                     Product
@@ -781,7 +781,7 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: '15%'
+                      width: '12%'
                     }}
                   >
                     Format
@@ -793,7 +793,7 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'right',
-                      width: hasImages ? '8%' : '10%'
+                      width: hasImages ? '6%' : '8%'
                     }}
                   >
                     Price
@@ -805,7 +805,7 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: hasImages ? '20%' : '18%'
+                      width: hasImages ? '22%' : '20%'
                     }}
                   >
                     Notes
