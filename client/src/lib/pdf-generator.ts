@@ -332,7 +332,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       const sortKeyB = productsB[0]?.category || brandB;
       return sortKeyA.localeCompare(sortKeyB);
     })
-    .forEach(([brandName, categoryProducts], index) => {
+    .forEach(([groupBrandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 20;
     }
@@ -347,7 +347,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     doc.setTextColor(textColor.r, textColor.g, textColor.b);
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text(brandName, margin + 12, yPosition + 16);
+    doc.text(groupBrandName, margin + 12, yPosition + 16);
     yPosition += 30;
 
     // Check if this category has any products with images
@@ -465,13 +465,15 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         doc.setLineWidth(0.5);
         doc.line(margin, separatorY, pageWidth - margin, separatorY);
         
-        // Footer text - format: Page: X | Company Pricelist - Day Month Year
+        // Footer text - include brand name for single-brand downloads
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(100, 100, 100);
         
         const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
-        const footerText = `Page: ${pageNum} | ${branding.companyName} Pricelist - ${dayMonthDate}`;
+        const footerText = brandName 
+          ? `Page: ${pageNum} | ${branding.companyName} - ${brandName} - ${dayMonthDate}`
+          : `Page: ${pageNum} | ${branding.companyName} Pricelist - ${dayMonthDate}`;
         doc.text(footerText, margin, footerY);
         
         // QR code on the right side, just below the separator line
@@ -597,7 +599,7 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
       const sortKeyB = productsB[0]?.category || brandB;
       return sortKeyA.localeCompare(sortKeyB);
     })
-    .forEach(([brandName, categoryProducts], index) => {
+    .forEach(([groupBrandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 25;
     }
@@ -605,7 +607,7 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     doc.setFont("times", "bold");
     doc.setFontSize(18);
     doc.setTextColor(30, 30, 30);
-    doc.text(brandName, margin, yPosition);
+    doc.text(groupBrandName, margin, yPosition);
     yPosition += 5;
     doc.setDrawColor(156, 163, 175);
     doc.setLineWidth(2);
@@ -655,13 +657,15 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
         doc.setLineWidth(0.5);
         doc.line(margin, footerY - 10, pageWidth - margin, footerY - 10);
         
-        // Footer text
+        // Footer text - include brand name for single-brand downloads
         doc.setFontSize(10);
         doc.setFont("times", "normal");
         doc.setTextColor(100, 100, 100);
         
         const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
-        const footerText = `Page: ${pageNum}    ${branding.companyName} Pricelist - ${dayMonthDate}`;
+        const footerText = brandName 
+          ? `Page: ${pageNum}    ${branding.companyName} - ${brandName} - ${dayMonthDate}`
+          : `Page: ${pageNum}    ${branding.companyName} Pricelist - ${dayMonthDate}`;
         doc.text(footerText, margin, footerY);
       },
     });
@@ -962,14 +966,14 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       const sortKeyB = productsB[0]?.category || brandB;
       return sortKeyA.localeCompare(sortKeyB);
     })
-    .forEach(([brandName, categoryProducts], index) => {
+    .forEach(([groupBrandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 12; // Minimal spacing between categories
     }
 
     // Brand header - matches header background colour with grey text
-    // brandName is already the clean brand name (e.g., "Mt. Boucherie Estate Winery")
-    const displayName = brandName;
+    // groupBrandName is already the clean brand name (e.g., "Mt. Boucherie Estate Winery")
+    const displayName = groupBrandName;
     
     if (bgColor) {
       doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
@@ -1098,7 +1102,9 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         doc.setTextColor(100, 100, 100);
         
         const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
-        const footerText = `Page: ${pageNum} | ${branding.companyName} Pricelist - ${dayMonthDate}`;
+        const footerText = brandName 
+          ? `Page: ${pageNum} | ${branding.companyName} - ${brandName} - ${dayMonthDate}`
+          : `Page: ${pageNum} | ${branding.companyName} Pricelist - ${dayMonthDate}`;
         doc.text(footerText, margin, footerY);
         
         // Tiny QR code on the right
