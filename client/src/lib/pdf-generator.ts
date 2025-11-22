@@ -184,10 +184,10 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     const agentBlockHeight = maxAgentLines * lineHeight;
     const agentTop = headerHeight - bottomPadding - agentBlockHeight;
     
-    // Position title/tagline - move 0.5 inches (36pt) to the right from gutter edge
+    // Position title/tagline - move 0.5 inches (36pt) to the left from gutter edge
     const logoGutter = 180;
-    const additionalOffset = 36;
-    const titleX = logoBase64 ? (headerPadding + logoGutter + additionalOffset) : (headerPadding + additionalOffset);
+    const leftOffset = 36;
+    const titleX = logoBase64 ? (headerPadding + logoGutter - leftOffset) : headerPadding;
     
     // Vertically center the title/tagline block within header
     const titleFontSize = 22;
@@ -797,10 +797,10 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     const agentBlockHeight = maxAgentLines * lineHeight;
     const agentTop = headerHeight - headerPadding - agentBlockHeight;
     
-    // Position title/tagline - move 0.5 inches (36pt) to the right from gutter edge
+    // Position title/tagline - move 0.5 inches (36pt) to the left from gutter edge
     const logoGutter = 140;
-    const additionalOffset = 36;
-    const titleX = logoBase64 ? (headerPadding + logoGutter + additionalOffset) : (headerPadding + additionalOffset);
+    const leftOffset = 36;
+    const titleX = logoBase64 ? (headerPadding + logoGutter - leftOffset) : headerPadding;
     
     // Vertically center the title/tagline block within header
     const titleFontSize = 16;
