@@ -150,6 +150,16 @@ export default function ClientLanding() {
           };
         }
 
+        // Build SKU map from existing pricelist to preserve isHidden state
+        const existingProductsBySKU = new Map<string, Product>();
+        if (latestPricelist?.products) {
+          (latestPricelist.products as Product[]).forEach((product: Product) => {
+            if (product.sku) {
+              existingProductsBySKU.set(product.sku, product);
+            }
+          });
+        }
+
         // Map CSV data to products and strip HTML tags (for Wix exports)
         const products: Product[] = csvData.map((row: any, index: number) => {
           let imageUrl = fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "";
@@ -159,16 +169,23 @@ export default function ClientLanding() {
             imageUrl = `https://static.wixstatic.com/media/${imageUrl}`;
           }
           
+          // Get SKU for reconciliation
+          const sku = stripHtml(fieldMapping.sku ? row[fieldMapping.sku] || "" : "");
+          
+          // Check if this product exists in the previous pricelist (by SKU)
+          const existingProduct = existingProductsBySKU.get(sku);
+          const isHidden = existingProduct?.isHidden ?? false;
+          
           return {
             id: `product-${index}`,
             product: stripHtml(fieldMapping.product ? row[fieldMapping.product] || "Unnamed Product" : "Unnamed Product"),
-            sku: stripHtml(fieldMapping.sku ? row[fieldMapping.sku] || "" : ""),
+            sku,
             format: stripHtml(fieldMapping.format ? row[fieldMapping.format] || "" : ""),
             price: stripHtml(fieldMapping.price ? row[fieldMapping.price] || "" : ""),
             category: stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : ""),
             notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
             productImageUrl: imageUrl,
-            isHidden: false, // New products are visible by default
+            isHidden, // Preserve hidden state from existing pricelist
           };
         });
 
