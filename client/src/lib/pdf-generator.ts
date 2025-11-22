@@ -10,6 +10,26 @@ function formatPrice(price: string): string {
   return num.toFixed(2);
 }
 
+// Helper function to format footer text with brand name truncation
+function formatFooterText(
+  pageNum: number,
+  companyName: string,
+  date: string,
+  brandName?: string,
+  maxBrandLength: number = 30
+): string {
+  if (!brandName) {
+    return `Page: ${pageNum} | ${companyName} Pricelist - ${date}`;
+  }
+  
+  // Truncate brand name if too long to prevent overflow
+  const truncatedBrand = brandName.length > maxBrandLength 
+    ? brandName.substring(0, maxBrandLength - 3) + '...'
+    : brandName;
+  
+  return `Page: ${pageNum} | ${companyName} - ${truncatedBrand} - ${date}`;
+}
+
 interface PDFConfig {
   products: Product[];
   branding: CompanyBranding;
@@ -471,9 +491,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         doc.setTextColor(100, 100, 100);
         
         const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
-        const footerText = brandName 
-          ? `Page: ${pageNum} | ${branding.companyName} - ${brandName} - ${dayMonthDate}`
-          : `Page: ${pageNum} | ${branding.companyName} Pricelist - ${dayMonthDate}`;
+        const footerText = formatFooterText(pageNum, branding.companyName, dayMonthDate, brandName, 30);
         doc.text(footerText, margin, footerY);
         
         // QR code on the right side, just below the separator line
@@ -663,9 +681,8 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
         doc.setTextColor(100, 100, 100);
         
         const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
-        const footerText = brandName 
-          ? `Page: ${pageNum}    ${branding.companyName} - ${brandName} - ${dayMonthDate}`
-          : `Page: ${pageNum}    ${branding.companyName} Pricelist - ${dayMonthDate}`;
+        // Classic template uses spaces instead of "|" separators
+        const footerText = formatFooterText(pageNum, branding.companyName, dayMonthDate, brandName, 30).replace(/\|/g, '   ');
         doc.text(footerText, margin, footerY);
       },
     });
@@ -1102,9 +1119,8 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         doc.setTextColor(100, 100, 100);
         
         const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
-        const footerText = brandName 
-          ? `Page: ${pageNum} | ${branding.companyName} - ${brandName} - ${dayMonthDate}`
-          : `Page: ${pageNum} | ${branding.companyName} Pricelist - ${dayMonthDate}`;
+        // Minimal template uses smaller font, so use shorter max brand length
+        const footerText = formatFooterText(pageNum, branding.companyName, dayMonthDate, brandName, 25);
         doc.text(footerText, margin, footerY);
         
         // Tiny QR code on the right

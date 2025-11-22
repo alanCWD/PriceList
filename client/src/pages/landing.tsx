@@ -159,7 +159,19 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t mt-16">
         <div className="max-w-6xl mx-auto px-6 py-8 text-center text-sm text-muted-foreground">
-          <p>© 2024 Pricelist Generator. Professional pricelists made simple.</p>
+          <p>
+            © 2025{" "}
+            <a 
+              href="https://citywidedigital.ca/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hover:text-foreground transition-colors underline"
+              data-testid="link-citywide-digital"
+            >
+              CityWide Digital
+            </a>
+            {" "}Pricelist Generator
+          </p>
         </div>
       </footer>
     </div>
