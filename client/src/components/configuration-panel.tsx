@@ -315,14 +315,6 @@ export function ConfigurationPanel({
               </p>
             </div>
           )}
-          {salesAgents.length >= 2 && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Maximum of 2 sales agents reached. Remove an agent to add a different one.
-              </AlertDescription>
-            </Alert>
-          )}
           {salesAgents.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
