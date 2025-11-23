@@ -68,6 +68,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get effective company ID (supports Super Admin impersonation)
       const effectiveCompanyId = getEffectiveCompanyId(req, user);
       
+      // Special case: Superadmin with no company (empty production database)
+      // Return sensible defaults so they can access admin UI to create first company
+      if (!effectiveCompanyId && user.role === "superAdmin") {
+        return res.json({
+          defaultTemplate: "modern",
+          defaultFieldMapping: {
+            product: "",
+            sku: "",
+            format: "",
+            price: "",
+            category: "",
+            notes: "",
+            productImageUrl: "",
+          },
+          defaultBranding: {
+            companyName: "",
+            tagline: "",
+          },
+        });
+      }
+      
       if (!effectiveCompanyId) {
         return res.status(404).json({ error: "Company not specified" });
       }
