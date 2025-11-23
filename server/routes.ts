@@ -1095,8 +1095,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const effectiveCompanyId = getEffectiveCompanyId(req, user);
+      
+      // If no company ID available (super admin without company/impersonation), return empty array
       if (!effectiveCompanyId) {
-        return res.status(400).json({ error: "No company associated with user" });
+        return res.json([]);
       }
 
       // Fetch brands and return only brandName + productOrder (safe for clients)
@@ -1135,18 +1137,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[GET /api/brands] companyId param:', req.query.companyId);
 
       // Super Admins can query brands for any company via companyId query param
-      let targetCompanyId: number;
+      let targetCompanyId: number | null = null;
       if (user.role === "superAdmin" && req.query.companyId) {
         targetCompanyId = parseInt(req.query.companyId as string);
         if (isNaN(targetCompanyId)) {
           return res.status(400).json({ error: "Invalid company ID" });
         }
       } else {
-        const effectiveCompanyId = getEffectiveCompanyId(req, user);
-        if (!effectiveCompanyId) {
-          return res.status(400).json({ error: "No company associated with user" });
-        }
-        targetCompanyId = effectiveCompanyId;
+        targetCompanyId = getEffectiveCompanyId(req, user);
+      }
+
+      // If no company ID available (super admin without company/impersonation), return empty array
+      if (!targetCompanyId) {
+        return res.json([]);
       }
 
       const brands = await storage.getBrandsByCompanyId(targetCompanyId);

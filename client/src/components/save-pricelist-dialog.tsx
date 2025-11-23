@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -11,16 +12,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
-import type { CompanyBranding } from "@shared/schema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import type { CompanyBranding, User, Company } from "@shared/schema";
 
 interface SavePricelistDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (name: string, description?: string) => Promise<void>;
+  onSave: (name: string, description?: string, companyId?: number) => Promise<void>;
   companyBranding: CompanyBranding;
   initialName?: string;
   initialDescription?: string;
+  user: User | null;
 }
 
 export function SavePricelistDialog({ 
@@ -30,10 +34,21 @@ export function SavePricelistDialog({
   companyBranding,
   initialName = "",
   initialDescription = "",
+  user,
 }: SavePricelistDialogProps) {
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Check if user is a super admin without a company
+  const isSuperAdminWithoutCompany = user?.role === "superAdmin" && !user?.companyId;
+
+  // Fetch companies for super admins
+  const { data: companies } = useQuery<Company[]>({
+    queryKey: ["/api/companies"],
+    enabled: isSuperAdminWithoutCompany && open,
+  });
 
   // Generate auto-name using footer format: "Company Pricelist - Day Month Year"
   const generateAutoName = () => {
@@ -53,11 +68,16 @@ export function SavePricelistDialog({
 
   const handleSave = async () => {
     if (!name.trim()) return;
+    
+    // Validate company selection for super admins
+    if (isSuperAdminWithoutCompany && !selectedCompanyId) {
+      return; // Button should be disabled anyway
+    }
 
     setSaving(true);
     try {
       console.log("SaveDialog: Starting save...");
-      await onSave(name.trim(), description.trim() || undefined);
+      await onSave(name.trim(), description.trim() || undefined, selectedCompanyId || undefined);
       console.log("SaveDialog: Save completed successfully");
       onOpenChange(false);
     } catch (error) {
@@ -77,8 +97,13 @@ export function SavePricelistDialog({
       setName(finalName);
       setDescription(initialDescription);
       setSaving(false);
+      
+      // Reset company selection when dialog opens
+      if (isSuperAdminWithoutCompany && companies && companies.length > 0) {
+        setSelectedCompanyId(companies[0].id);
+      }
     }
-  }, [open, initialName, initialDescription, companyBranding.companyName]);
+  }, [open, initialName, initialDescription, companyBranding.companyName, isSuperAdminWithoutCompany, companies]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -90,6 +115,39 @@ export function SavePricelistDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {isSuperAdminWithoutCompany && (
+            <div className="space-y-2">
+              <Label htmlFor="company-select">Company *</Label>
+              {companies && companies.length > 0 ? (
+                <Select 
+                  value={selectedCompanyId?.toString()} 
+                  onValueChange={(value) => setSelectedCompanyId(parseInt(value))}
+                  disabled={saving}
+                >
+                  <SelectTrigger id="company-select" data-testid="select-company">
+                    <SelectValue placeholder="Select a company..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id.toString()}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    No companies found. Please create a company first in Admin Settings.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Select which company this pricelist belongs to
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="pricelist-name">Name (Optional - auto-generated)</Label>
             <Input
@@ -128,7 +186,7 @@ export function SavePricelistDialog({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!name.trim() || saving}
+            disabled={!name.trim() || saving || (isSuperAdminWithoutCompany && !selectedCompanyId)}
             data-testid="button-confirm-save"
           >
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

@@ -13,6 +13,7 @@ import { PreviewPanel } from "@/components/preview-panel";
 import { SavePricelistDialog } from "@/components/save-pricelist-dialog";
 import { CollectionEditor } from "@/components/collection-editor";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { stripHtml } from "@/lib/text-utils";
 import { parseCollection, extractWineTypeFromProductName, type BrandRegistryEntry } from "@/lib/collection-parser";
@@ -23,6 +24,7 @@ export default function Editor() {
   const urlParams = new URLSearchParams(location.split('?')[1] || '');
   const pricelistId = urlParams.get('id') ? parseInt(urlParams.get('id')!) : null;
   const { toast } = useToast();
+  const { user } = useAuth();
   const [csvData, setCSVData] = useState<any[]>([]);
   const [csvHeaders, setCSVHeaders] = useState<string[]>([]);
   const [fieldMapping, setFieldMapping] = useState<FieldMapping>({
@@ -263,10 +265,10 @@ export default function Editor() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: async ({ name, description }: { name: string; description?: string }) => {
-      console.log("Mutation: Starting mutation with:", { name, description, productsCount: products.length });
+    mutationFn: async ({ name, description, companyId }: { name: string; description?: string; companyId?: number }) => {
+      console.log("Mutation: Starting mutation with:", { name, description, companyId, productsCount: products.length });
       console.log("Mutation: Current branding state:", JSON.stringify(companyBranding, null, 2));
-      const payload = {
+      const payload: any = {
         name,
         description,
         branding: companyBranding,
@@ -277,6 +279,11 @@ export default function Editor() {
         template,
         categoryFilter: categoryFilter ?? null, // Explicitly send null instead of undefined
       };
+      
+      // Add companyId to payload if provided (for super admins)
+      if (companyId) {
+        payload.companyId = companyId;
+      }
 
       console.log("Mutation: Payload branding:", JSON.stringify(payload.branding, null, 2));
       console.log("Mutation: Payload size:", JSON.stringify(payload).length, "bytes");
@@ -356,11 +363,12 @@ export default function Editor() {
         open={saveDialogOpen}
         onOpenChange={setSaveDialogOpen}
         companyBranding={companyBranding}
-        onSave={async (name, description) => {
-          await saveMutation.mutateAsync({ name, description });
+        onSave={async (name, description, companyId) => {
+          await saveMutation.mutateAsync({ name, description, companyId });
         }}
         initialName={currentPricelistName}
         initialDescription={currentPricelistDescription}
+        user={user}
       />
 
       {/* Main Content */}
