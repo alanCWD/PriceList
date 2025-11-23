@@ -628,9 +628,9 @@ function MinimalTemplate({
   const headerBgColor = branding.headerBackgroundColor || '#f8f9fa';
   const headerTextColor = branding.headerTextColor || '#1a1a1a';
 
-  // Check if any products have actual valid image URLs (not empty strings)
+  // Check if any products have actual valid image URLs (not empty/whitespace strings)
   const hasImages = groupedProducts.some(([_brandName, products]) =>
-    products.some(p => p.productImageUrl && p.productImageUrl.trim().length > 0)
+    products.some(p => p.productImageUrl?.trim())
   );
 
   return (

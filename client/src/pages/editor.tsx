@@ -268,6 +268,8 @@ export default function Editor() {
     mutationFn: async ({ name, description, companyId }: { name: string; description?: string; companyId?: number }) => {
       console.log("Mutation: Starting mutation with:", { name, description, companyId, productsCount: products.length });
       console.log("Mutation: Current branding state:", JSON.stringify(companyBranding, null, 2));
+      
+      // Build payload with all required fields
       const payload: any = {
         name,
         description,
@@ -277,15 +279,17 @@ export default function Editor() {
         products,
         fieldMapping,
         template,
-        categoryFilter: categoryFilter ?? null, // Explicitly send null instead of undefined
+        categoryFilter: categoryFilter ?? null,
       };
       
-      // Add companyId to payload if provided (for super admins)
-      if (companyId) {
+      // CRITICAL: Include companyId in payload if provided (for super admins)
+      if (companyId !== undefined) {
         payload.companyId = companyId;
+        console.log("Mutation: Including companyId in payload:", companyId);
       }
 
       console.log("Mutation: Payload branding:", JSON.stringify(payload.branding, null, 2));
+      console.log("Mutation: Payload companyId:", payload.companyId);
       console.log("Mutation: Payload size:", JSON.stringify(payload).length, "bytes");
 
       if (currentPricelistId) {

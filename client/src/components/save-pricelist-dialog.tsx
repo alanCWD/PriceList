@@ -24,7 +24,7 @@ interface SavePricelistDialogProps {
   companyBranding: CompanyBranding;
   initialName?: string;
   initialDescription?: string;
-  user: User | null;
+  user: User | null | undefined;
 }
 
 export function SavePricelistDialog({ 
