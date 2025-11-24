@@ -1,0 +1,179 @@
+index-DY_mDsfb.js:486 [BrandRegistry] Render state: {isSuperAdmin: true, selectedCompanyId: null, isAddDialogOpen: false, hasUser: true}
+index-DY_mDsfb.js:486 [BrandRegistry] Render state: {isSuperAdmin: true, selectedCompanyId: 1, isAddDialogOpen: false, hasUser: true}
+index-DY_mDsfb.js:486 [BrandRegistry] Fetching brands from URL: /api/brands?companyId=1
+index-DY_mDsfb.js:486 [BrandRegistry] Render state: {isSuperAdmin: true, selectedCompanyId: 1, isAddDialogOpen: false, hasUser: true}
+index-DY_mDsfb.js:486 [BrandRegistry] Render state: {isSuperAdmin: true, selectedCompanyId: 1, isAddDialogOpen: false, hasUser: true}
+Warning: Don’t paste code into the DevTools Console that you don’t understand or haven’t reviewed yourself. This could allow attackers to steal your identity or take control of your computer. Please type ‘allow pasting’ below and press Enter to allow pasting.
+allow pasting
+const brands = [
+  { brandName: "1 Mill Road", category: "wine", type: null, displayOrder: null },
+  { brandName: "Anthony Buchanan Wines", category: "wine", type: null, displayOrder: null },
+  { brandName: "Cannon Estate Winery", category: "wine", type: null, displayOrder: null },
+  { brandName: "Emandare Vineyard", category: "wine", type: null, displayOrder: null },
+  { brandName: "Lock & Worth Winery", category: "wine", type: null, displayOrder: null },
+  { brandName: "Macaloney's Island Distillery", category: "spirits", type: "Whisky", displayOrder: null },
+  { brandName: "Marichel Winery", category: "wine", type: null, displayOrder: null },
+  { brandName: "Nagging Doubt Winery", category: "wine", type: null, displayOrder: null },
+  { brandName: "Nichol Vineyard", category: "wine", type: null, displayOrder: null },
+  { brandName: "Odd Society Spirits", category: "spirits", type: null, displayOrder: null },
+  { brandName: "Ones+ Non-Alc BC Wine", category: "nonAlc", type: null, displayOrder: null },
+  { brandName: "Salt Spring Wild Cider House", category: "cider", type: null, displayOrder: null },
+  { brandName: "Sea Star Vineyards", category: "wine", type: null, displayOrder: null },
+  { brandName: "Synchromesh", category: "wine", type: null, displayOrder: null },
+  { brandName: "Unsworth Vineyards", category: "wine", type: null, displayOrder: null },
+  { brandName: "Wayward Distillery", category: "spirits", type: null, displayOrder: null }
+];
+
+async function addBrands() {
+  console.log('Starting to add brands...');
+  for (const brand of brands) {
+    try {
+      const res = await fetch('/api/brands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(brand)
+      });
+      if (res.ok) {
+        console.log(`✅ Added: ${brand.brandName}`);
+      } else {
+        console.error(`❌ Failed to add ${brand.brandName}:`, await res.text());
+      }
+    } catch (err) {
+      console.error(`❌ Error adding ${brand.brandName}:`, err);
+    }
+  }
+  console.log('✅ Done! Refresh the page to see the brands.');
+}
+
+addBrands();
+VM3229:21 Starting to add brands...
+Promise {<pending>}
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add 1 Mill Road: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Anthony Buchanan Wines: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Cannon Estate Winery: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Emandare Vineyard: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Lock & Worth Winery: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Macaloney's Island Distillery: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Marichel Winery: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Nagging Doubt Winery: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Nichol Vineyard: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Odd Society Spirits: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Ones+ Non-Alc BC Wine: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Salt Spring Wild Cider House: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Sea Star Vineyards: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Synchromesh: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Unsworth Vineyards: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3229:24
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:33 ❌ Failed to add Wayward Distillery: {"error":"No company associated with user"}
+addBrands @ VM3229:33
+await in addBrands
+(anonymous) @ VM3229:42
+VM3229:39 ✅ Done! Refresh the page to see the brands.
