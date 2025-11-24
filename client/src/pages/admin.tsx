@@ -257,8 +257,11 @@ function CompaniesManager() {
       return;
     }
     
+    // Trim headers to ensure exact matching with saved field mappings
+    const trimmedHeaders = headers.map(h => h.trim());
+    
     // Always set CSV headers so dropdowns show available columns
-    setCsvHeaders(headers);
+    setCsvHeaders(trimmedHeaders);
     
     // If editing an existing company, preserve the current field mappings
     // Only run auto-detection for NEW companies
@@ -272,19 +275,19 @@ function CompaniesManager() {
     
     // Auto-detect mappings from CSV headers (only for new companies)
     const autoMapping: FieldMapping = {
-      product: headers.find(h => {
+      product: trimmedHeaders.find(h => {
         const lower = h.toLowerCase();
         return lower === "name" || (lower.includes("product") && !lower.includes("image"));
       }) || "",
-      sku: headers.find(h => h.toLowerCase().includes("sku")) || "",
-      format: headers.find(h => {
+      sku: trimmedHeaders.find(h => h.toLowerCase().includes("sku")) || "",
+      format: trimmedHeaders.find(h => {
         const lower = h.toLowerCase();
         return lower.includes("additional info") || lower.includes("case") || lower.includes("format") || lower.includes("size");
       }) || "",
-      price: headers.find(h => h.toLowerCase().includes("price")) || "",
-      category: headers.find(h => h.toLowerCase().includes("category") || h.toLowerCase().includes("producer") || h.toLowerCase().includes("winery")) || "",
-      notes: headers.find(h => h.toLowerCase().includes("note")) || "",
-      productImageUrl: headers.find(h => {
+      price: trimmedHeaders.find(h => h.toLowerCase().includes("price")) || "",
+      category: trimmedHeaders.find(h => h.toLowerCase().includes("category") || h.toLowerCase().includes("producer") || h.toLowerCase().includes("winery")) || "",
+      notes: trimmedHeaders.find(h => h.toLowerCase().includes("note")) || "",
+      productImageUrl: trimmedHeaders.find(h => {
         const lower = h.toLowerCase();
         return lower.includes("productimage") || lower === "productimageurl";
       }) || "",
@@ -314,6 +317,9 @@ function CompaniesManager() {
     setName(company.name);
     setDomain(company.domain);
     setDefaultTemplate(company.defaultTemplate as Template);
+    
+    // Reset CSV headers when starting edit (prevents stale headers from interfering)
+    setCsvHeaders([]);
     
     // Normalize field mapping to ensure all keys exist (prevents undefined in controlled inputs)
     const normalized: FieldMapping = {
