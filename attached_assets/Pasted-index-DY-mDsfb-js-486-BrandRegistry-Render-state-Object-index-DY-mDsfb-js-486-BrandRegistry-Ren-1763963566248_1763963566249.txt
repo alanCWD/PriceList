@@ -1,0 +1,177 @@
+index-DY_mDsfb.js:486 [BrandRegistry] Render state: Object
+index-DY_mDsfb.js:486 [BrandRegistry] Render state: Object
+index-DY_mDsfb.js:486 [BrandRegistry] Fetching brands from URL: /api/brands?companyId=1
+index-DY_mDsfb.js:486 [BrandRegistry] Render state: Object
+index-DY_mDsfb.js:486 [BrandRegistry] Render state: Object
+const brands = [
+  { brandName: "1 Mill Road", category: "wine", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Anthony Buchanan Wines", category: "wine", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Cannon Estate Winery", category: "wine", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Emandare Vineyard", category: "wine", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Lock & Worth Winery", category: "wine", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Macaloney's Island Distillery", category: "spirits", type: "Whisky", displayOrder: null, companyId: 1 },
+  { brandName: "Marichel Winery", category: "wine", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Nagging Doubt Winery", category: "wine", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Nichol Vineyard", category: "wine", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Odd Society Spirits", category: "spirits", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Ones+ Non-Alc BC Wine", category: "nonAlc", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Salt Spring Wild Cider House", category: "cider", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Sea Star Vineyards", category: "wine", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Synchromesh", category: "wine", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Unsworth Vineyards", category: "wine", type: null, displayOrder: null, companyId: 1 },
+  { brandName: "Wayward Distillery", category: "spirits", type: null, displayOrder: null, companyId: 1 }
+];
+
+async function addBrands() {
+  console.log('Starting to add brands...');
+  for (const brand of brands) {
+    try {
+      const res = await fetch('/api/brands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(brand)
+      });
+      if (res.ok) {
+        console.log(`✅ Added: ${brand.brandName}`);
+      } else {
+        console.error(`❌ Failed to add ${brand.brandName}:`, await res.text());
+      }
+    } catch (err) {
+      console.error(`❌ Error adding ${brand.brandName}:`, err);
+    }
+  }
+  console.log('✅ Done! Refresh the page to see the brands.');
+}
+
+addBrands();
+VM3400:21 Starting to add brands...
+Promise {<pending>}
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add 1 Mill Road: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Anthony Buchanan Wines: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Cannon Estate Winery: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Emandare Vineyard: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Lock & Worth Winery: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Macaloney's Island Distillery: {"error":"Validation error: Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Marichel Winery: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Nagging Doubt Winery: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Nichol Vineyard: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Odd Society Spirits: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Ones+ Non-Alc BC Wine: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Salt Spring Wild Cider House: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Sea Star Vineyards: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Synchromesh: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Unsworth Vineyards: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:24  POST https://stylish-price-list-alanb613.replit.app/api/brands 400 (Bad Request)
+addBrands @ VM3400:24
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:33 ❌ Failed to add Wayward Distillery: {"error":"Validation error: Expected string, received null at \"type\"; Expected number, received null at \"displayOrder\""}
+addBrands @ VM3400:33
+await in addBrands
+(anonymous) @ VM3400:42
+VM3400:39 ✅ Done! Refresh the page to see the brands.
