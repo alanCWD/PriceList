@@ -2116,26 +2116,38 @@ function BrandRegistryManager() {
   }, [companies, isSuperAdmin, selectedCompanyId]);
 
   // Fetch brands for selected company (Super Admin) or current company (Company Admin)
-  const { data: brands, isLoading } = useQuery<BrandRegistry[]>({
+  const { data: brands, isLoading, error } = useQuery<BrandRegistry[]>({
     queryKey: isSuperAdmin ? ["/api/brands", { companyId: selectedCompanyId }] : ["/api/brands"],
     queryFn: async () => {
-      const url = isSuperAdmin && selectedCompanyId
-        ? `/api/brands?companyId=${selectedCompanyId}`
-        : "/api/brands";
-      console.log('[BrandRegistry] Fetching brands from URL:', url);
-      console.log('[BrandRegistry] Query params:', { isSuperAdmin, selectedCompanyId });
-      const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) {
-        console.error('[BrandRegistry] Fetch failed:', res.status, res.statusText);
-        throw new Error("Failed to fetch brands");
+      try {
+        const url = isSuperAdmin && selectedCompanyId
+          ? `/api/brands?companyId=${selectedCompanyId}`
+          : "/api/brands";
+        console.log('[BrandRegistry] Fetching brands from URL:', url);
+        console.log('[BrandRegistry] Query params:', { isSuperAdmin, selectedCompanyId });
+        const res = await fetch(url, { credentials: "include" });
+        console.log('[BrandRegistry] Response status:', res.status, res.statusText);
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('[BrandRegistry] Fetch failed:', res.status, res.statusText, errorText);
+          throw new Error(`Failed to fetch brands: ${res.status} ${res.statusText}`);
+        }
+        const data = await res.json();
+        console.log('[BrandRegistry] Brands fetched successfully:', data.length, 'brands');
+        console.log('[BrandRegistry] Brand names:', data.map((b: any) => b.brandName));
+        return data;
+      } catch (err) {
+        console.error('[BrandRegistry] Query error:', err);
+        throw err;
       }
-      const data = await res.json();
-      console.log('[BrandRegistry] Brands fetched:', data.length, 'brands');
-      console.log('[BrandRegistry] Brand names:', data.map((b: any) => b.brandName));
-      return data;
     },
     enabled: isSuperAdmin ? !!selectedCompanyId : true,
   });
+
+  // Log error state
+  if (error) {
+    console.error('[BrandRegistry] Query error state:', error);
+  }
 
   // Fetch products grouped by brand from latest pricelist
   const { data: productsByBrand } = useQuery<Record<string, any[]>>({
