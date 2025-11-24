@@ -55,10 +55,17 @@ export default function Editor() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
 
   // For super admins, load list of companies
-  const { data: companies } = useQuery<Array<{ id: number; name: string }>>({
+  const { data: companies, isLoading: isLoadingCompanies } = useQuery<Array<{ id: number; name: string }>>({
     queryKey: ['/api/companies'],
     enabled: user?.role === 'superAdmin',
   });
+
+  // Auto-select first company if Super Admin hasn't selected one yet (only for new pricelists)
+  useEffect(() => {
+    if (user?.role === 'superAdmin' && !pricelistId && !selectedCompanyId && companies && companies.length > 0) {
+      setSelectedCompanyId(companies[0].id);
+    }
+  }, [user, pricelistId, selectedCompanyId, companies]);
 
   // Determine which company to use for defaults
   const companyIdForDefaults = user?.role === 'superAdmin' 
@@ -431,9 +438,12 @@ export default function Editor() {
   });
 
   // Allow saving as long as products exist - fallback chain in dialog will handle name generation
-  // Super admins must select a company before saving
+  // Super admins must select a company before saving and companies must be loaded
   const canSave = products.length > 0 && (
-    user?.role !== 'superAdmin' || selectedCompanyId !== null || currentPricelistId !== null
+    user?.role !== 'superAdmin' || (
+      !isLoadingCompanies && 
+      (selectedCompanyId !== null || currentPricelistId !== null)
+    )
   );
 
   return (

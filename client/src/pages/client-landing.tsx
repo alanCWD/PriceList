@@ -40,6 +40,15 @@ export default function ClientLanding() {
   // Fetch latest pricelist (includes impersonatedCompanyId in queryKey to refetch when company changes)
   const { data: latestPricelist, isLoading, error } = useQuery<Pricelist>({
     queryKey: ['/api/pricelists/latest', { impersonatedCompanyId }],
+    queryFn: async () => {
+      const url = impersonatedCompanyId 
+        ? `/api/pricelists/latest?companyId=${impersonatedCompanyId}`
+        : '/api/pricelists/latest';
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch pricelist');
+      return response.json();
+    },
+    enabled: impersonatedCompanyId !== null || user?.role !== 'superAdmin',
   });
 
   // Fetch company defaults for field mapping (includes impersonatedCompanyId in queryKey to refetch when company changes)
@@ -49,12 +58,30 @@ export default function ClientLanding() {
     defaultBranding: CompanyBranding | null;
   }>({
     queryKey: ['/api/companies/defaults', { impersonatedCompanyId }],
+    queryFn: async () => {
+      const url = impersonatedCompanyId 
+        ? `/api/companies/defaults?companyId=${impersonatedCompanyId}`
+        : '/api/companies/defaults';
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch company defaults');
+      return response.json();
+    },
+    enabled: impersonatedCompanyId !== null || user?.role !== 'superAdmin',
   });
 
   // Fetch brand ordering data for manual product ordering (client-accessible endpoint)
   // Returns lightweight payload with just brandName + productOrder for PDF generation
   const { data: brandOrderingData, isLoading: isBrandOrderingLoading, isError: isBrandOrderingError } = useQuery<{ brandName: string; productOrder: string[] | null }[]>({
     queryKey: ['/api/brands/ordering', { impersonatedCompanyId }],
+    queryFn: async () => {
+      const url = impersonatedCompanyId 
+        ? `/api/brands/ordering?companyId=${impersonatedCompanyId}`
+        : '/api/brands/ordering';
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch brand ordering');
+      return response.json();
+    },
+    enabled: impersonatedCompanyId !== null || user?.role !== 'superAdmin',
   });
 
   // Extract unique brands from visible products (must be before early returns due to Rules of Hooks)
