@@ -2562,8 +2562,15 @@ function BrandRegistryManager() {
           {!brands || brands.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Tag className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No brands registered yet</p>
-              <p className="text-sm mt-2">Add your first brand to get started</p>
+              <p>No brands registered yet for this company</p>
+              {isSuperAdmin && (
+                <p className="text-sm mt-2">
+                  Try selecting a different company or add your first brand
+                </p>
+              )}
+              {!isSuperAdmin && (
+                <p className="text-sm mt-2">Add your first brand to get started</p>
+              )}
             </div>
           ) : (
             <div className="space-y-6">
