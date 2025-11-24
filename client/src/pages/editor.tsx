@@ -136,6 +136,8 @@ export default function Editor() {
       
       return response.json();
     },
+    // Only fetch when we have a company ID (or when editing a loaded pricelist)
+    enabled: companyIdForBrands !== null || !!loadedPricelist,
   });
 
   // Effect to populate form when pricelist is loaded (editing mode)
@@ -467,7 +469,18 @@ export default function Editor() {
             </div>
             <div className="flex items-center gap-2">
               <Button
-                onClick={() => setSaveDialogOpen(true)}
+                onClick={() => {
+                  // Extra safety check for super admins
+                  if (user?.role === 'superAdmin' && !selectedCompanyId && !currentPricelistId) {
+                    toast({
+                      title: "Company Required",
+                      description: "Please select a company before saving",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  setSaveDialogOpen(true);
+                }}
                 disabled={!canSave}
                 data-testid="button-save-pricelist"
               >
