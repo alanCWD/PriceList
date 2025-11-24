@@ -2123,12 +2123,16 @@ function BrandRegistryManager() {
         ? `/api/brands?companyId=${selectedCompanyId}`
         : "/api/brands";
       console.log('[BrandRegistry] Fetching brands from URL:', url);
+      console.log('[BrandRegistry] Query params:', { isSuperAdmin, selectedCompanyId });
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) {
         console.error('[BrandRegistry] Fetch failed:', res.status, res.statusText);
         throw new Error("Failed to fetch brands");
       }
-      return res.json();
+      const data = await res.json();
+      console.log('[BrandRegistry] Brands fetched:', data.length, 'brands');
+      console.log('[BrandRegistry] Brand names:', data.map((b: any) => b.brandName));
+      return data;
     },
     enabled: isSuperAdmin ? !!selectedCompanyId : true,
   });
