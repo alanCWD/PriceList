@@ -65,6 +65,13 @@ export default function Editor() {
     ? selectedCompanyId 
     : user?.companyId;
 
+  // Debug logging
+  console.log('[Editor] User role:', user?.role);
+  console.log('[Editor] Selected company ID:', selectedCompanyId);
+  console.log('[Editor] Company ID for defaults:', companyIdForDefaults);
+  console.log('[Editor] Pricelist ID:', pricelistId);
+  console.log('[Editor] Companies loaded:', companies?.length);
+
   // Load company defaults for new pricelists
   const { data: companyDefaults, isLoading: isLoadingDefaults, error: defaultsError } = useQuery<{
     defaultTemplate: Template;
@@ -176,14 +183,21 @@ export default function Editor() {
   }, [defaultsError, toast]);
 
   const handleCSVUpload = (data: any[], headers: string[]) => {
+    console.log('[handleCSVUpload] Starting CSV upload');
+    console.log('[handleCSVUpload] Company defaults:', companyDefaults);
+    console.log('[handleCSVUpload] Default field mapping:', companyDefaults?.defaultFieldMapping);
+    console.log('[handleCSVUpload] Loaded pricelist field mapping:', loadedPricelist?.fieldMapping);
+    console.log('[handleCSVUpload] Current field mapping state:', fieldMapping);
+    
     setCSVData(data);
     setCSVHeaders(headers);
     
-    // Use company default field mapping if available, otherwise auto-detect
+    // Use field mapping from: 1) company defaults (new pricelist), 2) loaded pricelist (editing), or 3) auto-detect
     let mappingToUse: FieldMapping;
+    let source = "auto-detection";
     
+    // Priority 1: Company defaults (for new pricelists)
     if (companyDefaults?.defaultFieldMapping) {
-      // Use company's saved field mapping
       mappingToUse = {
         product: companyDefaults.defaultFieldMapping.product || "",
         sku: companyDefaults.defaultFieldMapping.sku || "",
@@ -193,11 +207,28 @@ export default function Editor() {
         notes: companyDefaults.defaultFieldMapping.notes || "",
         productImageUrl: companyDefaults.defaultFieldMapping.productImageUrl || "",
       };
-      toast({
-        title: "Company field mapping applied",
-        description: "Using your company's default CSV field mapping",
-      });
-    } else {
+      source = "company defaults";
+    } 
+    // Priority 2: Loaded pricelist's field mapping (when editing existing pricelist)
+    else if (loadedPricelist?.fieldMapping) {
+      mappingToUse = {
+        product: (loadedPricelist.fieldMapping as any).product || "",
+        sku: (loadedPricelist.fieldMapping as any).sku || "",
+        format: (loadedPricelist.fieldMapping as any).format || "",
+        price: (loadedPricelist.fieldMapping as any).price || "",
+        category: (loadedPricelist.fieldMapping as any).category || "",
+        notes: (loadedPricelist.fieldMapping as any).notes || "",
+        productImageUrl: (loadedPricelist.fieldMapping as any).productImageUrl || "",
+      };
+      source = "saved pricelist";
+    } 
+    // Priority 3: Current field mapping state (if already set)
+    else if (fieldMapping.product || fieldMapping.sku) {
+      mappingToUse = fieldMapping;
+      source = "current state";
+    } 
+    // Fallback: Auto-detect
+    else {
       // Auto-detect common field mappings
       mappingToUse = {
         product: headers.find(h => {
@@ -219,7 +250,19 @@ export default function Editor() {
       };
     }
     
+    console.log('[handleCSVUpload] Using field mapping from:', source);
+    console.log('[handleCSVUpload] Mapping to use:', mappingToUse);
+    
     setFieldMapping(mappingToUse);
+    
+    // Show toast to user about where mapping came from
+    if (source !== "auto-detection") {
+      toast({
+        title: "Field mapping applied",
+        description: `Using field mapping from ${source}`,
+      });
+    }
+    
     setActiveTab("mapping");
   };
 
