@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Upload, FileText, Download, Printer, RefreshCw } from "lucide-react";
+import { Upload, FileText, Download, Printer, RefreshCw, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { generatePDF } from "@/lib/pdf-generator";
 import { stripHtml } from "@/lib/text-utils";
@@ -15,10 +18,24 @@ import Papa from "papaparse";
 
 export default function ClientLanding() {
   const { toast } = useToast();
-  const { impersonatedCompanyId } = useViewMode();
+  const { user } = useAuth();
+  const { impersonatedCompanyId, setImpersonatedCompanyId } = useViewMode();
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState<string>("");
+  
+  // For super admins, load list of companies
+  const { data: companies } = useQuery<Array<{ id: number; name: string }>>({
+    queryKey: ['/api/companies'],
+    enabled: user?.role === 'superAdmin',
+  });
+  
+  // Auto-select first company if Super Admin hasn't selected one yet
+  useEffect(() => {
+    if (user?.role === 'superAdmin' && !impersonatedCompanyId && companies && companies.length > 0) {
+      setImpersonatedCompanyId(companies[0].id);
+    }
+  }, [user, impersonatedCompanyId, companies, setImpersonatedCompanyId]);
 
   // Fetch latest pricelist (includes impersonatedCompanyId in queryKey to refetch when company changes)
   const { data: latestPricelist, isLoading, error } = useQuery<Pricelist>({
@@ -321,12 +338,34 @@ export default function ClientLanding() {
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b print:hidden">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <FileText className="w-6 h-6 text-primary" />
               <h1 className="text-xl font-semibold">Price List Generator</h1>
             </div>
-            <UserProfileMenu />
+            <div className="flex items-center gap-4">
+              {user?.role === 'superAdmin' && companies && companies.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                  <Select 
+                    value={impersonatedCompanyId?.toString() || ""} 
+                    onValueChange={(value) => setImpersonatedCompanyId(parseInt(value))}
+                  >
+                    <SelectTrigger className="w-[200px]" data-testid="select-company">
+                      <SelectValue placeholder="Select company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id.toString()}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <UserProfileMenu />
+            </div>
           </div>
         </header>
         <main className="container mx-auto px-4 py-8">
@@ -346,12 +385,34 @@ export default function ClientLanding() {
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b print:hidden">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <FileText className="w-6 h-6 text-primary" />
               <h1 className="text-xl font-semibold">Price List Generator</h1>
             </div>
-            <UserProfileMenu />
+            <div className="flex items-center gap-4">
+              {user?.role === 'superAdmin' && companies && companies.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                  <Select 
+                    value={impersonatedCompanyId?.toString() || ""} 
+                    onValueChange={(value) => setImpersonatedCompanyId(parseInt(value))}
+                  >
+                    <SelectTrigger className="w-[200px]" data-testid="select-company">
+                      <SelectValue placeholder="Select company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id.toString()}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <UserProfileMenu />
+            </div>
           </div>
         </header>
         <main className="container mx-auto px-4 py-12 max-w-3xl">
@@ -577,7 +638,29 @@ export default function ClientLanding() {
               <h1 className="text-2xl font-semibold text-foreground">Pricelist Generator</h1>
               <p className="text-sm text-muted-foreground">Professional pricelists from CSV data</p>
             </div>
-            <UserProfileMenu />
+            <div className="flex items-center gap-4">
+              {user?.role === 'superAdmin' && companies && companies.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                  <Select 
+                    value={impersonatedCompanyId?.toString() || ""} 
+                    onValueChange={(value) => setImpersonatedCompanyId(parseInt(value))}
+                  >
+                    <SelectTrigger className="w-[200px]" data-testid="select-company">
+                      <SelectValue placeholder="Select company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id.toString()}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <UserProfileMenu />
+            </div>
           </div>
         </div>
       </header>

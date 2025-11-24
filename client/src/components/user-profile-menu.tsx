@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { User, Settings, LogOut, Eye, LayoutDashboard } from "lucide-react";
+import { User, Settings, LogOut, Eye, LayoutDashboard, FileEdit } from "lucide-react";
 
 export function UserProfileMenu() {
   const { user, isAdmin, isSuperAdmin } = useAuth();
@@ -30,6 +30,10 @@ export function UserProfileMenu() {
 
   const handleAdminClick = () => {
     setLocation("/admin");
+  };
+
+  const handleEditorClick = () => {
+    setLocation("/editor");
   };
 
   const handleViewAsClient = () => {
@@ -126,6 +130,13 @@ export function UserProfileMenu() {
             >
               <Settings className="mr-2 h-4 w-4" />
               <span>Admin Settings</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={handleEditorClick}
+              data-testid="menu-item-editor"
+            >
+              <FileEdit className="mr-2 h-4 w-4" />
+              <span>Editor</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>
