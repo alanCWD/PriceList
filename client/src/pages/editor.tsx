@@ -183,9 +183,12 @@ export default function Editor() {
   }, [defaultsError, toast]);
 
   const handleCSVUpload = (data: any[], headers: string[]) => {
-    console.log('[handleCSVUpload] Starting CSV upload');
+    console.log('[handleCSVUpload] ===== CSV UPLOAD STARTED =====');
+    console.log('[handleCSVUpload] CSV Headers:', headers);
+    console.log('[handleCSVUpload] CSV Row Count:', data.length);
     console.log('[handleCSVUpload] Company defaults:', companyDefaults);
     console.log('[handleCSVUpload] Default field mapping:', companyDefaults?.defaultFieldMapping);
+    console.log('[handleCSVUpload] Loaded pricelist:', loadedPricelist ? 'EXISTS' : 'NULL');
     console.log('[handleCSVUpload] Loaded pricelist field mapping:', loadedPricelist?.fieldMapping);
     console.log('[handleCSVUpload] Current field mapping state:', fieldMapping);
     
