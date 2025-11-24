@@ -257,9 +257,20 @@ function CompaniesManager() {
       return;
     }
     
+    // Always set CSV headers so dropdowns show available columns
     setCsvHeaders(headers);
     
-    // Auto-detect mappings from CSV headers
+    // If editing an existing company, preserve the current field mappings
+    // Only run auto-detection for NEW companies
+    if (editingId !== null) {
+      toast({
+        title: "CSV uploaded",
+        description: "CSV headers loaded. Your existing field mappings are preserved.",
+      });
+      return;
+    }
+    
+    // Auto-detect mappings from CSV headers (only for new companies)
     const autoMapping: FieldMapping = {
       product: headers.find(h => {
         const lower = h.toLowerCase();
@@ -279,13 +290,14 @@ function CompaniesManager() {
       }) || "",
     };
     
-    // Guard against CSV files with no matching headers (preserve existing mappings)
+    // Guard against CSV files with no matching headers (only for new companies)
     if (Object.values(autoMapping).every(v => !v)) {
       toast({
         title: "No field matches found",
-        description: "CSV headers don't match expected product fields. Please check your CSV format.",
+        description: "CSV headers don't match expected product fields. Please manually select mappings.",
         variant: "destructive",
       });
+      // Still set headers so user can manually map
       return;
     }
     
