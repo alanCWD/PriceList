@@ -65,8 +65,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
       
-      // Get effective company ID (supports Super Admin impersonation)
-      const effectiveCompanyId = getEffectiveCompanyId(req, user);
+      // Support query parameter for company selection (ONLY for super admins)
+      let effectiveCompanyId: number | null;
+      const companyIdParam = req.query.companyId;
+      
+      if (companyIdParam) {
+        // SECURITY: Only super admins can query other companies' defaults
+        if (user.role !== 'superAdmin') {
+          return res.status(403).json({ error: "Forbidden: Only super admins can query other companies' defaults" });
+        }
+        
+        // Use query parameter if provided
+        const parsed = parseInt(companyIdParam as string, 10);
+        if (isNaN(parsed)) {
+          return res.status(400).json({ error: "Invalid companyId parameter" });
+        }
+        effectiveCompanyId = parsed;
+      } else {
+        // Otherwise use header-based impersonation or user's company
+        effectiveCompanyId = getEffectiveCompanyId(req, user);
+      }
       
       // Special case: Superadmin with no company (empty production database)
       // Return sensible defaults so they can access admin UI to create first company

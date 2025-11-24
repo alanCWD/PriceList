@@ -4,6 +4,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Upload, FileText, Settings, Eye, Save, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { CSVUpload } from "@/components/csv-upload";
 import { ConfigurationPanel } from "@/components/configuration-panel";
@@ -50,6 +52,18 @@ export default function Editor() {
   const [currentPricelistDescription, setCurrentPricelistDescription] = useState<string>("");
   const [template, setTemplate] = useState<Template>("modern");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null); // null = ALL categories
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
+
+  // For super admins, load list of companies
+  const { data: companies } = useQuery<Array<{ id: number; name: string }>>({
+    queryKey: ['/api/companies'],
+    enabled: user?.role === 'superAdmin',
+  });
+
+  // Determine which company to use for defaults
+  const companyIdForDefaults = user?.role === 'superAdmin' 
+    ? selectedCompanyId 
+    : user?.companyId;
 
   // Load company defaults for new pricelists
   const { data: companyDefaults, isLoading: isLoadingDefaults, error: defaultsError } = useQuery<{
@@ -57,8 +71,24 @@ export default function Editor() {
     defaultFieldMapping: FieldMapping | null;
     defaultBranding: CompanyBranding | null;
   }>({
-    queryKey: ['/api/companies/defaults'],
-    enabled: pricelistId === null, // Only fetch for new pricelists (not editing)
+    queryKey: ['/api/companies/defaults', { companyId: companyIdForDefaults }],
+    queryFn: async () => {
+      // Only super admins can query with a specific companyId
+      const url = user?.role === 'superAdmin' && companyIdForDefaults
+        ? `/api/companies/defaults?companyId=${companyIdForDefaults}`
+        : '/api/companies/defaults';
+      
+      const response = await fetch(url, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch company defaults');
+      }
+      
+      return response.json();
+    },
+    enabled: pricelistId === null && companyIdForDefaults !== null, // Only fetch for new pricelists with a company
   });
 
   // Load pricelist from query params (for editing)
@@ -67,9 +97,31 @@ export default function Editor() {
     enabled: !!pricelistId,
   });
 
+  // Determine which company to use for brand registry
+  // When editing a pricelist, use the pricelist's company
+  // When creating new as super admin, use selected company
+  // Otherwise use user's company
+  const companyIdForBrands = loadedPricelist?.companyId || companyIdForDefaults;
+
   // Load brand registry for the current company
   const { data: brandRegistry } = useQuery<BrandRegistry[]>({
-    queryKey: ['/api/brands'],
+    queryKey: ['/api/brands', { companyId: companyIdForBrands }],
+    queryFn: async () => {
+      // Only super admins can query with a specific companyId
+      const url = user?.role === 'superAdmin' && companyIdForBrands
+        ? `/api/brands?companyId=${companyIdForBrands}`
+        : '/api/brands';
+      
+      const response = await fetch(url, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch brand registry');
+      }
+      
+      return response.json();
+    },
   });
 
   // Effect to populate form when pricelist is loaded (editing mode)
@@ -87,9 +139,15 @@ export default function Editor() {
       }
       setTemplate(loadedPricelist.template as Template);
       setCategoryFilter(loadedPricelist.categoryFilter || null);
+      
+      // For super admins editing a pricelist, preload the company selection
+      if (user?.role === 'superAdmin' && loadedPricelist.companyId) {
+        setSelectedCompanyId(loadedPricelist.companyId);
+      }
+      
       setActiveTab("preview");
     }
-  }, [loadedPricelist]);
+  }, [loadedPricelist, user?.role]);
 
   // Effect to apply company defaults for new pricelists
   useEffect(() => {
@@ -327,7 +385,10 @@ export default function Editor() {
   });
 
   // Allow saving as long as products exist - fallback chain in dialog will handle name generation
-  const canSave = products.length > 0;
+  // Super admins must select a company before saving
+  const canSave = products.length > 0 && (
+    user?.role !== 'superAdmin' || selectedCompanyId !== null || currentPricelistId !== null
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -363,12 +424,66 @@ export default function Editor() {
         </div>
       </header>
 
+      {/* Company Selector for Super Admins */}
+      {user?.role === 'superAdmin' && !pricelistId && (
+        <div className="bg-accent/20 border-b">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center gap-4 max-w-md">
+              <Label htmlFor="company-selector" className="text-sm font-medium whitespace-nowrap">
+                Select Company:
+              </Label>
+              <Select
+                value={selectedCompanyId?.toString() || ""}
+                onValueChange={(value) => setSelectedCompanyId(value ? parseInt(value) : null)}
+              >
+                <SelectTrigger 
+                  id="company-selector" 
+                  className="flex-1"
+                  data-testid="select-company-for-editor"
+                >
+                  <SelectValue placeholder="Choose a company to load defaults..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies?.map((company) => (
+                    <SelectItem 
+                      key={company.id} 
+                      value={company.id.toString()}
+                      data-testid={`company-option-${company.id}`}
+                    >
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedCompanyId && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Field mapping, branding, and templates will be loaded from this company's defaults.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       <SavePricelistDialog
         open={saveDialogOpen}
         onOpenChange={setSaveDialogOpen}
         companyBranding={companyBranding}
         onSave={async (name, description, companyId) => {
-          await saveMutation.mutateAsync({ name, description, companyId });
+          // Use the company ID from the dialog (for super admins) or the selected company or loaded pricelist
+          const finalCompanyId = companyId || selectedCompanyId || loadedPricelist?.companyId || undefined;
+          
+          // Validate super admins have a company ID
+          if (user?.role === 'superAdmin' && !finalCompanyId) {
+            toast({
+              title: "Company Required",
+              description: "Please select a company before saving",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          await saveMutation.mutateAsync({ name, description, companyId: finalCompanyId });
         }}
         initialName={currentPricelistName}
         initialDescription={currentPricelistDescription}
@@ -425,6 +540,11 @@ export default function Editor() {
             {isLoadingDefaults && pricelistId === null ? (
               <div className="text-center py-12" data-testid="loading-company-defaults">
                 <p className="text-sm text-muted-foreground">Loading company defaults...</p>
+              </div>
+            ) : user?.role === 'superAdmin' && !selectedCompanyId && !pricelistId ? (
+              <div className="text-center py-12 space-y-4" data-testid="select-company-prompt">
+                <p className="text-muted-foreground">Please select a company above to load field mapping defaults.</p>
+                <p className="text-xs text-muted-foreground">This ensures CSV columns are mapped correctly.</p>
               </div>
             ) : (
               <CSVUpload onUpload={handleCSVUpload} />

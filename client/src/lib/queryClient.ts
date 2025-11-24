@@ -71,6 +71,23 @@ export const getQueryFn: <T>(options: {
     // URL is the first element only; rest are for cache invalidation
     const url = typeof queryKey[0] === 'string' ? queryKey[0] : queryKey.join("/");
     
+    // SECURITY: Block attempts to access sensitive endpoints with company-scoped parameters
+    // These endpoints require custom queryFn with role validation
+    // Backend enforces authorization, but we add frontend defense-in-depth
+    const sensitiveEndpointsWithCompanyParam = [
+      '/api/companies/defaults',
+      '/api/brands'
+    ];
+    
+    for (const endpoint of sensitiveEndpointsWithCompanyParam) {
+      if (url.startsWith(endpoint) && url.includes('companyId=')) {
+        throw new Error(
+          `Security: Direct access to ${endpoint} with companyId parameter is not allowed. ` +
+          `This endpoint requires a custom queryFn with role validation.`
+        );
+      }
+    }
+    
     const res = await fetch(url, {
       headers: buildHeaders(false),
       credentials: "include",
