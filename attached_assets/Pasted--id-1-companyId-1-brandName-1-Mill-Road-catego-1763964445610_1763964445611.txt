@@ -1,0 +1,178 @@
+[
+    {
+        "id": 1,
+        "companyId": 1,
+        "brandName": "1 Mill Road",
+        "category": "wine",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:22.126Z",
+        "updatedAt": "2025-11-24T05:53:22.126Z"
+    },
+    {
+        "id": 2,
+        "companyId": 1,
+        "brandName": "Anthony Buchanan Wines",
+        "category": "wine",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:22.547Z",
+        "updatedAt": "2025-11-24T05:53:22.547Z"
+    },
+    {
+        "id": 3,
+        "companyId": 1,
+        "brandName": "Cannon Estate Winery",
+        "category": "wine",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:22.962Z",
+        "updatedAt": "2025-11-24T05:53:22.962Z"
+    },
+    {
+        "id": 4,
+        "companyId": 1,
+        "brandName": "Emandare Vineyard",
+        "category": "wine",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:23.177Z",
+        "updatedAt": "2025-11-24T05:53:23.177Z"
+    },
+    {
+        "id": 5,
+        "companyId": 1,
+        "brandName": "Lock & Worth Winery",
+        "category": "wine",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:23.575Z",
+        "updatedAt": "2025-11-24T05:53:23.575Z"
+    },
+    {
+        "id": 7,
+        "companyId": 1,
+        "brandName": "Marichel Winery",
+        "category": "wine",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:24.003Z",
+        "updatedAt": "2025-11-24T05:53:24.003Z"
+    },
+    {
+        "id": 8,
+        "companyId": 1,
+        "brandName": "Nagging Doubt Winery",
+        "category": "wine",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:24.213Z",
+        "updatedAt": "2025-11-24T05:53:24.213Z"
+    },
+    {
+        "id": 9,
+        "companyId": 1,
+        "brandName": "Nichol Vineyard",
+        "category": "wine",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:24.426Z",
+        "updatedAt": "2025-11-24T05:53:24.426Z"
+    },
+    {
+        "id": 13,
+        "companyId": 1,
+        "brandName": "Sea Star Vineyards",
+        "category": "wine",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:25.282Z",
+        "updatedAt": "2025-11-24T05:53:25.282Z"
+    },
+    {
+        "id": 14,
+        "companyId": 1,
+        "brandName": "Synchromesh",
+        "category": "wine",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:25.498Z",
+        "updatedAt": "2025-11-24T05:53:25.498Z"
+    },
+    {
+        "id": 15,
+        "companyId": 1,
+        "brandName": "Unsworth Vineyards",
+        "category": "wine",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:25.711Z",
+        "updatedAt": "2025-11-24T05:53:25.711Z"
+    },
+    {
+        "id": 6,
+        "companyId": 1,
+        "brandName": "Macaloney's Island Distillery",
+        "category": "spirits",
+        "type": "Whisky",
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:23.788Z",
+        "updatedAt": "2025-11-24T05:53:23.788Z"
+    },
+    {
+        "id": 10,
+        "companyId": 1,
+        "brandName": "Odd Society Spirits",
+        "category": "spirits",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:24.642Z",
+        "updatedAt": "2025-11-24T05:53:24.642Z"
+    },
+    {
+        "id": 16,
+        "companyId": 1,
+        "brandName": "Wayward Distillery",
+        "category": "spirits",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:25.929Z",
+        "updatedAt": "2025-11-24T05:53:25.929Z"
+    },
+    {
+        "id": 12,
+        "companyId": 1,
+        "brandName": "Salt Spring Wild Cider House",
+        "category": "cider",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:25.066Z",
+        "updatedAt": "2025-11-24T05:53:25.066Z"
+    },
+    {
+        "id": 11,
+        "companyId": 1,
+        "brandName": "Ones+ Non-Alc BC Wine",
+        "category": "nonAlc",
+        "type": null,
+        "displayOrder": null,
+        "productOrder": null,
+        "createdAt": "2025-11-24T05:53:24.858Z",
+        "updatedAt": "2025-11-24T05:53:24.858Z"
+    }
+]
