@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Upload, FileText, Settings, Eye, Save, ArrowLeft } from "lucide-react";
@@ -53,6 +53,9 @@ export default function Editor() {
   const [template, setTemplate] = useState<Template>("modern");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null); // null = ALL categories
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
+  
+  // Track CSV + mapping fingerprint to detect when products need regeneration
+  const csvFingerprintRef = useRef<string>('');
 
   // For super admins, load list of companies
   const { data: companies, isLoading: isLoadingCompanies } = useQuery<Array<{ id: number; name: string }>>({
@@ -199,12 +202,20 @@ export default function Editor() {
       return;
     }
     
-    // Skip if products are already generated from this CSV data
-    // (prevents infinite loops when products state changes)
-    if (products.length > 0 && products.length === csvData.length) {
+    // Create a fingerprint of full CSV dataset + field mapping
+    // This catches all changes: column changes, row reordering, mapping updates, etc.
+    const csvFingerprint = JSON.stringify({
+      headers: csvHeaders,
+      csvData: csvData, // Full dataset including row order
+      mapping: fieldMapping,
+    });
+    
+    // Skip if we've already generated products from this exact CSV + mapping combination
+    if (csvFingerprintRef.current === csvFingerprint) {
       return;
     }
-
+    
+    csvFingerprintRef.current = csvFingerprint;
     console.log('[Auto-generate products] Generating products from CSV + mapping');
 
     // Build a map of existing products by SKU to preserve hidden state

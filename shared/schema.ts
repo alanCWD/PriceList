@@ -144,6 +144,8 @@ export const insertCompanySchema = createInsertSchema(companies, {
   name: z.string().min(1, "Company name is required"),
   domain: z.string().min(1, "Domain is required").regex(/^[a-z0-9.-]+\.[a-z]{2,}$/i, "Invalid domain format (e.g., example.com)"),
   defaultTemplate: templateSchema,
+  defaultFieldMapping: fieldMappingSchema.optional(),
+  defaultBranding: companyBrandingSchema.optional(),
 }).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertCompany = z.infer<typeof insertCompanySchema>;

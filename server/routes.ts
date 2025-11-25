@@ -217,9 +217,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[PATCH /api/companies/:id] Validated data:', JSON.stringify(validation.data, null, 2));
       console.log('[PATCH /api/companies/:id] Validated defaultFieldMapping:', JSON.stringify(validation.data.defaultFieldMapping, null, 2));
 
-      const company = await storage.updateCompany(id, validation.data);
-      if (!company) {
+      // Fetch existing company to deep-merge JSON blobs (prevents nulling out existing data)
+      const existingCompany = await storage.getCompanyById(id);
+      if (!existingCompany) {
         console.log('[PATCH /api/companies/:id] Company not found');
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      // Filter out undefined values and deep-merge JSON blobs
+      const updates: any = {};
+      
+      // Copy non-JSON fields directly if defined
+      if (validation.data.name !== undefined) updates.name = validation.data.name;
+      if (validation.data.domain !== undefined) updates.domain = validation.data.domain;
+      if (validation.data.defaultTemplate !== undefined) updates.defaultTemplate = validation.data.defaultTemplate;
+      
+      // Deep-merge JSON blobs with existing values to prevent accidental nulling
+      if (validation.data.defaultFieldMapping !== undefined) {
+        updates.defaultFieldMapping = {
+          ...(existingCompany.defaultFieldMapping as any || {}),
+          ...validation.data.defaultFieldMapping,
+        };
+      }
+      
+      if (validation.data.defaultBranding !== undefined) {
+        updates.defaultBranding = {
+          ...(existingCompany.defaultBranding as any || {}),
+          ...validation.data.defaultBranding,
+        };
+      }
+      
+      if (validation.data.defaultSalesAgents !== undefined) {
+        updates.defaultSalesAgents = validation.data.defaultSalesAgents;
+      }
+
+      console.log('[PATCH /api/companies/:id] Updates after deep merge:', JSON.stringify(updates, null, 2));
+
+      const company = await storage.updateCompany(id, updates);
+      if (!company) {
+        console.log('[PATCH /api/companies/:id] Update failed');
         return res.status(404).json({ error: "Company not found" });
       }
 
