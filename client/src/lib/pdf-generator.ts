@@ -1151,28 +1151,21 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     doc.text(displayName, margin + 8, yPosition + 12);
     yPosition += 22;
 
-    // Check if this category has any products with images
-    const hasImages = categoryProducts.some(p => p.productImageUrl);
     const currentCategoryProducts = [...categoryProducts];
 
-    // Products table with compressed spacing - consistent column order: Image, SKU, Product, Format, Price, Notes
+    // Products table with compressed spacing - column order: SKU, Product, Format, Price, Notes
     const tableData = currentCategoryProducts.map(product => {
-      const row: any[] = [];
-      if (hasImages) row.push("");  // Placeholder for image
-      row.push(
+      return [
         product.sku,
         product.product,
         product.format,
         formatPrice(product.price),
         product.notes || ""
-      );
-      return row;
+      ];
     });
 
-    // Build header row - always include all columns for consistency
-    const headRow: string[] = [];
-    if (hasImages) headRow.push("Image");
-    headRow.push("SKU", "Product", "Format", "Price", "Notes");
+    // Build header row
+    const headRow = ["SKU", "Product", "Format", "Price", "Notes"];
 
     autoTable(doc, {
       startY: yPosition,
@@ -1191,62 +1184,23 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       bodyStyles: {
         fontSize: 6.5, // Ultra-small body font (1/4 reduction)
         textColor: [30, 30, 30],
-        minCellHeight: hasImages ? 18 : 6, // Ultra-compact rows (~1/4 of original)
+        minCellHeight: 6, // Ultra-compact rows
         cellPadding: 1, // Reduced padding for tighter spacing
       },
       alternateRowStyles: {
         fillColor: [242, 242, 242], // Stronger zebra striping for better visibility
       },
-      columnStyles: (() => {
-        const styles: any = {};
-        let colIndex = 0;
-        
-        // Column order: Image (if hasImages), SKU, Product, Format, Price, Notes
+      columnStyles: {
+        // Column order: SKU, Product, Format, Price, Notes
         // Available width: 612pt - 80pt margins = 532pt
-        if (hasImages) {
-          styles[colIndex] = { cellWidth: 30, halign: "center" }; // Image
-          colIndex++;
-          // With images: 30 + 70 + 222 + 70 + 50 + 90 = 532pt
-          styles[colIndex] = { cellWidth: 70 };      // SKU
-          styles[colIndex + 1] = { cellWidth: 222 }; // Product (increased to use full width)
-          styles[colIndex + 2] = { cellWidth: 70 };  // Format
-          styles[colIndex + 3] = { cellWidth: 50, halign: "right" };  // Price - right-aligned
-          styles[colIndex + 4] = { cellWidth: 90 };  // Notes
-        } else {
-          // Without images: 70 + 242 + 70 + 50 + 100 = 532pt
-          styles[colIndex] = { cellWidth: 70 };      // SKU
-          styles[colIndex + 1] = { cellWidth: 242 }; // Product (increased to use full width)
-          styles[colIndex + 2] = { cellWidth: 70 };  // Format
-          styles[colIndex + 3] = { cellWidth: 50, halign: "right" };  // Price - right-aligned
-          styles[colIndex + 4] = { cellWidth: 100 }; // Notes (increased slightly)
-        }
-        
-        return styles;
-      })(),
+        // Without images: 70 + 242 + 70 + 50 + 100 = 532pt
+        0: { cellWidth: 70 },      // SKU
+        1: { cellWidth: 242 },     // Product (increased to use full width)
+        2: { cellWidth: 70 },      // Format
+        3: { cellWidth: 50, halign: "right" },  // Price - right-aligned
+        4: { cellWidth: 100 },     // Notes (increased slightly)
+      },
       margin: { left: margin, right: margin, top: 35, bottom: margin + footerHeight },
-      didDrawCell: hasImages ? (data) => {
-        // Only process body cells in the image column with valid row indices
-        if (data.column.index === 0 && data.section === 'body' && data.row.index >= 0) {
-          const product = currentCategoryProducts[data.row.index];
-          if (!product) {
-            console.error(`Product not found at index ${data.row.index} in brand ${brandName}`);
-            return;
-          }
-          const imageData = productImageMap.get(product.id);
-          if (imageData) {
-            try {
-              const imgSize = 16; // Smaller thumbnail for ultra-compact layout
-              const cellCenterX = data.cell.x + (data.cell.width / 2);
-              const cellCenterY = data.cell.y + (data.cell.height / 2);
-              const imgX = cellCenterX - (imgSize / 2);
-              const imgY = cellCenterY - (imgSize / 2);
-              doc.addImage(imageData.data, imageData.format, imgX, imgY, imgSize, imgSize);
-            } catch (error) {
-              console.error(`Failed to add product image ${product.id} to PDF:`, error);
-            }
-          }
-        }
-      } : undefined,
       didDrawPage: (data) => {
         // Only draw header on first page
         const currentPageNum = (doc as any).getCurrentPageInfo().pageNumber;
