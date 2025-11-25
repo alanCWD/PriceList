@@ -200,16 +200,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid company ID" });
       }
 
+      console.log('[PATCH /api/companies/:id] ===== UPDATE COMPANY REQUEST =====');
+      console.log('[PATCH /api/companies/:id] Company ID:', id);
+      console.log('[PATCH /api/companies/:id] Request body:', JSON.stringify(req.body, null, 2));
+      console.log('[PATCH /api/companies/:id] defaultFieldMapping received:', JSON.stringify(req.body.defaultFieldMapping, null, 2));
+
       const validation = insertCompanySchema.partial().safeParse(req.body);
       if (!validation.success) {
         const errorMessage = fromZodError(validation.error).message;
+        console.log('[PATCH /api/companies/:id] Validation failed:', errorMessage);
+        console.log('[PATCH /api/companies/:id] Validation errors:', JSON.stringify(validation.error.errors, null, 2));
         return res.status(400).json({ error: errorMessage });
       }
 
+      console.log('[PATCH /api/companies/:id] Validation succeeded');
+      console.log('[PATCH /api/companies/:id] Validated data:', JSON.stringify(validation.data, null, 2));
+      console.log('[PATCH /api/companies/:id] Validated defaultFieldMapping:', JSON.stringify(validation.data.defaultFieldMapping, null, 2));
+
       const company = await storage.updateCompany(id, validation.data);
       if (!company) {
+        console.log('[PATCH /api/companies/:id] Company not found');
         return res.status(404).json({ error: "Company not found" });
       }
+
+      console.log('[PATCH /api/companies/:id] Update successful');
+      console.log('[PATCH /api/companies/:id] Returned company:', JSON.stringify(company, null, 2));
+      console.log('[PATCH /api/companies/:id] Returned defaultFieldMapping:', JSON.stringify(company.defaultFieldMapping, null, 2));
 
       res.json(company);
     } catch (error) {

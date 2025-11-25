@@ -191,6 +191,120 @@ export default function Editor() {
     }
   }, [defaultsError, toast]);
 
+  // NEW: Auto-generate products whenever CSV data and field mapping are available
+  // This enables the save button without requiring manual "Apply" or tab navigation
+  useEffect(() => {
+    // Only run if we have CSV data and a complete field mapping (required fields filled)
+    if (csvData.length === 0 || !fieldMapping.product || !fieldMapping.price) {
+      return;
+    }
+    
+    // Skip if products are already generated from this CSV data
+    // (prevents infinite loops when products state changes)
+    if (products.length > 0 && products.length === csvData.length) {
+      return;
+    }
+
+    console.log('[Auto-generate products] Generating products from CSV + mapping');
+
+    // Build a map of existing products by SKU to preserve hidden state
+    const existingProductsBySKU = new Map<string, Product>();
+    if (loadedPricelist?.products) {
+      loadedPricelist.products.forEach((product: Product) => {
+        if (product.sku) {
+          existingProductsBySKU.set(product.sku, product);
+        }
+      });
+    }
+
+    const mappedProducts: Product[] = csvData.map((row, index) => {
+      let imageUrl = fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "";
+      
+      // Auto-complete Wix image URLs if only filename is provided
+      if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+        imageUrl = `https://static.wixstatic.com/media/${imageUrl}`;
+      }
+      
+      // Extract case size from "Additional info sections" if it contains "CASE SIZE"
+      let format = fieldMapping.format ? row[fieldMapping.format] || "" : "";
+      if (format && format.includes('CASE SIZE')) {
+        const lines = format.split('\n');
+        const caseSizeIndex = lines.findIndex((line: string) => line.trim().toUpperCase() === 'CASE SIZE');
+        if (caseSizeIndex !== -1 && caseSizeIndex + 1 < lines.length) {
+          format = lines[caseSizeIndex + 1].trim();
+        }
+      }
+      
+      // Parse collection field if available to extract brand name and categorization
+      let category = stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : "");
+      const collectionField = fieldMapping.category ? row[fieldMapping.category] : null;
+      
+      let collectionRaw: string | undefined;
+      let collectionCategory: 'cider' | 'wine' | 'spirits' | 'nonAlc' | undefined;
+      let collectionType: string | undefined;
+      let collectionBrand: string | undefined;
+      let collectionRegion: string | undefined;
+      
+      if (collectionField) {
+        // Convert brand registry to the format expected by parseCollection
+        const brandRegistryEntries: BrandRegistryEntry[] = (brandRegistry || []).map(b => ({
+          brandName: b.brandName,
+          category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
+          displayOrder: b.displayOrder,
+        }));
+        const parsed = parseCollection(collectionField, brandRegistryEntries);
+        if (parsed) {
+          // Use sortKey as category - it contains brand name with sorting prefix
+          category = parsed.sortKey;
+          
+          // Store parsed collection components
+          collectionRaw = collectionField;
+          collectionCategory = parsed.primaryCategory;
+          collectionType = parsed.wineType;
+          collectionBrand = parsed.brand;
+          collectionRegion = parsed.region;
+        }
+      }
+      
+      // Get SKU for reconciliation
+      const sku = stripHtml(row[fieldMapping.sku] || "");
+      
+      // Get product name (we'll need it for fallback wine type extraction)
+      const productName = stripHtml(row[fieldMapping.product] || "");
+      
+      // FALLBACK: If collectionType is not set but category is wine or nonAlc,
+      // try to extract wine type from product name (common for non-alcoholic wines)
+      if (!collectionType && (collectionCategory === 'wine' || collectionCategory === 'nonAlc')) {
+        collectionType = extractWineTypeFromProductName(productName);
+      }
+      
+      // Check if this product exists in the previous pricelist (by SKU)
+      const existingProduct = existingProductsBySKU.get(sku);
+      const isHidden = existingProduct?.isHidden ?? false;
+      
+      // Strip HTML tags from all text fields (Wix exports include HTML markup)
+      return {
+        id: `product-${index}`,
+        category,
+        notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
+        product: productName,
+        sku,
+        format: stripHtml(format),
+        price: stripHtml(row[fieldMapping.price] || ""),
+        productImageUrl: imageUrl,
+        isHidden, // Preserve hidden state from previous pricelist
+        collectionRaw,
+        collectionCategory,
+        collectionType,
+        collectionBrand,
+        collectionRegion,
+      };
+    });
+
+    setProducts(mappedProducts);
+    console.log('[Auto-generate products] Generated', mappedProducts.length, 'products');
+  }, [csvData, fieldMapping, brandRegistry, loadedPricelist?.products]);
+
   const handleCSVUpload = (data: any[], headers: string[]) => {
     console.log('[handleCSVUpload] ===== CSV UPLOAD STARTED =====');
     console.log('[handleCSVUpload] CSV Headers:', headers);
