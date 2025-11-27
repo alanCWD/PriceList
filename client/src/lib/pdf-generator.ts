@@ -515,28 +515,6 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     });
   });
 
-  // Load product images as base64 in parallel
-  const productImageMap = new Map<string, { data: string; format: string }>();
-  const imagePromises = products
-    .filter(p => p.productImageUrl)
-    .map(async (product) => {
-      try {
-        const response = await fetch(product.productImageUrl!);
-        const blob = await response.blob();
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-        const format = getImageFormat(base64);
-        productImageMap.set(product.id, { data: base64, format });
-      } catch (error) {
-        console.error(`Failed to load image for product ${product.id}:`, error);
-      }
-    });
-  await Promise.all(imagePromises);
-
   // Render products by brand (sorted by sortKey to maintain category hierarchy)
   Object.entries(groupedProducts)
     .sort(([brandA, productsA], [brandB, productsB]) => {
@@ -562,30 +540,23 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     doc.text(groupBrandName, margin + 12, yPosition + 16);
     yPosition += 30;
 
-    // Check if this category has any products with images
-    const hasImages = categoryProducts.some(p => p.productImageUrl);
-
     // Capture the current categoryProducts for this table (avoid closure issues)
     const currentCategoryProducts = [...categoryProducts];
 
-    // Products table - adjust columns based on whether images are present
+    // Products table - 5 columns: Notes, Product, SKU, Format, Price (no image column)
     const tableData = currentCategoryProducts.map(product => {
-      const row: any[] = hasImages ? [""] : []; // Empty cell for image if present
-      row.push(
+      return [
         product.notes || "",
         product.product,
         product.sku,
         product.format,
         formatPrice(product.price)
-      );
-      return row;
+      ];
     });
 
     autoTable(doc, {
       startY: yPosition,
-      head: hasImages 
-        ? [["Image", "Notes/Order", "Product", "SKU", "Format", "Price"]]
-        : [["Notes/Order", "Product", "SKU", "Format", "Price"]],
+      head: [["Notes/Order", "Product", "SKU", "Format", "Price"]],
       body: tableData,
       theme: "plain",
       headStyles: {
@@ -598,52 +569,20 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
       bodyStyles: {
         fontSize: 10,
         textColor: [30, 30, 30],
-        minCellHeight: hasImages ? 35 : 15, // Taller rows when images present
+        minCellHeight: 15,
       },
       alternateRowStyles: {
         fillColor: [250, 250, 250],
       },
-      columnStyles: hasImages ? {
-        0: { cellWidth: 40, halign: "center" }, // Image column
-        1: { cellWidth: 70 },  // Notes
-        2: { cellWidth: 171 }, // Product (increased from 150 to use full width)
-        3: { cellWidth: 75 },  // SKU
-        4: { cellWidth: 90 },  // Format
-        5: { cellWidth: 70, halign: "right" },  // Price - right-aligned
-        // Total: 40 + 70 + 171 + 75 + 90 + 70 = 516pt (full available width)
-      } : {
+      columnStyles: {
         0: { cellWidth: 80 },  // Notes
-        1: { cellWidth: 181 }, // Product (increased from 180 to use full width)
+        1: { cellWidth: 181 }, // Product
         2: { cellWidth: 80 },  // SKU
         3: { cellWidth: 100 }, // Format
         4: { cellWidth: 75, halign: "right" },  // Price - right-aligned
         // Total: 80 + 181 + 80 + 100 + 75 = 516pt (full available width)
       },
       margin: { left: margin, right: margin, top: 50, bottom: margin + footerHeight },
-      didDrawCell: hasImages ? (data) => {
-        // Draw product images in the first column
-        if (data.column.index === 0 && data.section === 'body') {
-          const product = currentCategoryProducts[data.row.index];
-          if (!product) {
-            console.error(`Product not found at index ${data.row.index} in brand ${brandName}`);
-            return;
-          }
-          const imageData = productImageMap.get(product.id);
-          if (imageData) {
-            try {
-              const imgSize = 30; // 30pt square thumbnail
-              const cellCenterX = data.cell.x + (data.cell.width / 2);
-              const cellCenterY = data.cell.y + (data.cell.height / 2);
-              const imgX = cellCenterX - (imgSize / 2);
-              const imgY = cellCenterY - (imgSize / 2);
-              doc.addImage(imageData.data, imageData.format, imgX, imgY, imgSize, imgSize);
-            } catch (error) {
-              console.error(`Failed to add product image ${product.id} to PDF:`, error);
-              // Continue without this image
-            }
-          }
-        }
-      } : undefined,
       didDrawPage: (data) => {
         const currentPage = (doc as any).getCurrentPageInfo().pageNumber;
         
@@ -1244,28 +1183,6 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       return (a.product || '').localeCompare(b.product || '');
     });
   });
-
-  // Load product images as base64 in parallel
-  const productImageMap = new Map<string, { data: string; format: string }>();
-  const imagePromises = products
-    .filter(p => p.productImageUrl)
-    .map(async (product) => {
-      try {
-        const response = await fetch(product.productImageUrl!);
-        const blob = await response.blob();
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-        const format = getImageFormat(base64);
-        productImageMap.set(product.id, { data: base64, format });
-      } catch (error) {
-        console.error(`Failed to load image for product ${product.id}:`, error);
-      }
-    });
-  await Promise.all(imagePromises);
 
   // Render products by brand (sorted by sortKey to maintain category hierarchy)
   Object.entries(groupedProducts)
