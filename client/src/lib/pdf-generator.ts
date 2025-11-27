@@ -54,6 +54,50 @@ const getImageFormat = (dataUrl: string): string => {
   return 'PNG'; // Default fallback
 };
 
+// Helper to extract brand name from category sortKey format or raw collection string
+// sortKey format: "1-wine-BrandName" or "1-cider-BrandName"
+// raw format: "Wine; Okanagan; BrandName; White"
+function extractBrandFromCategory(category: string): string {
+  if (!category) return "Uncategorized";
+  
+  // Check if it's a sortKey format (starts with digit-category-)
+  const sortKeyMatch = category.match(/^\d+-\w+-(.+)$/);
+  if (sortKeyMatch) {
+    return sortKeyMatch[1]; // Return extracted brand name
+  }
+  
+  // If it looks like raw collection data (contains semicolons), try to extract brand
+  if (category.includes(';')) {
+    const parts = category.split(';').map(p => p.trim()).filter(p => p);
+    // Skip common category/type/region words and find brand
+    const skipWords = ['wine', 'wines', 'cider', 'spirits', 'non alcoholic', 'non-alcoholic',
+                       'white', 'red', 'rosé', 'rose', 'sparkling', 
+                       'okanagan', 'vancouver island', 'similkameen', 'fraser valley',
+                       'riesling', 'chardonnay', 'pinot', 'merlot', 'cabernet'];
+    for (const part of parts) {
+      const lower = part.toLowerCase();
+      if (!skipWords.some(skip => lower === skip || lower.includes(skip))) {
+        return part; // This is likely the brand
+      }
+    }
+  }
+  
+  return category; // Fallback to original
+}
+
+// Helper to get the brand key for grouping products
+function getBrandKey(product: any): string {
+  // Priority: collectionBrand > extracted from category > "Uncategorized"
+  let brandKey = product.collectionBrand;
+  if (!brandKey) {
+    brandKey = extractBrandFromCategory(product.category);
+  }
+  if (!brandKey || brandKey.toLowerCase() === "uncategorized") {
+    brandKey = "Uncategorized";
+  }
+  return brandKey;
+}
+
 export async function generatePDF(config: PDFConfig): Promise<void> {
   const { products, branding, salesAgents, qrCodeConfig, template = "modern", pricelistName, brandName } = config;
   
@@ -297,7 +341,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   const groupedProducts = filteredProducts
     .reduce((acc, product) => {
       // Group by brand to get single bar per brand
-      const brandKey = product.collectionBrand || product.category || "";
+      const brandKey = getBrandKey(product);
       if (!acc[brandKey]) {
         acc[brandKey] = [];
       }
@@ -637,7 +681,7 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
   });
 
   const groupedProducts = filteredProducts.reduce((acc, product) => {
-    const brandKey = product.collectionBrand || product.category || "Uncategorized";
+    const brandKey = getBrandKey(product);
     if (!acc[brandKey]) {
       acc[brandKey] = [];
     }
@@ -1026,8 +1070,8 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
   // Group products by brand, excluding only explicitly "Uncategorized" items
   const groupedProducts = filteredProducts
     .reduce((acc, product) => {
-      // Group by brand to get single bar per brand
-      const brandKey = product.collectionBrand || product.category || "";
+      // Group by brand to get single bar per brand (uses shared helper function)
+      const brandKey = getBrandKey(product);
       if (!acc[brandKey]) {
         acc[brandKey] = [];
       }

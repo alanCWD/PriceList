@@ -180,15 +180,45 @@ export function parseCollection(
       // If brand already found (from known wineries), just continue processing
       if (brand) continue;
       
-      // Skip if it's a category indicator
+      // Skip if it's a category indicator (use exact match to avoid false positives)
+      // e.g., "wine" should match but "winery", "wines", or "Storied Wine Agency" should NOT
+      const words = termLower.split(/\s+/);
       const isCategory = Object.values(CATEGORY_INDICATORS).some(indicators =>
-        indicators.some(indicator => termLower.includes(indicator))
+        indicators.some(indicator => {
+          // Only match if the ENTIRE term equals the indicator (single word category)
+          // This prevents "Storied Wine Agency" from matching "wine"
+          if (termLower === indicator) return true;
+          
+          // If it's a multi-word term, don't treat it as a category indicator
+          // Multi-word terms are likely brand names even if they contain category words
+          if (words.length > 1) return false;
+          
+          // For single-word terms, exclude common brand-like suffixes
+          if (termLower.includes('winery') || termLower.includes('wines') || 
+              termLower.includes('vineyards') || termLower.includes('cellars') ||
+              termLower.includes('estate')) {
+            return false; // This is likely a brand name, not a category
+          }
+          
+          // Single word that matches a category indicator
+          return termLower === indicator;
+        })
       );
       if (isCategory) continue;
       
-      // Skip if it's a wine type
+      // Skip if it's a wine type (use exact match to avoid false positives)
+      // e.g., "white" should match but "whitehaven" should NOT
       const isWineType = Object.values(WINE_TYPES).some(types =>
-        types.some(type => termLower.includes(type))
+        types.some(type => {
+          // Exact match only for wine types to avoid matching brand names
+          if (termLower === type) return true;
+          // Word boundary match for multi-word types
+          const regex = new RegExp(`^${type}$|\\b${type}\\b`, 'i');
+          // Check it's not part of a longer brand name (more than just the type word)
+          const words = termLower.split(/\s+/);
+          if (words.length > 1) return false; // Multi-word terms are likely brands
+          return regex.test(termLower);
+        })
       );
       if (isWineType) continue;
       

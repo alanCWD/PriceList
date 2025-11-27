@@ -103,6 +103,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           defaultBranding: {
             companyName: "",
             tagline: "",
+            logoUrl: "",
+            headerBackgroundColor: "",
+            headerTextColor: "",
+            address: "",
+            phone: "",
+            email: "",
+            website: "",
+            footerText: "",
           },
         });
       }
@@ -132,6 +140,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const normalizedBranding = {
         companyName: branding.companyName ?? "",
         tagline: branding.tagline ?? "",
+        logoUrl: branding.logoUrl ?? "",
+        headerBackgroundColor: branding.headerBackgroundColor ?? "",
+        headerTextColor: branding.headerTextColor ?? "",
+        address: branding.address ?? "",
+        phone: branding.phone ?? "",
+        email: branding.email ?? "",
+        website: branding.website ?? "",
+        footerText: branding.footerText ?? "",
       };
       
       // Return only default settings (not full company data), with fallbacks
