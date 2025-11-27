@@ -142,10 +142,128 @@ export function PreviewPanel({
     return injectManualSortIndex(filteredProducts, brandRegistry);
   }, [filteredProducts, brandRegistry]);
 
-  // Group products by brand (collectionBrand) for single brand bars
+  // Helper to extract brand from category - excludes regions and category words
+  // Uses exact equality checks to avoid flagging brands like "Storied Wine Agency"
+  const extractBrandFromCategory = (category: string): string => {
+    if (!category) return "Uncategorized";
+    
+    // Check if it's a sortKey format (starts with digit-category-)
+    const sortKeyMatch = category.match(/^\d+-\w+-(.+)$/);
+    if (sortKeyMatch) {
+      return sortKeyMatch[1]; // Return extracted brand name
+    }
+    
+    // If it looks like raw collection data (contains semicolons), try to extract brand
+    if (category.includes(';')) {
+      const parts = category.split(';').map(p => p.trim()).filter(p => p);
+      // Skip common single-word category/type/region terms (exact match only)
+      const skipWords = ['wine', 'wines', 'cider', 'spirits', 'non alcoholic', 'non-alcoholic',
+                         'white', 'red', 'rosé', 'rose', 'sparkling', 
+                         'okanagan', 'vancouver island', 'similkameen', 'fraser valley',
+                         'gulf islands', 'kootenays', 'bc', 'british columbia', 'lower mainland',
+                         'riesling', 'chardonnay', 'pinot', 'merlot', 'cabernet'];
+      for (const part of parts) {
+        const lower = part.toLowerCase();
+        // Only skip if it's an EXACT match - don't flag multi-word terms containing these words
+        // This allows "Storied Wine Agency" and "Rust Wine Co" to pass through
+        if (!skipWords.some(skip => lower === skip)) {
+          return part; // This is likely the brand
+        }
+      }
+      // All parts were skipped - no brand found
+      return "Uncategorized";
+    }
+    
+    // Check if the category itself is a region/category word (exact match only)
+    const lower = category.toLowerCase().trim();
+    const categoryWords = ['wine', 'wines', 'cider', 'spirits', 'non alcoholic', 'non-alcoholic',
+                           'white', 'red', 'rosé', 'rose', 'sparkling', 
+                           'okanagan', 'vancouver island', 'similkameen', 'fraser valley',
+                           'gulf islands', 'kootenays', 'bc', 'british columbia', 'lower mainland'];
+    if (categoryWords.some(word => lower === word)) {
+      return "Uncategorized";
+    }
+    
+    return category;
+  };
+
+  // Helper to extract brand from product name using brand registry
+  // Mirrors the PDF generator's logic exactly
+  const extractBrandFromProductName = (productName: string): string | null => {
+    if (!productName) return null;
+    
+    const nameLower = productName.toLowerCase().trim();
+    const productFirstWord = nameLower.split(/\s+/)[0];
+    
+    // If we have a brand registry, use it to find matching brands
+    if (brandRegistry && brandRegistry.length > 0) {
+      // Sort by brand name length (longest first) to match most specific brands
+      const sortedBrands = [...brandRegistry].sort((a, b) => 
+        (b.brandName?.length || 0) - (a.brandName?.length || 0)
+      );
+      
+      for (const entry of sortedBrands) {
+        if (!entry.brandName) continue;
+        const brandLower = entry.brandName.toLowerCase().trim();
+        
+        // Strategy 1: Product name starts with brand
+        if (nameLower.startsWith(brandLower)) {
+          return entry.brandName;
+        }
+        
+        // Strategy 2: Brand starts with product's first word
+        if (productFirstWord.length >= 3 && brandLower.startsWith(productFirstWord)) {
+          return entry.brandName;
+        }
+        
+        // Strategy 3: Product's first word appears as a word in brand
+        if (productFirstWord.length >= 3) {
+          const escaped = productFirstWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const wordBoundaryRegex = new RegExp(`(?:^|\\s|\\b)${escaped}[+]?(?:\\s|$|\\b)`, 'i');
+          if (wordBoundaryRegex.test(brandLower)) {
+            return entry.brandName;
+          }
+        }
+      }
+    }
+    
+    // Fallback: Extract first word as brand (for products without registry match)
+    // Only if the first word looks like a brand name
+    const skipWords = ['wine', 'wines', 'white', 'red', 'rosé', 'rose', 'sparkling', 
+                       'cider', 'spirits', 'the', 'a', 'an', 'estate', 'winery'];
+    const firstWord = productName.split(/\s+/)[0];
+    if (firstWord && !skipWords.includes(firstWord.toLowerCase()) && firstWord.length >= 3) {
+      // Check if it looks like a proper noun (first letter capitalized or number)
+      if (/^[A-Z0-9]/.test(firstWord)) {
+        return firstWord;
+      }
+    }
+    
+    return null;
+  };
+
+  // Get brand key for grouping - same logic as PDF generator
+  const getBrandKey = (product: any): string => {
+    // Priority: collectionBrand > extracted from category > extracted from product name > "Uncategorized"
+    let brandKey = product.collectionBrand;
+    
+    if (!brandKey) {
+      brandKey = extractBrandFromCategory(product.category);
+    }
+    if (!brandKey || brandKey.toLowerCase() === "uncategorized") {
+      const extractedFromName = extractBrandFromProductName(product.product);
+      if (extractedFromName) {
+        brandKey = extractedFromName;
+      } else {
+        brandKey = "Uncategorized";
+      }
+    }
+    return brandKey;
+  };
+
+  // Group products by brand (using improved brand extraction)
   const groupedProducts = productsWithSortIndex.reduce((acc, product) => {
-    // Use collectionBrand as the key to group all products from same brand together
-    const brandKey = product.collectionBrand || product.category || "Uncategorized";
+    const brandKey = getBrandKey(product);
     if (!acc[brandKey]) {
       acc[brandKey] = [];
     }

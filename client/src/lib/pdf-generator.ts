@@ -57,6 +57,7 @@ const getImageFormat = (dataUrl: string): string => {
 // Helper to extract brand name from category sortKey format or raw collection string
 // sortKey format: "1-wine-BrandName" or "1-cider-BrandName"
 // raw format: "Wine; Okanagan; BrandName; White"
+// Uses exact equality checks to avoid flagging brands like "Storied Wine Agency"
 function extractBrandFromCategory(category: string): string {
   if (!category) return "Uncategorized";
   
@@ -69,7 +70,7 @@ function extractBrandFromCategory(category: string): string {
   // If it looks like raw collection data (contains semicolons), try to extract brand
   if (category.includes(';')) {
     const parts = category.split(';').map(p => p.trim()).filter(p => p);
-    // Skip common category/type/region words and find brand
+    // Skip common single-word category/type/region terms (exact match only)
     const skipWords = ['wine', 'wines', 'cider', 'spirits', 'non alcoholic', 'non-alcoholic',
                        'white', 'red', 'rosé', 'rose', 'sparkling', 
                        'okanagan', 'vancouver island', 'similkameen', 'fraser valley',
@@ -77,7 +78,9 @@ function extractBrandFromCategory(category: string): string {
                        'riesling', 'chardonnay', 'pinot', 'merlot', 'cabernet'];
     for (const part of parts) {
       const lower = part.toLowerCase();
-      if (!skipWords.some(skip => lower === skip || lower.includes(skip))) {
+      // Only skip if it's an EXACT match - don't flag multi-word terms containing these words
+      // This allows "Storied Wine Agency" and "Rust Wine Co" to pass through
+      if (!skipWords.some(skip => lower === skip)) {
         return part; // This is likely the brand
       }
     }
@@ -85,13 +88,13 @@ function extractBrandFromCategory(category: string): string {
     return "Uncategorized";
   }
   
-  // Check if the category itself is a region/category word that shouldn't be a brand
+  // Check if the category itself is a region/category word (exact match only)
   const lower = category.toLowerCase().trim();
   const categoryWords = ['wine', 'wines', 'cider', 'spirits', 'non alcoholic', 'non-alcoholic',
                          'white', 'red', 'rosé', 'rose', 'sparkling', 
                          'okanagan', 'vancouver island', 'similkameen', 'fraser valley',
                          'gulf islands', 'kootenays', 'bc', 'british columbia', 'lower mainland'];
-  if (categoryWords.some(word => lower === word || lower.includes(word))) {
+  if (categoryWords.some(word => lower === word)) {
     return "Uncategorized";
   }
   
@@ -110,23 +113,23 @@ function extractBrandFromProductName(productName: string, brandRegistry?: any[])
   if (brandRegistry && brandRegistry.length > 0) {
     // Sort by brand name length (longest first) to match most specific brands
     const sortedBrands = [...brandRegistry].sort((a, b) => 
-      (b.brand?.length || 0) - (a.brand?.length || 0)
+      (b.brandName?.length || 0) - (a.brandName?.length || 0)
     );
     
     for (const entry of sortedBrands) {
-      if (!entry.brand) continue;
-      const brandLower = entry.brand.toLowerCase().trim();
+      if (!entry.brandName) continue;
+      const brandLower = entry.brandName.toLowerCase().trim();
       
       // Strategy 1: Product name starts with brand (exact)
       // e.g., product "Synchromesh 2022 Riesling" starts with "synchromesh"
       if (nameLower.startsWith(brandLower)) {
-        return entry.brand;
+        return entry.brandName;
       }
       
       // Strategy 2: Brand starts with product's first word
       // e.g., registry "Ones+ Non-Alc BC Wine" starts with product first word "ones"
       if (productFirstWord.length >= 3 && brandLower.startsWith(productFirstWord)) {
-        return entry.brand;
+        return entry.brandName;
       }
       
       // Strategy 3: Product's first word appears as a distinct word in brand
@@ -138,7 +141,7 @@ function extractBrandFromProductName(productName: string, brandRegistry?: any[])
         // Match: word boundary + firstWord + optional special chars (like +) + (word boundary OR end)
         const wordBoundaryRegex = new RegExp(`(?:^|\\s|\\b)${escaped}[+]?(?:\\s|$|\\b)`, 'i');
         if (wordBoundaryRegex.test(brandLower)) {
-          return entry.brand;
+          return entry.brandName;
         }
       }
     }
@@ -163,18 +166,35 @@ function extractBrandFromProductName(productName: string, brandRegistry?: any[])
 function getBrandKey(product: any, brandRegistry?: any[]): string {
   // Priority: collectionBrand > extracted from category > extracted from product name > "Uncategorized"
   let brandKey = product.collectionBrand;
+  let source = 'collectionBrand';
+  
   if (!brandKey) {
     brandKey = extractBrandFromCategory(product.category);
+    source = 'extractBrandFromCategory';
   }
   if (!brandKey || brandKey.toLowerCase() === "uncategorized") {
     // Last resort: try to extract brand from product name using registry
     const extractedFromName = extractBrandFromProductName(product.product, brandRegistry);
     if (extractedFromName) {
       brandKey = extractedFromName;
+      source = 'extractBrandFromProductName';
     } else {
       brandKey = "Uncategorized";
+      source = 'fallback';
     }
   }
+  
+  // Debug logging for problematic products
+  if (brandKey === 'Okanagan' || product.category?.includes('Okanagan')) {
+    console.log('[getBrandKey] Product with Okanagan:', {
+      productName: product.product,
+      collectionBrand: product.collectionBrand,
+      category: product.category,
+      resultBrandKey: brandKey,
+      source,
+    });
+  }
+  
   return brandKey;
 }
 
