@@ -120,15 +120,26 @@ async function upsertUser(
       }
     }
     
-    // User exists - just update their profile info (keep existing role and company)
+    // Check if existing user should be upgraded to super admin
+    // (in case they were added to SUPER_ADMIN_EMAILS after initial account creation)
+    let finalRole = existingUser.role;
+    let finalCompanyId = existingUser.companyId;
+    
+    if (isSuperAdminEmail(email) && existingUser.role !== "superAdmin") {
+      console.log(`[Auth] Upgrading existing user to super admin: ${email}`);
+      finalRole = "superAdmin";
+      finalCompanyId = null; // Super admins have no company
+    }
+    
+    // User exists - update their profile info
     await storage.upsertUser({
       id: claims["sub"],
       email,
       firstName: claims["first_name"],
       lastName: claims["last_name"],
       profileImageUrl: claims["profile_image_url"],
-      role: existingUser.role, // Preserve existing role
-      companyId: existingUser.companyId, // Preserve existing company
+      role: finalRole,
+      companyId: finalCompanyId,
     });
   } else {
     // New user - check if super admin first
