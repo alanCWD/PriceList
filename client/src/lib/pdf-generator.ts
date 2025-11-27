@@ -164,9 +164,20 @@ function extractBrandFromProductName(productName: string, brandRegistry?: any[])
 
 // Helper to get the brand key for grouping products (now accepts brandRegistry)
 function getBrandKey(product: any, brandRegistry?: any[]): string {
-  // Priority: collectionBrand > extracted from category > extracted from product name > "Uncategorized"
+  // Skip words that should never be used as brand names (regions, categories, wine types)
+  const skipWords = ['wine', 'wines', 'cider', 'spirits', 'non alcoholic', 'non-alcoholic',
+                     'white', 'red', 'rosé', 'rose', 'sparkling', 
+                     'okanagan', 'vancouver island', 'similkameen', 'fraser valley',
+                     'gulf islands', 'kootenays', 'bc', 'british columbia', 'lower mainland'];
+  
+  // Priority: collectionBrand (if not a skip word) > extracted from category > extracted from product name > "Uncategorized"
   let brandKey = product.collectionBrand;
   let source = 'collectionBrand';
+  
+  // Check if collectionBrand is a skip word (region/category) - if so, don't use it
+  if (brandKey && skipWords.includes(brandKey.toLowerCase().trim())) {
+    brandKey = null;
+  }
   
   if (!brandKey) {
     brandKey = extractBrandFromCategory(product.category);
@@ -182,17 +193,6 @@ function getBrandKey(product: any, brandRegistry?: any[]): string {
       brandKey = "Uncategorized";
       source = 'fallback';
     }
-  }
-  
-  // Debug logging for problematic products
-  if (brandKey === 'Okanagan' || product.category?.includes('Okanagan')) {
-    console.log('[getBrandKey] Product with Okanagan:', {
-      productName: product.product,
-      collectionBrand: product.collectionBrand,
-      category: product.category,
-      resultBrandKey: brandKey,
-      source,
-    });
   }
   
   return brandKey;

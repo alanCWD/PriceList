@@ -180,23 +180,6 @@ export function PricelistDocument({
             >
               <thead>
                 <tr className="bg-gray-100 border-b border-gray-300">
-                  {categoryProducts.some(p => p.productImageUrl) && (
-                    <th 
-                      className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide text-gray-700"
-                      style={{ 
-                        width: '10%', 
-                        padding: '12px 16px',
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        textAlign: 'left',
-                        letterSpacing: '0.05em',
-                        backgroundColor: '#f3f4f6',
-                        borderBottom: '1px solid #d1d5db'
-                      }}
-                    >
-                      Image
-                    </th>
-                  )}
                   <th 
                     className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide text-gray-700"
                     style={{ 
@@ -215,7 +198,7 @@ export function PricelistDocument({
                   <th 
                     className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide text-gray-700"
                     style={{ 
-                      width: categoryProducts.some(p => p.productImageUrl) ? '30%' : '35%', 
+                      width: '35%', 
                       padding: '12px 16px',
                       fontSize: '11px',
                       fontWeight: 600,
@@ -285,35 +268,6 @@ export function PricelistDocument({
                       borderBottom: '1px solid #e5e7eb'
                     }}
                   >
-                    {categoryProducts.some(p => p.productImageUrl) && (
-                      <td 
-                        className="px-4 py-3 align-top"
-                        style={{ 
-                          padding: '12px 16px',
-                          verticalAlign: 'top'
-                        }}
-                      >
-                        {product.productImageUrl && (
-                          <img
-                            src={product.productImageUrl}
-                            alt={product.product}
-                            className="w-12 h-12 object-cover rounded border border-gray-200"
-                            style={{ 
-                              width: '48px',
-                              height: '48px',
-                              objectFit: 'cover',
-                              borderRadius: '4px',
-                              border: '1px solid #e5e7eb'
-                            }}
-                            onError={(e) => {
-                              console.error('Image failed to load:', product.productImageUrl);
-                              e.currentTarget.style.display = 'none';
-                            }}
-                            data-testid={`product-image-${product.id}`}
-                          />
-                        )}
-                      </td>
-                    )}
                     <td 
                       className="px-4 py-3 text-xs text-gray-600 align-top"
                       style={{ 
@@ -517,15 +471,10 @@ function ClassicTemplate({
             >
               <thead>
                 <tr className="bg-gray-200 border-b border-gray-400">
-                  {categoryProducts.some(p => p.productImageUrl) && (
-                    <th style={{ width: '8%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
-                      Image
-                    </th>
-                  )}
                   <th style={{ width: '12%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     SKU
                   </th>
-                  <th style={{ width: categoryProducts.some(p => p.productImageUrl) ? '35%' : '40%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
+                  <th style={{ width: '40%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     Product
                   </th>
                   <th style={{ width: '15%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
@@ -534,7 +483,7 @@ function ClassicTemplate({
                   <th style={{ width: '10%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'right', border: '1px solid #9ca3af' }}>
                     Price
                   </th>
-                  <th style={{ width: categoryProducts.some(p => p.productImageUrl) ? '15%' : '18%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
+                  <th style={{ width: '18%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     Notes
                   </th>
                 </tr>
@@ -545,28 +494,6 @@ function ClassicTemplate({
                     key={product.id}
                     data-testid={`product-row-${product.id}`}
                   >
-                    {categoryProducts.some(p => p.productImageUrl) && (
-                      <td style={{ padding: '10px 12px', border: '1px solid #9ca3af' }}>
-                        {product.productImageUrl && (
-                          <img
-                            src={product.productImageUrl}
-                            alt={product.product}
-                            style={{ 
-                              width: '40px',
-                              height: '40px',
-                              objectFit: 'cover',
-                              borderRadius: '2px',
-                              border: '1px solid #d1d5db'
-                            }}
-                            onError={(e) => {
-                              console.error('Image failed to load:', product.productImageUrl);
-                              e.currentTarget.style.display = 'none';
-                            }}
-                            data-testid={`product-image-${product.id}`}
-                          />
-                        )}
-                      </td>
-                    )}
                     <td style={{ padding: '10px 12px', fontSize: '12px', border: '1px solid #9ca3af' }}>
                       {product.sku}
                     </td>
@@ -627,11 +554,6 @@ function MinimalTemplate({
   // Use branding colors or defaults
   const headerBgColor = branding.headerBackgroundColor || '#f8f9fa';
   const headerTextColor = branding.headerTextColor || '#1a1a1a';
-
-  // Check if any products have actual valid image URLs (not empty/whitespace strings)
-  const hasImages = groupedProducts.some(([_brandName, products]) =>
-    products.some(p => p.productImageUrl?.trim())
-  );
 
   return (
     <div className="pricelist-document font-sans" id="pricelist-document" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -743,20 +665,6 @@ function MinimalTemplate({
             >
               <thead>
                 <tr style={{ backgroundColor: '#f3f4f6' }}>
-                  {hasImages && (
-                    <th 
-                      className="text-left font-semibold"
-                      style={{ 
-                        padding: '2px 4px',
-                        fontSize: '7px',
-                        fontWeight: 600,
-                        textAlign: 'left',
-                        width: '5%'
-                      }}
-                    >
-                      Img
-                    </th>
-                  )}
                   <th 
                     className="text-left font-semibold"
                     style={{ 
@@ -776,7 +684,7 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: hasImages ? '38%' : '42%'
+                      width: '42%'
                     }}
                   >
                     Product
@@ -800,7 +708,7 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'right',
-                      width: hasImages ? '6%' : '8%'
+                      width: '8%'
                     }}
                   >
                     Price
@@ -812,7 +720,7 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: hasImages ? '22%' : '20%'
+                      width: '20%'
                     }}
                   >
                     Notes
@@ -828,25 +736,6 @@ function MinimalTemplate({
                       backgroundColor: productIndex % 2 === 0 ? '#ffffff' : '#f2f2f2'
                     }}
                   >
-                    {hasImages && (
-                      <td style={{ padding: '1px 4px', verticalAlign: 'middle' }}>
-                        {product.productImageUrl && (
-                          <img
-                            src={product.productImageUrl}
-                            alt={product.product}
-                            style={{ 
-                              width: '16px',
-                              height: '16px',
-                              objectFit: 'cover'
-                            }}
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                            data-testid={`product-image-${product.id}`}
-                          />
-                        )}
-                      </td>
-                    )}
                     <td style={{ padding: '1px 4px', fontSize: '8.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {product.sku}
                     </td>
