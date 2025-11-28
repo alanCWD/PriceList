@@ -250,7 +250,14 @@ export function PreviewPanel({
                        'okanagan', 'vancouver island', 'similkameen', 'fraser valley',
                        'gulf islands', 'kootenays', 'bc', 'british columbia', 'lower mainland'];
     
-    // Priority: collectionBrand (if not a skip word) > extracted from category > extracted from product name > "Uncategorized"
+    // PRIORITY 1: Check if product name matches a brand in registry (highest priority)
+    // This ensures "Rust Wines 2022 Merlot" matches "Rust Wines" brand even if collectionBrand says otherwise
+    const registryMatch = extractBrandFromProductName(product.product);
+    if (registryMatch && brandRegistry?.some(b => b.brandName === registryMatch)) {
+      return registryMatch;
+    }
+    
+    // PRIORITY 2: collectionBrand (if not a skip word)
     let brandKey = product.collectionBrand;
     
     // Check if collectionBrand is a skip word (region/category) - if so, don't use it
@@ -258,13 +265,15 @@ export function PreviewPanel({
       brandKey = null;
     }
     
+    // PRIORITY 3: extracted from category
     if (!brandKey) {
       brandKey = extractBrandFromCategory(product.category);
     }
+    
+    // PRIORITY 4: extracted from product name (fallback for non-registry brands)
     if (!brandKey || brandKey.toLowerCase() === "uncategorized") {
-      const extractedFromName = extractBrandFromProductName(product.product);
-      if (extractedFromName) {
-        brandKey = extractedFromName;
+      if (registryMatch) {
+        brandKey = registryMatch;
       } else {
         brandKey = "Uncategorized";
       }
