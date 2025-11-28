@@ -56,6 +56,9 @@ export default function Editor() {
   
   // Track CSV + mapping fingerprint to detect when products need regeneration
   const csvFingerprintRef = useRef<string>('');
+  
+  // Track if company defaults have been applied (prevents overwriting user edits on refetch)
+  const defaultsAppliedRef = useRef<boolean>(false);
 
   // For super admins, load list of companies
   const { data: companies, isLoading: isLoadingCompanies } = useQuery<Array<{ id: number; name: string }>>({
@@ -168,9 +171,16 @@ export default function Editor() {
     }
   }, [loadedPricelist, user?.role]);
 
-  // Effect to apply company defaults for new pricelists
+  // Effect to apply company defaults for new pricelists (only once on initial load)
   useEffect(() => {
-    if (companyDefaults && !pricelistId) {
+    // Skip if defaults already applied or if editing existing pricelist
+    if (defaultsAppliedRef.current || pricelistId) {
+      return;
+    }
+    
+    if (companyDefaults) {
+      defaultsAppliedRef.current = true; // Mark as applied to prevent overwriting user edits
+      
       // Apply default template
       if (companyDefaults.defaultTemplate) {
         setTemplate(companyDefaults.defaultTemplate);
