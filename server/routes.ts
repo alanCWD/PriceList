@@ -603,6 +603,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pricelist = await storage.createPricelist(pricelistData);
       console.log("[POST /api/pricelists] categoryFilter in created pricelist:", pricelist.categoryFilter);
       console.log("[POST /api/pricelists] Pricelist created successfully, ID:", pricelist.id);
+      
+      // Also save branding, sales agents, and QR code as company defaults for future pricelists
+      if (finalCompanyId) {
+        const companyUpdates: any = {};
+        
+        // Save branding as company default (if it has meaningful data)
+        if (pricelistData.branding && (pricelistData.branding.companyName || pricelistData.branding.logoUrl || pricelistData.branding.headerBackgroundColor)) {
+          companyUpdates.defaultBranding = pricelistData.branding;
+          console.log("[POST /api/pricelists] Saving branding as company default");
+        }
+        
+        // Save sales agents as company default (if any are defined)
+        if (pricelistData.salesAgents && pricelistData.salesAgents.length > 0) {
+          companyUpdates.defaultSalesAgents = pricelistData.salesAgents;
+          console.log("[POST /api/pricelists] Saving sales agents as company default");
+        }
+        
+        // Save QR code config as company default (if enabled)
+        if (pricelistData.qrCodeConfig && pricelistData.qrCodeConfig.enabled) {
+          companyUpdates.defaultQRCodeConfig = pricelistData.qrCodeConfig;
+          console.log("[POST /api/pricelists] Saving QR code config as company default");
+        }
+        
+        // Update company defaults if we have any changes
+        if (Object.keys(companyUpdates).length > 0) {
+          try {
+            await storage.updateCompany(finalCompanyId, companyUpdates);
+            console.log("[POST /api/pricelists] Company defaults updated successfully");
+          } catch (err) {
+            console.error("[POST /api/pricelists] Failed to update company defaults:", err);
+            // Don't fail the pricelist creation if defaults update fails
+          }
+        }
+      }
+      
       res.status(201).json(pricelist);
     } catch (error) {
       console.error("[POST /api/pricelists] Error creating pricelist:", error);
@@ -656,6 +691,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("[PATCH /api/pricelists] categoryFilter in updated pricelist:", pricelist?.categoryFilter);
       if (!pricelist) {
         return res.status(500).json({ error: "Failed to update pricelist" });
+      }
+
+      // Also update company defaults with branding, sales agents, and QR code
+      const companyId = pricelist.companyId || existingPricelist.companyId;
+      if (companyId) {
+        const companyUpdates: any = {};
+        
+        // Save branding as company default (if it has meaningful data)
+        const branding = updateData.branding || pricelist.branding;
+        if (branding && (branding.companyName || branding.logoUrl || branding.headerBackgroundColor)) {
+          companyUpdates.defaultBranding = branding;
+          console.log("[PATCH /api/pricelists] Saving branding as company default");
+        }
+        
+        // Save sales agents as company default (if any are defined)
+        const salesAgents = updateData.salesAgents || pricelist.salesAgents;
+        if (salesAgents && salesAgents.length > 0) {
+          companyUpdates.defaultSalesAgents = salesAgents;
+          console.log("[PATCH /api/pricelists] Saving sales agents as company default");
+        }
+        
+        // Save QR code config as company default (if enabled)
+        const qrCodeConfig = updateData.qrCodeConfig || pricelist.qrCodeConfig;
+        if (qrCodeConfig && qrCodeConfig.enabled) {
+          companyUpdates.defaultQRCodeConfig = qrCodeConfig;
+          console.log("[PATCH /api/pricelists] Saving QR code config as company default");
+        }
+        
+        // Update company defaults if we have any changes
+        if (Object.keys(companyUpdates).length > 0) {
+          try {
+            await storage.updateCompany(companyId, companyUpdates);
+            console.log("[PATCH /api/pricelists] Company defaults updated successfully");
+          } catch (err) {
+            console.error("[PATCH /api/pricelists] Failed to update company defaults:", err);
+            // Don't fail the pricelist update if defaults update fails
+          }
+        }
       }
 
       res.json(pricelist);
