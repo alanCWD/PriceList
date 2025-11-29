@@ -155,6 +155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         defaultTemplate: company.defaultTemplate || "modern",
         defaultFieldMapping: normalizedFieldMapping,
         defaultBranding: normalizedBranding,
+        defaultSalesAgents: company.defaultSalesAgents || [],
       });
     } catch (error) {
       console.error("Error fetching company defaults:", error);
