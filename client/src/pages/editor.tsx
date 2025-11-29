@@ -91,6 +91,7 @@ export default function Editor() {
     defaultFieldMapping: FieldMapping | null;
     defaultBranding: CompanyBranding | null;
     defaultSalesAgents: SalesAgent[];
+    defaultQRCodeConfig: QRCodeConfig | null;
   }>({
     queryKey: ['/api/companies/defaults', { companyId: companyIdForDefaults }],
     queryFn: async () => {
@@ -202,6 +203,11 @@ export default function Editor() {
       // Apply default sales agents
       if (companyDefaults.defaultSalesAgents && companyDefaults.defaultSalesAgents.length > 0) {
         setSalesAgents(companyDefaults.defaultSalesAgents);
+      }
+      
+      // Apply default QR code config
+      if (companyDefaults.defaultQRCodeConfig) {
+        setQRCodeConfig(companyDefaults.defaultQRCodeConfig);
       }
     }
   }, [companyDefaults, pricelistId]);
