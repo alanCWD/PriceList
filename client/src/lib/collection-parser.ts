@@ -107,49 +107,103 @@ export function parseCollection(
     // This handles cases like "Ones Sparkling White" matching "Ones+ Non-Alc BC Wine"
     if (!registryMatch && productName) {
       const nameLower = productName.toLowerCase().trim();
-      const productFirstWord = nameLower.split(/\s+/)[0];
+      const productWords = nameLower.split(/\s+/);
+      const productFirstWord = productWords[0];
       
-      // Sort by brand name length (longest first) to match most specific brands
-      const sortedBrands = [...brandRegistry].sort((a, b) => 
-        (b.brandName?.length || 0) - (a.brandName?.length || 0)
-      );
+      // Helper to normalize strings for comparison (remove punctuation but keep alphanumeric)
+      const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+      const normalizedProductName = normalize(nameLower);
+      const normalizedFirstWord = normalize(productFirstWord);
+      const normalizedProductWords = normalizedProductName.split(/\s+/);
       
+      // Helper to extract words from brand (stripped of punctuation)
+      const getBrandWords = (brand: string) => normalize(brand).split(/\s+/);
+      
+      // Sort brands by normalized length (longest first) - more specific brands win ties
+      const sortedBrands = [...brandRegistry]
+        .filter(b => !!b.brandName)
+        .sort((a, b) => normalize(b.brandName).length - normalize(a.brandName).length);
+      
+      // Strategy 1: Exact brand match at start of product name (highest priority)
+      // e.g., product "1 Mill Road 2024 Grenache" starts with "1 Mill Road"
       for (const entry of sortedBrands) {
-        if (!entry.brandName) continue;
-        const brandLower = entry.brandName.toLowerCase().trim();
+        const normalizedBrand = normalize(entry.brandName);
         
-        // Strategy 1: Product name starts with brand (exact)
-        // e.g., product "1 Mill Road 2024 Grenache" starts with "1 mill road"
-        if (nameLower.startsWith(brandLower)) {
-          registryMatch = {
-            brand: entry.brandName,
-            category: entry.category,
-          };
-          break;
-        }
-        
-        // Strategy 2: Brand starts with product's first word
-        // e.g., registry "Ones+ Non-Alc BC Wine" starts with product first word "ones"
-        if (productFirstWord.length >= 3 && brandLower.startsWith(productFirstWord)) {
-          registryMatch = {
-            brand: entry.brandName,
-            category: entry.category,
-          };
-          break;
-        }
-        
-        // Strategy 3: Product's first word appears as a distinct word in brand
-        // Match at word boundary or end of string (for "ones+" style brands)
-        if (productFirstWord.length >= 3) {
-          const escaped = productFirstWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const wordBoundaryRegex = new RegExp(`(?:^|\\s|\\b)${escaped}[+]?(?:\\s|$|\\b)`, 'i');
-          if (wordBoundaryRegex.test(brandLower)) {
+        // Check if product name starts with the normalized brand name
+        if (normalizedProductName.startsWith(normalizedBrand)) {
+          // Verify the match ends at a word boundary (space or end of string)
+          const afterMatch = normalizedProductName.slice(normalizedBrand.length);
+          if (afterMatch === '' || afterMatch.startsWith(' ')) {
             registryMatch = {
               brand: entry.brandName,
               category: entry.category,
             };
             break;
           }
+        }
+      }
+      
+      // Strategy 2: First word match - for brands where the first word is the real brand identifier
+      // e.g., "Ones Sparkling White" matches "Ones+ Non-Alc BC Wine" because:
+      //   - "ones" (product first word) matches "ones" (brand first word)
+      //   - Brand's remaining words ("non", "alc", "bc", "wine") are descriptors/category words
+      // 
+      // This strategy avoids matching multi-word brands by their first word alone,
+      // which would cause "Field House 2024" to incorrectly match "Field House Brewing"
+      // when "Field House" is also in the registry.
+      
+      // Descriptor words that don't count toward brand identity
+      const descriptorWords = new Set([
+        'wine', 'wines', 'winery', 'vineyards', 'vineyard', 'estates', 'estate', 'cellars', 'cellar',
+        'spirits', 'spirit', 'distillery', 'distilling',
+        'cider', 'cidery',
+        'brewing', 'brewery', 'beer', 'beers',
+        'bc', 'okanagan', 'island', 'valley',
+        'non', 'alc', 'alcoholic',
+        'and', 'the', 'of', 'co', 'company',
+      ]);
+      
+      if (!registryMatch && normalizedFirstWord.length >= 3) {
+        // Collect all potential matches, then pick the best one
+        const potentialMatches: { entry: typeof sortedBrands[0]; score: number }[] = [];
+        
+        for (const entry of sortedBrands) {
+          const brandWords = getBrandWords(entry.brandName);
+          const brandFirstWord = brandWords[0];
+          
+          if (brandFirstWord !== normalizedFirstWord) continue;
+          
+          // Get brand words that aren't descriptors (these are the "identity" words)
+          const brandIdentityWords = brandWords.filter(w => !descriptorWords.has(w));
+          
+          // Case 1: Brand effectively has only one identity word (rest are descriptors)
+          // e.g., "Ones+ Non-Alc BC Wine" → identity word is just "ones"
+          const isSingleIdentityBrand = brandIdentityWords.length === 1;
+          
+          // Case 2: Product's first two words match brand's first two words
+          // e.g., "Field House 2024" matches "Field House" (not "Field House Brewing")
+          const productSecondWord = normalizedProductWords.length > 1 ? normalizedProductWords[1] : null;
+          const brandSecondWord = brandWords.length > 1 ? brandWords[1] : null;
+          const firstTwoWordsMatch = productSecondWord && brandSecondWord && productSecondWord === brandSecondWord;
+          
+          if (isSingleIdentityBrand || firstTwoWordsMatch) {
+            // Score: prefer brands with fewer total words (more specific match)
+            // Lower score = better match
+            potentialMatches.push({
+              entry,
+              score: brandWords.length,
+            });
+          }
+        }
+        
+        // Pick the best match (fewest words = most specific)
+        if (potentialMatches.length > 0) {
+          potentialMatches.sort((a, b) => a.score - b.score);
+          const bestMatch = potentialMatches[0];
+          registryMatch = {
+            brand: bestMatch.entry.brandName,
+            category: bestMatch.entry.category,
+          };
         }
       }
     }
