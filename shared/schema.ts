@@ -132,6 +132,7 @@ export const companies = pgTable("companies", {
   defaultFieldMapping: jsonb("default_field_mapping").$type<FieldMapping>(),
   defaultBranding: jsonb("default_branding").$type<CompanyBranding>(),
   defaultSalesAgents: jsonb("default_sales_agents").$type<SalesAgent[]>().default([]),
+  defaultQRCodeConfig: jsonb("default_qr_code_config").$type<QRCodeConfig>(),
   
   // Metadata
   createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -156,6 +156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         defaultFieldMapping: normalizedFieldMapping,
         defaultBranding: normalizedBranding,
         defaultSalesAgents: company.defaultSalesAgents || [],
+        defaultQRCodeConfig: company.defaultQRCodeConfig || null,
       });
     } catch (error) {
       console.error("Error fetching company defaults:", error);
