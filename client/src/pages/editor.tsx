@@ -182,33 +182,59 @@ export default function Editor() {
 
   // Effect to apply company defaults for new pricelists (only once on initial load)
   useEffect(() => {
+    console.log('[Apply Defaults] ===== DEFAULTS EFFECT =====');
+    console.log('[Apply Defaults] defaultsAppliedRef:', defaultsAppliedRef.current);
+    console.log('[Apply Defaults] pricelistId:', pricelistId);
+    console.log('[Apply Defaults] companyDefaults:', companyDefaults);
+    
     // Skip if defaults already applied or if editing existing pricelist
     if (defaultsAppliedRef.current || pricelistId) {
+      console.log('[Apply Defaults] SKIPPING - defaults already applied or editing existing pricelist');
       return;
     }
     
     if (companyDefaults) {
       defaultsAppliedRef.current = true; // Mark as applied to prevent overwriting user edits
+      console.log('[Apply Defaults] APPLYING DEFAULTS...');
       
       // Apply default template
       if (companyDefaults.defaultTemplate) {
+        console.log('[Apply Defaults] Setting template:', companyDefaults.defaultTemplate);
         setTemplate(companyDefaults.defaultTemplate);
       }
       
-      // Apply default branding only if it has actual values (not just normalized empty strings)
-      if (companyDefaults.defaultBranding && companyDefaults.defaultBranding.companyName) {
-        setCompanyBranding(companyDefaults.defaultBranding);
+      // Apply default branding if any meaningful values exist (colors, company name, etc.)
+      if (companyDefaults.defaultBranding) {
+        const b = companyDefaults.defaultBranding;
+        const hasMeaningfulBranding = b.companyName || b.headerBackgroundColor || b.headerTextColor || b.logoUrl;
+        console.log('[Apply Defaults] Branding check:', { companyName: b.companyName, bgColor: b.headerBackgroundColor, textColor: b.headerTextColor, hasMeaningful: hasMeaningfulBranding });
+        if (hasMeaningfulBranding) {
+          console.log('[Apply Defaults] Setting branding:', companyDefaults.defaultBranding);
+          setCompanyBranding(companyDefaults.defaultBranding);
+        } else {
+          console.log('[Apply Defaults] No meaningful branding to apply');
+        }
       }
       
       // Apply default sales agents
       if (companyDefaults.defaultSalesAgents && companyDefaults.defaultSalesAgents.length > 0) {
+        console.log('[Apply Defaults] Setting sales agents:', companyDefaults.defaultSalesAgents.length, 'agents');
         setSalesAgents(companyDefaults.defaultSalesAgents);
+      } else {
+        console.log('[Apply Defaults] No sales agents to apply');
       }
       
       // Apply default QR code config
       if (companyDefaults.defaultQRCodeConfig) {
+        console.log('[Apply Defaults] Setting QR config:', companyDefaults.defaultQRCodeConfig);
         setQRCodeConfig(companyDefaults.defaultQRCodeConfig);
+      } else {
+        console.log('[Apply Defaults] No QR config to apply');
       }
+      
+      console.log('[Apply Defaults] DEFAULTS APPLIED SUCCESSFULLY');
+    } else {
+      console.log('[Apply Defaults] No companyDefaults available yet');
     }
   }, [companyDefaults, pricelistId]);
 
