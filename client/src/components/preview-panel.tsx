@@ -145,6 +145,7 @@ export function PreviewPanel({
         branding,
         pricelistName,
         brandRegistry,
+        salesAgents,
       });
       
       const filename = pricelistName 

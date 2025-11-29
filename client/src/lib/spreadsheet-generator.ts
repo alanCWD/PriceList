@@ -1,12 +1,13 @@
 import ExcelJS from "exceljs";
 import { getDisplayName, injectManualSortIndex, type ProductWithSortIndex } from "./collection-parser";
-import type { Product, CompanyBranding, BrandRegistry } from "@shared/schema";
+import type { Product, CompanyBranding, BrandRegistry, SalesAgent } from "@shared/schema";
 
 interface SpreadsheetConfig {
   products: Product[];
   branding: CompanyBranding;
   pricelistName?: string;
   brandRegistry?: BrandRegistry[];
+  salesAgents?: SalesAgent[];
 }
 
 const skipWords = ['wine', 'wines', 'cider', 'spirits', 'non alcoholic', 'non-alcoholic',
@@ -20,9 +21,7 @@ function extractBrandFromProductName(productName: string, brandRegistry?: BrandR
   const nameLower = productName.toLowerCase().trim();
   const productFirstWord = nameLower.split(/\s+/)[0];
   
-  // If we have a brand registry, use it to find matching brands
   if (brandRegistry && brandRegistry.length > 0) {
-    // Sort by brand name length (longest first) to match most specific brands
     const sortedBrands = [...brandRegistry].sort((a, b) => 
       (b.brandName?.length || 0) - (a.brandName?.length || 0)
     );
@@ -31,25 +30,16 @@ function extractBrandFromProductName(productName: string, brandRegistry?: BrandR
       if (!entry.brandName) continue;
       const brandLower = entry.brandName.toLowerCase().trim();
       
-      // Strategy 1: Product name starts with brand (exact)
-      // e.g., product "Synchromesh 2022 Riesling" starts with "synchromesh"
       if (nameLower.startsWith(brandLower)) {
         return entry.brandName;
       }
       
-      // Strategy 2: Brand starts with product's first word
-      // e.g., registry "Ones+ Non-Alc BC Wine" starts with product first word "ones"
       if (productFirstWord.length >= 3 && brandLower.startsWith(productFirstWord)) {
         return entry.brandName;
       }
       
-      // Strategy 3: Product's first word appears as a distinct word in brand
-      // e.g., registry "Storied Wine Agency Presents Ones+" contains "ones"
-      // Match at word boundary or end of string (for "ones+" style brands)
       if (productFirstWord.length >= 3) {
-        // Escape special regex chars in the first word, then look for word boundary or end
         const escaped = productFirstWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // Match: word boundary + firstWord + optional special chars (like +) + (word boundary OR end)
         const wordBoundaryRegex = new RegExp(`(?:^|\\s|\\b)${escaped}[+]?(?:\\s|$|\\b)`, 'i');
         if (wordBoundaryRegex.test(brandLower)) {
           return entry.brandName;
@@ -58,13 +48,10 @@ function extractBrandFromProductName(productName: string, brandRegistry?: BrandR
     }
   }
   
-  // Fallback: Extract first word as brand (for products without registry match)
-  // Only if the first word looks like a brand name
   const fallbackSkipWords = ['wine', 'wines', 'white', 'red', 'rosé', 'rose', 'sparkling', 
                              'cider', 'spirits', 'the', 'a', 'an', 'estate', 'winery'];
   const firstWord = productName.split(/\s+/)[0];
   if (firstWord && !fallbackSkipWords.includes(firstWord.toLowerCase()) && firstWord.length >= 3) {
-    // Check if it looks like a proper noun (first letter capitalized or number)
     if (/^[A-Z0-9]/.test(firstWord)) {
       return firstWord;
     }
@@ -124,70 +111,129 @@ function formatPrice(price: string): string {
   return `$${num.toFixed(2)}`;
 }
 
+function hexToArgb(hex: string): string {
+  const cleanHex = hex.replace('#', '');
+  return `FF${cleanHex.toUpperCase()}`;
+}
+
+function getLighterColor(hex: string): string {
+  const cleanHex = hex.replace('#', '');
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+  
+  const lighterR = Math.min(255, Math.floor(r + (255 - r) * 0.85));
+  const lighterG = Math.min(255, Math.floor(g + (255 - g) * 0.85));
+  const lighterB = Math.min(255, Math.floor(b + (255 - b) * 0.85));
+  
+  return `FF${lighterR.toString(16).padStart(2, '0')}${lighterG.toString(16).padStart(2, '0')}${lighterB.toString(16).padStart(2, '0')}`.toUpperCase();
+}
+
+function isLightColor(hex: string): boolean {
+  const cleanHex = hex.replace('#', '');
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5;
+}
+
 export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Blob> {
-  const { products, branding, pricelistName, brandRegistry } = config;
+  const { products, branding, pricelistName, brandRegistry, salesAgents } = config;
   
   const visibleProducts = products.filter(p => !p.isHidden);
+  
+  const primaryColor = branding.headerBackgroundColor || '#4472C4';
+  const secondaryColor = branding.headerTextColor || '#2E5090';
+  const primaryArgb = hexToArgb(primaryColor);
+  const secondaryArgb = hexToArgb(secondaryColor);
+  const lightPrimaryArgb = getLighterColor(primaryColor);
+  const textOnPrimary = isLightColor(primaryColor) ? 'FF000000' : 'FFFFFFFF';
+  const textOnSecondary = isLightColor(secondaryColor) ? 'FF000000' : 'FFFFFFFF';
   
   const workbook = new ExcelJS.Workbook();
   workbook.creator = branding.companyName || 'Pricelist Generator';
   workbook.created = new Date();
   
   const worksheet = workbook.addWorksheet('Pricelist', {
-    views: [{ state: 'frozen', ySplit: 2 }]
+    views: [{ state: 'frozen', ySplit: 3 }],
+    pageSetup: {
+      paperSize: 9,
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      margins: {
+        left: 0.25,
+        right: 0.25,
+        top: 0.5,
+        bottom: 0.5,
+        header: 0.3,
+        footer: 0.3
+      }
+    }
   });
   
   worksheet.columns = [
-    { header: 'Brand', key: 'brand', width: 25 },
-    { header: 'Product', key: 'product', width: 40 },
-    { header: 'SKU', key: 'sku', width: 15 },
-    { header: 'Format', key: 'format', width: 18 },
-    { header: 'Price', key: 'price', width: 12 },
-    { header: 'Status', key: 'status', width: 15 },
-    { header: 'Quantity', key: 'quantity', width: 12 },
-    { header: 'Notes', key: 'notes', width: 30 },
+    { header: 'Product', key: 'product', width: 38 },
+    { header: 'SKU', key: 'sku', width: 14 },
+    { header: 'Format', key: 'format', width: 16 },
+    { header: 'Price', key: 'price', width: 10 },
+    { header: 'Status', key: 'status', width: 14 },
+    { header: 'Qty', key: 'quantity', width: 8 },
+    { header: 'Notes', key: 'notes', width: 25 },
   ];
   
-  const titleRow = worksheet.insertRow(1, [
-    `${branding.companyName || 'Company'} - ${pricelistName || 'Pricelist'} - ${new Date().toLocaleDateString()}`
+  const headerRow1 = worksheet.insertRow(1, [
+    branding.companyName || 'Company Pricelist'
   ]);
-  worksheet.mergeCells('A1:H1');
-  const titleCell = worksheet.getCell('A1');
-  titleCell.font = { bold: true, size: 14 };
-  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  titleCell.fill = {
+  worksheet.mergeCells('A1:G1');
+  const headerCell1 = worksheet.getCell('A1');
+  headerCell1.font = { bold: true, size: 16, color: { argb: textOnPrimary } };
+  headerCell1.alignment = { horizontal: 'center', vertical: 'middle' };
+  headerCell1.fill = {
     type: 'pattern',
     pattern: 'solid',
-    fgColor: { argb: 'FF4472C4' }
+    fgColor: { argb: primaryArgb }
   };
-  titleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
-  worksheet.getRow(1).height = 25;
+  worksheet.getRow(1).height = 28;
   
-  const headerRow = worksheet.getRow(2);
-  headerRow.font = { bold: true };
-  headerRow.fill = {
+  const headerRow2 = worksheet.insertRow(2, [
+    `${pricelistName || 'Pricelist'} - ${new Date().toLocaleDateString()}`
+  ]);
+  worksheet.mergeCells('A2:G2');
+  const headerCell2 = worksheet.getCell('A2');
+  headerCell2.font = { bold: true, size: 11, color: { argb: textOnSecondary } };
+  headerCell2.alignment = { horizontal: 'center', vertical: 'middle' };
+  headerCell2.fill = {
     type: 'pattern',
     pattern: 'solid',
-    fgColor: { argb: 'FFD9E2F3' }
+    fgColor: { argb: secondaryArgb }
   };
-  headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
-  headerRow.height = 20;
+  worksheet.getRow(2).height = 20;
   
-  headerRow.eachCell((cell) => {
+  const columnHeaderRow = worksheet.getRow(3);
+  columnHeaderRow.font = { bold: true, size: 10 };
+  columnHeaderRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: lightPrimaryArgb }
+  };
+  columnHeaderRow.alignment = { horizontal: 'center', vertical: 'middle' };
+  columnHeaderRow.height = 18;
+  
+  columnHeaderRow.eachCell((cell) => {
     cell.border = {
-      top: { style: 'thin' },
-      left: { style: 'thin' },
-      bottom: { style: 'thin' },
-      right: { style: 'thin' }
+      top: { style: 'thin', color: { argb: primaryArgb } },
+      left: { style: 'thin', color: { argb: primaryArgb } },
+      bottom: { style: 'thin', color: { argb: primaryArgb } },
+      right: { style: 'thin', color: { argb: primaryArgb } }
     };
   });
   
-  // Apply manual sort index from brand registry FIRST (same as PDF generator)
   const productsWithSortIndex = brandRegistry && brandRegistry.length > 0
     ? injectManualSortIndex(visibleProducts, brandRegistry)
     : visibleProducts;
   
-  // Group products by brand
   const productsByBrand: Record<string, ProductWithSortIndex[]> = {};
   productsWithSortIndex.forEach(product => {
     const brand = getBrandForProduct(product as Product, brandRegistry);
@@ -197,7 +243,6 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
     productsByBrand[brand].push(product as ProductWithSortIndex);
   });
   
-  // Wine type order for automatic sorting (same as PDF generator)
   const wineTypeOrder: Record<string, number> = {
     'sparkling': 1,
     'white': 2,
@@ -206,42 +251,32 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
     'red': 4,
   };
   
-  // Helper to extract secondary wine type from "Sparkling X" product names (same as PDF generator)
   const getSecondaryWineType = (productName: string, primaryType: string): string => {
     if (primaryType !== 'sparkling') return primaryType;
     
     const lower = productName.toLowerCase();
-    // Check for secondary types in order of priority
     if (lower.includes('white')) return 'white';
     if (lower.includes('rosé') || lower.includes('rose') || lower.includes('pink')) return 'rosé';
     if (lower.includes('red')) return 'red';
     
-    return primaryType; // fallback to primary
+    return primaryType;
   };
   
-  // Sort products within each brand (same logic as PDF generator)
   Object.values(productsByBrand).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
-      // PRIORITY 1: Check for manual ordering first
       const hasManualA = typeof a.manualSortIndex === 'number';
       const hasManualB = typeof b.manualSortIndex === 'number';
       
-      // Both have manual order - sort by manualSortIndex
       if (hasManualA && hasManualB) {
         return (a.manualSortIndex ?? 0) - (b.manualSortIndex ?? 0);
       }
       
-      // Only A has manual order - A comes first
       if (hasManualA && !hasManualB) return -1;
-      
-      // Only B has manual order - B comes first
       if (!hasManualA && hasManualB) return 1;
       
-      // PRIORITY 2: Wine type sorting with secondary type extraction (same as PDF)
       const typeA = (a as any).collectionType?.toLowerCase() || '';
       const typeB = (b as any).collectionType?.toLowerCase() || '';
       
-      // For sparkling products, use secondary type from product name
       const effectiveTypeA = getSecondaryWineType(a.product || '', typeA);
       const effectiveTypeB = getSecondaryWineType(b.product || '', typeB);
       
@@ -250,16 +285,13 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
       
       if (orderA !== orderB) return orderA - orderB;
       
-      // Tertiary sort: prioritize sparkling variants over non-sparkling when effective type is the same
       if (typeA === 'sparkling' && typeB !== 'sparkling') return -1;
       if (typeA !== 'sparkling' && typeB === 'sparkling') return 1;
       
-      // Finally by product name
       return (a.product || '').localeCompare(b.product || '');
     });
   });
   
-  // Sort brand groups by sortKey (same as PDF generator)
   const sortedBrandEntries = Object.entries(productsByBrand)
     .sort(([brandA, productsA], [brandB, productsB]) => {
       const sortKeyA = (productsA[0] as any)?.category || brandA;
@@ -267,14 +299,28 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
       return sortKeyA.localeCompare(sortKeyB);
     });
   
-  let rowIndex = 3;
+  let rowIndex = 4;
+  const brandHeaderRows: number[] = [];
+  
   sortedBrandEntries.forEach(([brandName, brandProducts]) => {
-    // Get display name from brand key (strip sortKey prefix)
     const displayBrandName = getDisplayName(brandName);
+    
+    const brandHeaderRow = worksheet.addRow([displayBrandName.toUpperCase()]);
+    worksheet.mergeCells(`A${rowIndex}:G${rowIndex}`);
+    const brandCell = worksheet.getCell(`A${rowIndex}`);
+    brandCell.font = { bold: true, size: 10, color: { argb: textOnSecondary } };
+    brandCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+    brandCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: secondaryArgb }
+    };
+    worksheet.getRow(rowIndex).height = 18;
+    brandHeaderRows.push(rowIndex);
+    rowIndex++;
     
     brandProducts.forEach((product) => {
       const row = worksheet.addRow({
-        brand: displayBrandName,
         product: product.product,
         sku: product.sku,
         format: product.format,
@@ -284,19 +330,23 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
         notes: product.notes || ''
       });
       
+      row.height = 16;
+      row.font = { size: 9 };
+      
       row.eachCell((cell, colNumber) => {
         cell.border = {
-          top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-          left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-          bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-          right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
+          top: { style: 'hair', color: { argb: 'FFD0D0D0' } },
+          left: { style: 'hair', color: { argb: 'FFD0D0D0' } },
+          bottom: { style: 'hair', color: { argb: 'FFD0D0D0' } },
+          right: { style: 'hair', color: { argb: 'FFD0D0D0' } }
         };
+        cell.alignment = { vertical: 'middle' };
         
-        if (colNumber === 5) {
-          cell.alignment = { horizontal: 'right' };
+        if (colNumber === 4) {
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
         }
-        if (colNumber === 7) {
-          cell.alignment = { horizontal: 'center' };
+        if (colNumber === 6) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
         }
       });
       
@@ -305,9 +355,11 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
   });
   
   const lastDataRow = rowIndex - 1;
-  const statusColumn = 'F';
+  const statusColumn = 'E';
   
-  for (let i = 3; i <= lastDataRow; i++) {
+  for (let i = 4; i <= lastDataRow; i++) {
+    if (brandHeaderRows.includes(i)) continue;
+    
     const cell = worksheet.getCell(`${statusColumn}${i}`);
     cell.dataValidation = {
       type: 'list',
@@ -320,11 +372,11 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
   }
   
   worksheet.addConditionalFormatting({
-    ref: `A3:H${lastDataRow}`,
+    ref: `A4:G${lastDataRow}`,
     rules: [
       {
         type: 'expression',
-        formulae: ['$F3="Unavailable"'],
+        formulae: ['$E4="Unavailable"'],
         style: {
           fill: {
             type: 'pattern',
@@ -337,7 +389,7 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
       },
       {
         type: 'expression',
-        formulae: ['$F3="Purchased"'],
+        formulae: ['$E4="Purchased"'],
         style: {
           fill: {
             type: 'pattern',
@@ -350,7 +402,7 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
       },
       {
         type: 'expression',
-        formulae: ['$F3="Recommended"'],
+        formulae: ['$E4="Recommended"'],
         style: {
           fill: {
             type: 'pattern',
@@ -380,45 +432,70 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
     pivotTables: false
   });
   
-  for (let i = 3; i <= lastDataRow; i++) {
-    ['F', 'G', 'H'].forEach(col => {
+  for (let i = 4; i <= lastDataRow; i++) {
+    if (brandHeaderRows.includes(i)) continue;
+    
+    ['E', 'F', 'G'].forEach(col => {
       const cell = worksheet.getCell(`${col}${i}`);
       cell.protection = { locked: false };
     });
   }
   
-  const legendRow = worksheet.addRow([]);
-  const legendStartRow = lastDataRow + 3;
+  worksheet.addRow([]);
+  rowIndex++;
+  
+  const footerStartRow = rowIndex;
+  
+  if (salesAgents && salesAgents.length > 0) {
+    const agentRow = worksheet.addRow([
+      `Sales Contact: ${salesAgents.map(a => `${a.name}${a.phone ? ` (${a.phone})` : ''}${a.email ? ` - ${a.email}` : ''}`).join(' | ')}`
+    ]);
+    worksheet.mergeCells(`A${rowIndex}:G${rowIndex}`);
+    worksheet.getCell(`A${rowIndex}`).font = { size: 9, italic: true };
+    worksheet.getCell(`A${rowIndex}`).alignment = { horizontal: 'center' };
+    rowIndex++;
+  }
+  
+  const legendStartRow = rowIndex + 1;
   
   worksheet.getCell(`A${legendStartRow}`).value = 'Status Legend:';
-  worksheet.getCell(`A${legendStartRow}`).font = { bold: true };
+  worksheet.getCell(`A${legendStartRow}`).font = { bold: true, size: 9 };
   
-  worksheet.getCell(`A${legendStartRow + 1}`).value = 'Unavailable';
-  worksheet.getCell(`A${legendStartRow + 1}`).fill = {
+  worksheet.getCell(`B${legendStartRow}`).value = 'Unavailable';
+  worksheet.getCell(`B${legendStartRow}`).fill = {
     type: 'pattern',
     pattern: 'solid',
     fgColor: { argb: 'FFFFC7CE' }
   };
-  worksheet.getCell(`A${legendStartRow + 1}`).font = { color: { argb: 'FF9C0006' } };
-  worksheet.getCell(`B${legendStartRow + 1}`).value = '- Not available/Not a focus';
+  worksheet.getCell(`B${legendStartRow}`).font = { size: 8, color: { argb: 'FF9C0006' } };
+  worksheet.getCell(`C${legendStartRow}`).value = '= Not available/Not a focus';
+  worksheet.getCell(`C${legendStartRow}`).font = { size: 8 };
   
-  worksheet.getCell(`A${legendStartRow + 2}`).value = 'Purchased';
-  worksheet.getCell(`A${legendStartRow + 2}`).fill = {
+  worksheet.getCell(`B${legendStartRow + 1}`).value = 'Purchased';
+  worksheet.getCell(`B${legendStartRow + 1}`).fill = {
     type: 'pattern',
     pattern: 'solid',
     fgColor: { argb: 'FFC6EFCE' }
   };
-  worksheet.getCell(`A${legendStartRow + 2}`).font = { color: { argb: 'FF006100' } };
-  worksheet.getCell(`B${legendStartRow + 2}`).value = '- Focus SKU\'s already in system';
+  worksheet.getCell(`B${legendStartRow + 1}`).font = { size: 8, color: { argb: 'FF006100' } };
+  worksheet.getCell(`C${legendStartRow + 1}`).value = '= Focus SKU\'s already in system';
+  worksheet.getCell(`C${legendStartRow + 1}`).font = { size: 8 };
   
-  worksheet.getCell(`A${legendStartRow + 3}`).value = 'Recommended';
-  worksheet.getCell(`A${legendStartRow + 3}`).fill = {
+  worksheet.getCell(`B${legendStartRow + 2}`).value = 'Recommended';
+  worksheet.getCell(`B${legendStartRow + 2}`).fill = {
     type: 'pattern',
     pattern: 'solid',
     fgColor: { argb: 'FFFFEB9C' }
   };
-  worksheet.getCell(`A${legendStartRow + 3}`).font = { color: { argb: 'FF9C5700' } };
-  worksheet.getCell(`B${legendStartRow + 3}`).value = '- Not currently listed, but would like approval';
+  worksheet.getCell(`B${legendStartRow + 2}`).font = { size: 8, color: { argb: 'FF9C5700' } };
+  worksheet.getCell(`C${legendStartRow + 2}`).value = '= Not currently listed, but would like approval';
+  worksheet.getCell(`C${legendStartRow + 2}`).font = { size: 8 };
+  
+  const copyrightRow = legendStartRow + 4;
+  worksheet.getCell(`A${copyrightRow}`).value = '© 2025 CityWide Digital Pricelist Generator';
+  worksheet.mergeCells(`A${copyrightRow}:G${copyrightRow}`);
+  worksheet.getCell(`A${copyrightRow}`).font = { size: 8, italic: true, color: { argb: 'FF666666' } };
+  worksheet.getCell(`A${copyrightRow}`).alignment = { horizontal: 'center' };
   
   const buffer = await workbook.xlsx.writeBuffer();
   return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
