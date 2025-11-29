@@ -68,10 +68,12 @@ export interface BrandRegistryEntry {
 /**
  * Parse collection string to extract brand and categorization
  * If brandRegistry is provided, brands will be looked up in the registry first
+ * If productName is provided, it will also be checked against the registry
  */
 export function parseCollection(
   collectionString: string, 
-  brandRegistry?: BrandRegistryEntry[]
+  brandRegistry?: BrandRegistryEntry[],
+  productName?: string
 ): ParsedCollection | null {
   if (!collectionString) return null;
 
@@ -87,6 +89,7 @@ export function parseCollection(
   // FIRST PRIORITY: Check brand registry if provided
   let registryMatch: { brand: string; category: 'cider' | 'wine' | 'spirits' | 'nonAlc' } | null = null;
   if (brandRegistry && brandRegistry.length > 0) {
+    // Check 1: Try to match collection terms against registry (exact match)
     for (const term of originalTerms) {
       const matchedBrand = brandRegistry.find(
         b => b.brandName.toLowerCase() === term.toLowerCase()
@@ -97,6 +100,57 @@ export function parseCollection(
           category: matchedBrand.category,
         };
         break;
+      }
+    }
+    
+    // Check 2: If no collection term matched, check product name against registry
+    // This handles cases like "Ones Sparkling White" matching "Ones+ Non-Alc BC Wine"
+    if (!registryMatch && productName) {
+      const nameLower = productName.toLowerCase().trim();
+      const productFirstWord = nameLower.split(/\s+/)[0];
+      
+      // Sort by brand name length (longest first) to match most specific brands
+      const sortedBrands = [...brandRegistry].sort((a, b) => 
+        (b.brandName?.length || 0) - (a.brandName?.length || 0)
+      );
+      
+      for (const entry of sortedBrands) {
+        if (!entry.brandName) continue;
+        const brandLower = entry.brandName.toLowerCase().trim();
+        
+        // Strategy 1: Product name starts with brand (exact)
+        // e.g., product "1 Mill Road 2024 Grenache" starts with "1 mill road"
+        if (nameLower.startsWith(brandLower)) {
+          registryMatch = {
+            brand: entry.brandName,
+            category: entry.category,
+          };
+          break;
+        }
+        
+        // Strategy 2: Brand starts with product's first word
+        // e.g., registry "Ones+ Non-Alc BC Wine" starts with product first word "ones"
+        if (productFirstWord.length >= 3 && brandLower.startsWith(productFirstWord)) {
+          registryMatch = {
+            brand: entry.brandName,
+            category: entry.category,
+          };
+          break;
+        }
+        
+        // Strategy 3: Product's first word appears as a distinct word in brand
+        // Match at word boundary or end of string (for "ones+" style brands)
+        if (productFirstWord.length >= 3) {
+          const escaped = productFirstWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const wordBoundaryRegex = new RegExp(`(?:^|\\s|\\b)${escaped}[+]?(?:\\s|$|\\b)`, 'i');
+          if (wordBoundaryRegex.test(brandLower)) {
+            registryMatch = {
+              brand: entry.brandName,
+              category: entry.category,
+            };
+            break;
+          }
+        }
       }
     }
   }

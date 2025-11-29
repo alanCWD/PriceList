@@ -2149,8 +2149,17 @@ function BrandRegistryManager() {
     console.error('[BrandRegistry] Query error state:', error);
   }
 
-  // Fetch products grouped by brand from latest pricelist
-  const { data: productsByBrand } = useQuery<Record<string, any[]>>({
+  // Fetch products grouped by brand from latest pricelist (with pricelist metadata)
+  const { data: productsData } = useQuery<{
+    productsByBrand: Record<string, any[]>;
+    pricelistMeta: {
+      id: number;
+      name: string;
+      updatedAt: string;
+      totalProducts: number;
+      productsWithoutBrand: number;
+    } | null;
+  }>({
     queryKey: isSuperAdmin ? ["/api/brands/products", { companyId: selectedCompanyId }] : ["/api/brands/products"],
     queryFn: async () => {
       const url = isSuperAdmin && selectedCompanyId
@@ -2162,6 +2171,10 @@ function BrandRegistryManager() {
     },
     enabled: isSuperAdmin ? !!selectedCompanyId : true,
   });
+  
+  // Extract productsByBrand and pricelistMeta from the response
+  const productsByBrand = productsData?.productsByBrand;
+  const pricelistMeta = productsData?.pricelistMeta;
 
   // Create mutation
   const createMutation = useMutation({
@@ -2551,6 +2564,24 @@ function BrandRegistryManager() {
               <CardDescription>
                 Manage your company's brand list for consistent categorization and sorting
               </CardDescription>
+              {pricelistMeta && (
+                <div className="mt-2 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-md inline-flex items-center gap-2" data-testid="pricelist-info">
+                  <span className="font-medium">Products from:</span>
+                  <span>{pricelistMeta.name}</span>
+                  <span className="text-muted-foreground/70">|</span>
+                  <span>{pricelistMeta.totalProducts} products</span>
+                  {pricelistMeta.productsWithoutBrand > 0 && (
+                    <>
+                      <span className="text-muted-foreground/70">|</span>
+                      <span className="text-amber-600 dark:text-amber-400">
+                        {pricelistMeta.productsWithoutBrand} unmatched
+                      </span>
+                    </>
+                  )}
+                  <span className="text-muted-foreground/70">|</span>
+                  <span>Updated: {new Date(pricelistMeta.updatedAt).toLocaleDateString()}</span>
+                </div>
+              )}
             </div>
             <div className="flex gap-2">
               <Button 

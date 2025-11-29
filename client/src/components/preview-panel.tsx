@@ -59,7 +59,8 @@ export function PreviewPanel({
       // PRIORITY 2: Re-parse if ANY key field is still missing (brand, category, OR type)
       if (!product.collectionBrand || !product.collectionCategory || !product.collectionType) {
         const collectionString = product.collectionRaw || product.category || "";
-        const parsed = parseCollection(collectionString, brandRegistryEntries);
+        // Pass product name to enable brand matching from product name when collection doesn't contain brand
+        const parsed = parseCollection(collectionString, brandRegistryEntries, product.product);
         
         if (parsed) {
           // Apply parsed fields (only if not already present)

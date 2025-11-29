@@ -1212,7 +1212,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const latestPricelist = await storage.getLatestPricelistByCompanyId(targetCompanyId);
       
       if (!latestPricelist || !latestPricelist.products) {
-        return res.json({}); // Return empty object if no pricelist exists
+        return res.json({ 
+          productsByBrand: {},
+          pricelistMeta: null 
+        });
       }
 
       // Group products by brand
@@ -1236,7 +1239,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[GET /api/brands/products] Brands found: ${Object.keys(productsByBrand).length}`);
       console.log(`[GET /api/brands/products] Brand names:`, Object.keys(productsByBrand));
 
-      res.json(productsByBrand);
+      // Return products grouped by brand along with pricelist metadata
+      res.json({
+        productsByBrand,
+        pricelistMeta: {
+          id: latestPricelist.id,
+          name: latestPricelist.name,
+          updatedAt: latestPricelist.updatedAt,
+          totalProducts: latestPricelist.products.length,
+          productsWithoutBrand,
+        }
+      });
     } catch (error) {
       console.error("Error fetching products by brand:", error);
       res.status(500).json({ error: "Failed to fetch products" });

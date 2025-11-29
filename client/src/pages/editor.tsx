@@ -275,6 +275,12 @@ export default function Editor() {
         }
       }
       
+      // Get product name first (needed for brand matching and wine type extraction)
+      const productName = stripHtml(row[fieldMapping.product] || "");
+      
+      // Get SKU for reconciliation
+      const sku = stripHtml(row[fieldMapping.sku] || "");
+      
       // Parse collection field if available to extract brand name and categorization
       let category = stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : "");
       const collectionField = fieldMapping.category ? row[fieldMapping.category] : null;
@@ -292,7 +298,8 @@ export default function Editor() {
           category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
           displayOrder: b.displayOrder,
         }));
-        const parsed = parseCollection(collectionField, brandRegistryEntries);
+        // Pass productName to enable brand matching from product name when collection doesn't contain brand
+        const parsed = parseCollection(collectionField, brandRegistryEntries, productName);
         if (parsed) {
           // Use sortKey as category - it contains brand name with sorting prefix
           category = parsed.sortKey;
@@ -305,12 +312,6 @@ export default function Editor() {
           collectionRegion = parsed.region;
         }
       }
-      
-      // Get SKU for reconciliation
-      const sku = stripHtml(row[fieldMapping.sku] || "");
-      
-      // Get product name (we'll need it for fallback wine type extraction)
-      const productName = stripHtml(row[fieldMapping.product] || "");
       
       // FALLBACK: If collectionType is not set but category is wine or nonAlc,
       // try to extract wine type from product name (common for non-alcoholic wines)
@@ -461,6 +462,12 @@ export default function Editor() {
         }
       }
       
+      // Get product name first (needed for brand matching and wine type extraction)
+      const productName = stripHtml(row[fieldMapping.product] || "");
+      
+      // Get SKU for reconciliation
+      const sku = stripHtml(row[fieldMapping.sku] || "");
+      
       // Parse collection field if available to extract brand name and categorization
       let category = stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : "");
       const collectionField = fieldMapping.category ? row[fieldMapping.category] : null;
@@ -478,7 +485,8 @@ export default function Editor() {
           category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
           displayOrder: b.displayOrder,
         }));
-        const parsed = parseCollection(collectionField, brandRegistryEntries);
+        // Pass productName to enable brand matching from product name when collection doesn't contain brand
+        const parsed = parseCollection(collectionField, brandRegistryEntries, productName);
         if (parsed) {
           // Use sortKey as category - it contains brand name with sorting prefix
           category = parsed.sortKey;
@@ -491,12 +499,6 @@ export default function Editor() {
           collectionRegion = parsed.region;
         }
       }
-      
-      // Get SKU for reconciliation
-      const sku = stripHtml(row[fieldMapping.sku] || "");
-      
-      // Get product name (we'll need it for fallback wine type extraction)
-      const productName = stripHtml(row[fieldMapping.product] || "");
       
       // FALLBACK: If collectionType is not set but category is wine or nonAlc,
       // try to extract wine type from product name (common for non-alcoholic wines)
