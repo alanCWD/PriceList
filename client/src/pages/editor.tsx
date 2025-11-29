@@ -90,6 +90,7 @@ export default function Editor() {
     defaultTemplate: Template;
     defaultFieldMapping: FieldMapping | null;
     defaultBranding: CompanyBranding | null;
+    defaultSalesAgents: SalesAgent[];
   }>({
     queryKey: ['/api/companies/defaults', { companyId: companyIdForDefaults }],
     queryFn: async () => {
@@ -196,6 +197,11 @@ export default function Editor() {
       // Apply default branding only if it has actual values (not just normalized empty strings)
       if (companyDefaults.defaultBranding && companyDefaults.defaultBranding.companyName) {
         setCompanyBranding(companyDefaults.defaultBranding);
+      }
+      
+      // Apply default sales agents
+      if (companyDefaults.defaultSalesAgents && companyDefaults.defaultSalesAgents.length > 0) {
+        setSalesAgents(companyDefaults.defaultSalesAgents);
       }
     }
   }, [companyDefaults, pricelistId]);
