@@ -329,7 +329,7 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
           fill: {
             type: 'pattern',
             pattern: 'solid',
-            bgColor: { argb: 'FFFFC7CE' }
+            fgColor: { argb: 'FFFFC7CE' }
           },
           font: { color: { argb: 'FF9C0006' } }
         },
@@ -342,7 +342,7 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
           fill: {
             type: 'pattern',
             pattern: 'solid',
-            bgColor: { argb: 'FFC6EFCE' }
+            fgColor: { argb: 'FFC6EFCE' }
           },
           font: { color: { argb: 'FF006100' } }
         },
@@ -355,7 +355,7 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
           fill: {
             type: 'pattern',
             pattern: 'solid',
-            bgColor: { argb: 'FFFFEB9C' }
+            fgColor: { argb: 'FFFFEB9C' }
           },
           font: { color: { argb: 'FF9C5700' } }
         },
