@@ -171,6 +171,13 @@ export default function Editor() {
     }
   }, [loadedPricelist, user?.role]);
 
+  // Reset defaults flag when company selection changes (allows re-applying new company's defaults)
+  useEffect(() => {
+    if (pricelistId === null) { // Only for new pricelists
+      defaultsAppliedRef.current = false;
+    }
+  }, [companyIdForDefaults, pricelistId]);
+
   // Effect to apply company defaults for new pricelists (only once on initial load)
   useEffect(() => {
     // Skip if defaults already applied or if editing existing pricelist
