@@ -576,6 +576,8 @@ export default function Editor() {
     },
     onSuccess: (data: any, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/pricelists"] });
+      // Also invalidate company defaults since saving a pricelist updates them
+      queryClient.invalidateQueries({ queryKey: ["/api/companies/defaults"] });
       setCurrentPricelistId(data.id);
       setCurrentPricelistName(variables.name);
       setCurrentPricelistDescription(variables.description || "");
