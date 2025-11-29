@@ -400,7 +400,7 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
     fgColor: { argb: 'FFFFC7CE' }
   };
   worksheet.getCell(`A${legendStartRow + 1}`).font = { color: { argb: 'FF9C0006' } };
-  worksheet.getCell(`B${legendStartRow + 1}`).value = '- Product not currently available';
+  worksheet.getCell(`B${legendStartRow + 1}`).value = '- Not available/Not a focus';
   
   worksheet.getCell(`A${legendStartRow + 2}`).value = 'Purchased';
   worksheet.getCell(`A${legendStartRow + 2}`).fill = {
@@ -409,7 +409,7 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
     fgColor: { argb: 'FFC6EFCE' }
   };
   worksheet.getCell(`A${legendStartRow + 2}`).font = { color: { argb: 'FF006100' } };
-  worksheet.getCell(`B${legendStartRow + 2}`).value = '- Already in purchasing system / repeat order';
+  worksheet.getCell(`B${legendStartRow + 2}`).value = '- Focus SKU\'s already in system';
   
   worksheet.getCell(`A${legendStartRow + 3}`).value = 'Recommended';
   worksheet.getCell(`A${legendStartRow + 3}`).fill = {
@@ -418,7 +418,7 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
     fgColor: { argb: 'FFFFEB9C' }
   };
   worksheet.getCell(`A${legendStartRow + 3}`).font = { color: { argb: 'FF9C5700' } };
-  worksheet.getCell(`B${legendStartRow + 3}`).value = '- Recommended for future consideration';
+  worksheet.getCell(`B${legendStartRow + 3}`).value = '- Not currently listed, but would like approval';
   
   const buffer = await workbook.xlsx.writeBuffer();
   return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
