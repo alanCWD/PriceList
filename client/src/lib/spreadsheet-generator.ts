@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { getDisplayName, injectManualSortIndex, type BrandWithOrder } from "./collection-parser";
+import { getDisplayName, injectManualSortIndex, type ProductWithSortIndex } from "./collection-parser";
 import type { Product, CompanyBranding, BrandRegistry } from "@shared/schema";
 
 interface SpreadsheetConfig {
@@ -152,32 +152,72 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
     };
   });
   
-  const productsByBrand: Record<string, Product[]> = {};
-  visibleProducts.forEach(product => {
-    const brand = getBrandForProduct(product, brandRegistry);
+  // Apply manual sort index from brand registry FIRST (same as PDF generator)
+  const productsWithSortIndex = brandRegistry && brandRegistry.length > 0
+    ? injectManualSortIndex(visibleProducts, brandRegistry)
+    : visibleProducts;
+  
+  // Group products by brand
+  const productsByBrand: Record<string, ProductWithSortIndex[]> = {};
+  productsWithSortIndex.forEach(product => {
+    const brand = getBrandForProduct(product as Product, brandRegistry);
     if (!productsByBrand[brand]) {
       productsByBrand[brand] = [];
     }
-    productsByBrand[brand].push(product);
+    productsByBrand[brand].push(product as ProductWithSortIndex);
   });
   
-  let brandsWithOrder: BrandWithOrder[] = Object.keys(productsByBrand).map(brand => ({
-    brandName: brand,
-    products: productsByBrand[brand],
-    productOrder: null
-  }));
+  // Wine type order for automatic sorting (same as PDF generator)
+  const wineTypeOrder: Record<string, number> = {
+    'sparkling': 1,
+    'white': 2,
+    'rose': 3,
+    'rosé': 3,
+    'red': 4,
+  };
   
-  if (brandRegistry && brandRegistry.length > 0) {
-    brandsWithOrder = injectManualSortIndex(brandsWithOrder, brandRegistry);
-  }
+  // Sort products within each brand (same logic as PDF generator)
+  Object.values(productsByBrand).forEach(brandProducts => {
+    brandProducts.sort((a, b) => {
+      // PRIORITY 1: Check for manual ordering first
+      const hasManualA = typeof a.manualSortIndex === 'number';
+      const hasManualB = typeof b.manualSortIndex === 'number';
+      
+      if (hasManualA && hasManualB) {
+        return (a.manualSortIndex ?? 0) - (b.manualSortIndex ?? 0);
+      }
+      if (hasManualA && !hasManualB) return -1;
+      if (!hasManualA && hasManualB) return 1;
+      
+      // PRIORITY 2: Wine type sorting
+      const typeA = (a as any).collectionType?.toLowerCase() || '';
+      const typeB = (b as any).collectionType?.toLowerCase() || '';
+      const orderA = wineTypeOrder[typeA] || 999;
+      const orderB = wineTypeOrder[typeB] || 999;
+      
+      if (orderA !== orderB) return orderA - orderB;
+      
+      // Finally by product name
+      return (a.product || '').localeCompare(b.product || '');
+    });
+  });
   
-  brandsWithOrder.sort((a, b) => a.brandName.localeCompare(b.brandName));
+  // Sort brand groups by sortKey (same as PDF generator)
+  const sortedBrandEntries = Object.entries(productsByBrand)
+    .sort(([brandA, productsA], [brandB, productsB]) => {
+      const sortKeyA = (productsA[0] as any)?.category || brandA;
+      const sortKeyB = (productsB[0] as any)?.category || brandB;
+      return sortKeyA.localeCompare(sortKeyB);
+    });
   
   let rowIndex = 3;
-  brandsWithOrder.forEach(({ brandName, products: brandProducts }) => {
-    brandProducts.forEach(product => {
+  sortedBrandEntries.forEach(([brandName, brandProducts]) => {
+    // Get display name from brand key (strip sortKey prefix)
+    const displayBrandName = getDisplayName(brandName);
+    
+    brandProducts.forEach((product) => {
       const row = worksheet.addRow({
-        brand: getDisplayName(brandName, brandRegistry),
+        brand: displayBrandName,
         product: product.product,
         sku: product.sku,
         format: product.format,
@@ -216,7 +256,7 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
       type: 'list',
       allowBlank: true,
       formulae: ['"Unavailable,Purchased,Recommended"'],
-      showDropDown: true,
+      showInputMessage: true,
       prompt: 'Select status',
       promptTitle: 'Status'
     };

@@ -1,9 +1,10 @@
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, Printer } from "lucide-react";
+import { Download, Printer, FileSpreadsheet } from "lucide-react";
 import { PricelistDocument } from "@/components/pricelist-document";
 import { generatePDF } from "@/lib/pdf-generator";
+import { generateSpreadsheet, downloadSpreadsheet } from "@/lib/spreadsheet-generator";
 import { useToast } from "@/hooks/use-toast";
 import { parseCollection, extractWineTypeFromProductName, injectManualSortIndex, type BrandRegistryEntry } from "@/lib/collection-parser";
 import { sortBrandGroups } from "@/lib/sort-utils";
@@ -132,6 +133,40 @@ export function PreviewPanel({
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const [isGeneratingSpreadsheet, setIsGeneratingSpreadsheet] = useState(false);
+
+  const handleDownloadSpreadsheet = async () => {
+    try {
+      setIsGeneratingSpreadsheet(true);
+      const blob = await generateSpreadsheet({
+        products: filteredProducts,
+        branding,
+        pricelistName,
+        brandRegistry,
+      });
+      
+      const filename = pricelistName 
+        ? `${pricelistName.replace(/[^a-z0-9]/gi, '_')}.xlsx`
+        : 'pricelist.xlsx';
+      
+      downloadSpreadsheet(blob, filename);
+      
+      toast({
+        title: "Spreadsheet Downloaded",
+        description: "Your pricelist spreadsheet has been downloaded. Use the Status column dropdown to mark items.",
+      });
+    } catch (error) {
+      console.error('Spreadsheet generation error:', error);
+      toast({
+        title: "Download Failed",
+        description: error instanceof Error ? error.message : "Failed to generate spreadsheet. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingSpreadsheet(false);
+    }
   };
 
   // Inject manualSortIndex from brand registry productOrder
@@ -369,10 +404,10 @@ export function PreviewPanel({
           <div>
             <h3 className="font-semibold text-foreground">Preview & Export</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Review your pricelist and download as PDF or print directly
+              Download as PDF, spreadsheet (with status tracking), or print directly
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Button
               onClick={handlePrint}
               variant="outline"
@@ -381,6 +416,16 @@ export function PreviewPanel({
             >
               <Printer className="w-4 h-4" />
               Print
+            </Button>
+            <Button
+              onClick={handleDownloadSpreadsheet}
+              variant="outline"
+              data-testid="button-download-spreadsheet"
+              className="gap-2"
+              disabled={isGeneratingSpreadsheet}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              {isGeneratingSpreadsheet ? "Generating..." : "Download Spreadsheet"}
             </Button>
             <Button
               onClick={handleDownloadPDF}
