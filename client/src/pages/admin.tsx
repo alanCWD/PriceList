@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -2456,8 +2456,28 @@ function BrandRegistryManager() {
     nonAlc: "Non-Alcoholic",
   };
 
+  // Track which brands have all products hidden (for visual indication)
+  const brandsWithVisibility = useMemo(() => {
+    if (!brands) return [];
+    if (!productsByBrand) return brands.map(b => ({ ...b, hasVisibleProducts: true, productCount: 0, visibleCount: 0 }));
+    
+    return brands.map(brand => {
+      const brandProducts = productsByBrand[brand.brandName] || [];
+      const visibleCount = brandProducts.filter((p: any) => !p.isHidden).length;
+      return {
+        ...brand,
+        hasVisibleProducts: visibleCount > 0,
+        productCount: brandProducts.length,
+        visibleCount
+      };
+    });
+  }, [brands, productsByBrand]);
+  
+  // Use brandsWithVisibility for display
+  const filteredBrands = brandsWithVisibility;
+
   // Group brands by category (backend already sorts by wine → spirits → cider → nonAlc)
-  const brandsByCategory = brands?.reduce((acc, brand) => {
+  const brandsByCategory = filteredBrands?.reduce((acc: Record<BrandCategory, BrandRegistry[]>, brand: BrandRegistry) => {
     const cat = brand.category as BrandCategory;
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(brand);
@@ -2602,16 +2622,24 @@ function BrandRegistryManager() {
                     <Accordion type="multiple" className="space-y-2">
                       {categoryBrands.map((brand) => {
                         const brandProducts = productsByBrand?.[brand.brandName] || [];
+                        const brandWithVis = brand as typeof brand & { hasVisibleProducts?: boolean; visibleCount?: number; productCount?: number };
+                        const allHidden = brandWithVis.hasVisibleProducts === false && (brandWithVis.productCount || 0) > 0;
                         
                         return (
-                          <AccordionItem key={brand.id} value={brand.id.toString()} className="border rounded-lg px-4">
+                          <AccordionItem key={brand.id} value={brand.id.toString()} className={`border rounded-lg px-4 ${allHidden ? 'opacity-60 bg-muted/30' : ''}`}>
                             <div className="flex items-center justify-between py-3">
                               <AccordionTrigger className="flex-1 hover:no-underline">
-                                <div className="flex items-center gap-3 text-left">
-                                  <span className="font-medium">{brand.brandName}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    ({brandProducts.length} product{brandProducts.length !== 1 ? 's' : ''})
-                                  </span>
+                                <div className="flex items-center gap-3 text-left flex-wrap">
+                                  <span className={`font-medium ${allHidden ? 'line-through' : ''}`}>{brand.brandName}</span>
+                                  {allHidden ? (
+                                    <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded">
+                                      All hidden ({brandWithVis.productCount} product{(brandWithVis.productCount || 0) !== 1 ? 's' : ''})
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      ({brandWithVis.visibleCount || brandProducts.length} visible{brandWithVis.productCount && brandWithVis.productCount > (brandWithVis.visibleCount || 0) ? ` / ${brandWithVis.productCount} total` : ''})
+                                    </span>
+                                  )}
                                   {brand.type && (
                                     <span className="text-xs bg-muted px-2 py-1 rounded">
                                       Type: {brand.type}
