@@ -620,9 +620,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log("[POST /api/pricelists] Saving sales agents as company default");
         }
         
-        // Save QR code config as company default (if enabled)
-        if (pricelistData.qrCodeConfig && pricelistData.qrCodeConfig.enabled) {
-          companyUpdates.defaultQRCodeConfig = pricelistData.qrCodeConfig;
+        // Save QR code config as company default (if present with valid URL)
+        if (pricelistData.qrCode && pricelistData.qrCode.url) {
+          companyUpdates.defaultQRCodeConfig = pricelistData.qrCode;
           console.log("[POST /api/pricelists] Saving QR code config as company default");
         }
         
@@ -694,28 +694,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Also update company defaults with branding, sales agents, and QR code
-      const companyId = pricelist.companyId || existingPricelist.companyId;
+      // Use the updated pricelist values to ensure defaults reflect the current state
+      const companyId = pricelist.companyId;
       if (companyId) {
         const companyUpdates: any = {};
         
         // Save branding as company default (if it has meaningful data)
-        const branding = updateData.branding || pricelist.branding;
-        if (branding && (branding.companyName || branding.logoUrl || branding.headerBackgroundColor)) {
-          companyUpdates.defaultBranding = branding;
+        if (pricelist.branding && (pricelist.branding.companyName || pricelist.branding.logoUrl || pricelist.branding.headerBackgroundColor)) {
+          companyUpdates.defaultBranding = pricelist.branding;
           console.log("[PATCH /api/pricelists] Saving branding as company default");
         }
         
         // Save sales agents as company default (if any are defined)
-        const salesAgents = updateData.salesAgents || pricelist.salesAgents;
-        if (salesAgents && salesAgents.length > 0) {
-          companyUpdates.defaultSalesAgents = salesAgents;
+        if (pricelist.salesAgents && pricelist.salesAgents.length > 0) {
+          companyUpdates.defaultSalesAgents = pricelist.salesAgents;
           console.log("[PATCH /api/pricelists] Saving sales agents as company default");
         }
         
-        // Save QR code config as company default (if enabled)
-        const qrCodeConfig = updateData.qrCodeConfig || pricelist.qrCodeConfig;
-        if (qrCodeConfig && qrCodeConfig.enabled) {
-          companyUpdates.defaultQRCodeConfig = qrCodeConfig;
+        // Save QR code config as company default (if present with valid URL)
+        if (pricelist.qrCode && pricelist.qrCode.url) {
+          companyUpdates.defaultQRCodeConfig = pricelist.qrCode;
           console.log("[PATCH /api/pricelists] Saving QR code config as company default");
         }
         
