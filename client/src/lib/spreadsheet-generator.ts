@@ -18,8 +18,11 @@ function extractBrandFromProductName(productName: string, brandRegistry?: BrandR
   if (!productName) return null;
   
   const nameLower = productName.toLowerCase().trim();
+  const productFirstWord = nameLower.split(/\s+/)[0];
   
+  // If we have a brand registry, use it to find matching brands
   if (brandRegistry && brandRegistry.length > 0) {
+    // Sort by brand name length (longest first) to match most specific brands
     const sortedBrands = [...brandRegistry].sort((a, b) => 
       (b.brandName?.length || 0) - (a.brandName?.length || 0)
     );
@@ -28,15 +31,42 @@ function extractBrandFromProductName(productName: string, brandRegistry?: BrandR
       if (!entry.brandName) continue;
       const brandLower = entry.brandName.toLowerCase().trim();
       
+      // Strategy 1: Product name starts with brand (exact)
+      // e.g., product "Synchromesh 2022 Riesling" starts with "synchromesh"
       if (nameLower.startsWith(brandLower)) {
         return entry.brandName;
       }
       
-      const brandFirstWord = brandLower.split(/\s+/)[0];
-      const productFirstWord = nameLower.split(/\s+/)[0];
-      if (productFirstWord === brandFirstWord && brandFirstWord.length >= 4) {
+      // Strategy 2: Brand starts with product's first word
+      // e.g., registry "Ones+ Non-Alc BC Wine" starts with product first word "ones"
+      if (productFirstWord.length >= 3 && brandLower.startsWith(productFirstWord)) {
         return entry.brandName;
       }
+      
+      // Strategy 3: Product's first word appears as a distinct word in brand
+      // e.g., registry "Storied Wine Agency Presents Ones+" contains "ones"
+      // Match at word boundary or end of string (for "ones+" style brands)
+      if (productFirstWord.length >= 3) {
+        // Escape special regex chars in the first word, then look for word boundary or end
+        const escaped = productFirstWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Match: word boundary + firstWord + optional special chars (like +) + (word boundary OR end)
+        const wordBoundaryRegex = new RegExp(`(?:^|\\s|\\b)${escaped}[+]?(?:\\s|$|\\b)`, 'i');
+        if (wordBoundaryRegex.test(brandLower)) {
+          return entry.brandName;
+        }
+      }
+    }
+  }
+  
+  // Fallback: Extract first word as brand (for products without registry match)
+  // Only if the first word looks like a brand name
+  const fallbackSkipWords = ['wine', 'wines', 'white', 'red', 'rosé', 'rose', 'sparkling', 
+                             'cider', 'spirits', 'the', 'a', 'an', 'estate', 'winery'];
+  const firstWord = productName.split(/\s+/)[0];
+  if (firstWord && !fallbackSkipWords.includes(firstWord.toLowerCase()) && firstWord.length >= 3) {
+    // Check if it looks like a proper noun (first letter capitalized or number)
+    if (/^[A-Z0-9]/.test(firstWord)) {
+      return firstWord;
     }
   }
   
@@ -176,6 +206,19 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
     'red': 4,
   };
   
+  // Helper to extract secondary wine type from "Sparkling X" product names (same as PDF generator)
+  const getSecondaryWineType = (productName: string, primaryType: string): string => {
+    if (primaryType !== 'sparkling') return primaryType;
+    
+    const lower = productName.toLowerCase();
+    // Check for secondary types in order of priority
+    if (lower.includes('white')) return 'white';
+    if (lower.includes('rosé') || lower.includes('rose') || lower.includes('pink')) return 'rosé';
+    if (lower.includes('red')) return 'red';
+    
+    return primaryType; // fallback to primary
+  };
+  
   // Sort products within each brand (same logic as PDF generator)
   Object.values(productsByBrand).forEach(brandProducts => {
     brandProducts.sort((a, b) => {
@@ -183,19 +226,33 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
       const hasManualA = typeof a.manualSortIndex === 'number';
       const hasManualB = typeof b.manualSortIndex === 'number';
       
+      // Both have manual order - sort by manualSortIndex
       if (hasManualA && hasManualB) {
         return (a.manualSortIndex ?? 0) - (b.manualSortIndex ?? 0);
       }
+      
+      // Only A has manual order - A comes first
       if (hasManualA && !hasManualB) return -1;
+      
+      // Only B has manual order - B comes first
       if (!hasManualA && hasManualB) return 1;
       
-      // PRIORITY 2: Wine type sorting
+      // PRIORITY 2: Wine type sorting with secondary type extraction (same as PDF)
       const typeA = (a as any).collectionType?.toLowerCase() || '';
       const typeB = (b as any).collectionType?.toLowerCase() || '';
-      const orderA = wineTypeOrder[typeA] || 999;
-      const orderB = wineTypeOrder[typeB] || 999;
+      
+      // For sparkling products, use secondary type from product name
+      const effectiveTypeA = getSecondaryWineType(a.product || '', typeA);
+      const effectiveTypeB = getSecondaryWineType(b.product || '', typeB);
+      
+      const orderA = wineTypeOrder[effectiveTypeA] || 999;
+      const orderB = wineTypeOrder[effectiveTypeB] || 999;
       
       if (orderA !== orderB) return orderA - orderB;
+      
+      // Tertiary sort: prioritize sparkling variants over non-sparkling when effective type is the same
+      if (typeA === 'sparkling' && typeB !== 'sparkling') return -1;
+      if (typeA !== 'sparkling' && typeB === 'sparkling') return 1;
       
       // Finally by product name
       return (a.product || '').localeCompare(b.product || '');
