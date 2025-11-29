@@ -172,10 +172,10 @@ export default function Dashboard() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {pricelists.map((pricelist) => {
               // Parse and validate JSONB fields using Zod schemas
-              const products = parseJsonField<Product[]>(
+              const products = parseJsonField(
                 pricelist.products, 
                 z.array(productSchema), 
-                []
+                [] as Product[]
               );
               const branding = parseJsonField<CompanyBranding>(
                 pricelist.branding,

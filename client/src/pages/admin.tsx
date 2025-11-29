@@ -2175,6 +2175,13 @@ function BrandRegistryManager() {
   // Extract productsByBrand and pricelistMeta from the response
   const productsByBrand = productsData?.productsByBrand;
   const pricelistMeta = productsData?.pricelistMeta;
+  
+  // Debug logging for Brand Registry products
+  console.log('[BrandRegistry] productsByBrand:', productsByBrand);
+  console.log('[BrandRegistry] productsByBrand keys:', productsByBrand ? Object.keys(productsByBrand) : 'N/A');
+  console.log('[BrandRegistry] pricelistMeta:', pricelistMeta);
+  console.log('[BrandRegistry] brands:', brands);
+  console.log('[BrandRegistry] brands names:', brands?.map(b => b.brandName));
 
   // Create mutation
   const createMutation = useMutation({
