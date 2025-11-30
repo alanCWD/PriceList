@@ -52,8 +52,13 @@ The system features a robust, database-centric security model where all authoriz
 - **Role-Based UX**: Tailored interfaces for Admins (full dashboard) and Clients (simplified landing page).
 - **Inline CSV Upload**: Allows clients to easily update pricelists.
 - **CSV-Based Field Mapping**: Admins configure default mappings that clients inherit.
-- **Brand Registry System**: Company-scoped master brand list for explicit brand categorization and consistent product grouping. It is database-driven with category assignment, optional type field, display order, and manual product ordering. During CSV upload, brands are looked up in the registry first.
-  - **Manual Product Ordering**: Admins can drag-and-drop to manually order products within each brand. This ordering is persisted in the `productOrder` field of the brand registry and takes priority over automatic wine type sorting in PDFs.
+- **Brand Registry System**: Company-scoped master brand list for explicit brand categorization and consistent product grouping. It is database-driven with category assignment, optional type field, display order, and manual product ordering.
+  - **SKU-Based Brand Matching**: The brand registry uses a two-phase workflow:
+    1. **Initial Upload (Seeding)**: When the registry is empty, heuristic parsing extracts brands from CSV collection fields. SKUs from matched products are automatically assigned to their detected brands.
+    2. **Subsequent Uploads**: Products are matched to brands via SKU lookup first (primary). Unmatched SKUs are flagged for admin review.
+  - **SKU Management**: Brands store an array of SKUs (`skus` column). Admins can bulk assign/remove SKUs via the Unassigned Products section in the Brand Registry Manager.
+  - **Unassigned Products Queue**: Products with SKUs not mapped to any brand appear in a dedicated "Unassigned Products" section, with checkbox selection and brand assignment controls.
+  - **Manual Product Ordering**: Admins can drag-and-drop to manually order products within each brand. Ordering is persisted as SKUs in the `productOrder` field (not product IDs), ensuring ordering survives across CSV re-uploads.
   - **Client-Accessible Ordering Endpoint**: The `/api/brands/ordering` endpoint provides lightweight ordering data (brandName + productOrder) to all authenticated users, enabling clients to generate PDFs with correct manual ordering without exposing full admin-only brand registry data.
   - **Cache-Busting Headers**: The ordering endpoint uses `no-cache` headers to prevent HTTP caching issues that could serve stale product ordering data.
 - **Intelligent Collection Parsing & Standardization**: Parses Wix CSV "collection" fields to extract brand names and product categories, handling Canadian wine industry categorization (Cider → Wine → Spirits → Non-Alc). It includes automatic standardization, wine type and region recognition, and a "Review" tab for manual overrides. Product names are prioritized for wine type normalization to ensure correct sorting.
