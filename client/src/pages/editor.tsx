@@ -84,6 +84,11 @@ export default function Editor() {
   console.log('[Editor] Company ID for defaults:', companyIdForDefaults);
   console.log('[Editor] Pricelist ID:', pricelistId);
   console.log('[Editor] Companies loaded:', companies?.length);
+  console.log('[Editor] Current branding state:', JSON.stringify({
+    companyName: companyBranding.companyName,
+    headerBgColor: companyBranding.headerBackgroundColor,
+    headerTextColor: companyBranding.headerTextColor,
+  }));
 
   // Load company defaults for new pricelists
   const { data: companyDefaults, isLoading: isLoadingDefaults, error: defaultsError } = useQuery<{
@@ -180,16 +185,24 @@ export default function Editor() {
     }
   }, [companyIdForDefaults, pricelistId]);
 
-  // Effect to apply company defaults for new pricelists (only once on initial load)
+  // Effect to apply company defaults for new pricelists
+  // Re-runs when company selection changes (via companyIdForDefaults dependency)
   useEffect(() => {
     console.log('[Apply Defaults] ===== DEFAULTS EFFECT =====');
     console.log('[Apply Defaults] defaultsAppliedRef:', defaultsAppliedRef.current);
     console.log('[Apply Defaults] pricelistId:', pricelistId);
+    console.log('[Apply Defaults] companyIdForDefaults:', companyIdForDefaults);
     console.log('[Apply Defaults] companyDefaults:', companyDefaults);
     
-    // Skip if defaults already applied or if editing existing pricelist
-    if (defaultsAppliedRef.current || pricelistId) {
-      console.log('[Apply Defaults] SKIPPING - defaults already applied or editing existing pricelist');
+    // Skip if editing existing pricelist
+    if (pricelistId) {
+      console.log('[Apply Defaults] SKIPPING - editing existing pricelist');
+      return;
+    }
+    
+    // Skip if defaults already applied for this specific company (prevents overwriting user edits)
+    if (defaultsAppliedRef.current) {
+      console.log('[Apply Defaults] SKIPPING - defaults already applied for this company');
       return;
     }
     
@@ -236,7 +249,7 @@ export default function Editor() {
     } else {
       console.log('[Apply Defaults] No companyDefaults available yet');
     }
-  }, [companyDefaults, pricelistId]);
+  }, [companyDefaults, pricelistId, companyIdForDefaults]);
 
   // Effect to handle company defaults error
   useEffect(() => {

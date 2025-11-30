@@ -108,31 +108,82 @@ export function parseCollection(
     if (!registryMatch && productName) {
       const nameLower = productName.toLowerCase().trim();
       const productWords = nameLower.split(/\s+/);
-      const productFirstWord = productWords[0];
       
       // Helper to normalize strings for comparison (remove punctuation but keep alphanumeric)
       const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
       const normalizedProductName = normalize(nameLower);
-      const normalizedFirstWord = normalize(productFirstWord);
       const normalizedProductWords = normalizedProductName.split(/\s+/);
       
       // Helper to extract words from brand (stripped of punctuation)
       const getBrandWords = (brand: string) => normalize(brand).split(/\s+/);
       
-      // Sort brands by normalized length (longest first) - more specific brands win ties
+      // TRAILING descriptor/suffix words that product names typically don't include
+      // These are stripped from the END of brand names only
+      const trailingDescriptorWords = new Set([
+        'wine', 'wines', 'winery', 'vineyards', 'vineyard', 'estates', 'estate', 'cellars', 'cellar',
+        'spirits', 'spirit', 'distillery', 'distilling',
+        'cider', 'cidery',
+        'brewing', 'brewery', 'beer', 'beers',
+        'co', 'company', 'inc', 'ltd',
+      ]);
+      
+      // Middle filler words that can be ignored during matching (but kept if at start)
+      const fillerWords = new Set(['and', 'the', 'of', 'bc', 'okanagan', 'island', 'valley', 'non', 'alc', 'alcoholic']);
+      
+      // Helper to get identity words from brand:
+      // 1. Strip trailing descriptor words (winery, wines, estate, etc.)
+      // 2. Keep leading words (even "The" or "And" if they start the name)
+      // 3. Remove middle filler words
+      const getBrandIdentityWords = (brand: string) => {
+        const words = getBrandWords(brand);
+        if (words.length === 0) return [];
+        
+        // First pass: remove trailing descriptor words
+        let endIndex = words.length;
+        while (endIndex > 0 && trailingDescriptorWords.has(words[endIndex - 1])) {
+          endIndex--;
+        }
+        const trimmedWords = words.slice(0, endIndex);
+        
+        // If all words were descriptors, return the first word as identity
+        if (trimmedWords.length === 0) {
+          return words.slice(0, 1);
+        }
+        
+        // Second pass: keep leading word(s), remove filler words from middle
+        // Keep the first word unconditionally (it's the brand start)
+        const result: string[] = [trimmedWords[0]];
+        for (let i = 1; i < trimmedWords.length; i++) {
+          if (!fillerWords.has(trimmedWords[i])) {
+            result.push(trimmedWords[i]);
+          }
+        }
+        
+        return result;
+      };
+      
+      // Sort brands by their identity words length (longest first) - more specific brands win
       const sortedBrands = [...brandRegistry]
         .filter(b => !!b.brandName)
-        .sort((a, b) => normalize(b.brandName).length - normalize(a.brandName).length);
+        .sort((a, b) => {
+          const aIdentity = getBrandIdentityWords(a.brandName).join(' ');
+          const bIdentity = getBrandIdentityWords(b.brandName).join(' ');
+          return bIdentity.length - aIdentity.length;
+        });
       
-      // Strategy 1: Exact brand match at start of product name (highest priority)
-      // e.g., product "1 Mill Road 2024 Grenache" starts with "1 Mill Road"
+      // Strategy 1: Match product name against brand's IDENTITY words (stripped of descriptors)
+      // e.g., "Mt. Boucherie 2024 Chasselas" matches "Mt. Boucherie Estate Winery"
+      // because identity words are ["mt", "boucherie"] and product starts with "mt boucherie"
       for (const entry of sortedBrands) {
-        const normalizedBrand = normalize(entry.brandName);
+        const brandIdentityWords = getBrandIdentityWords(entry.brandName);
+        if (brandIdentityWords.length === 0) continue;
         
-        // Check if product name starts with the normalized brand name
-        if (normalizedProductName.startsWith(normalizedBrand)) {
+        const brandIdentityString = brandIdentityWords.join(' ');
+        
+        // Check if product name starts with the brand identity string
+        if (normalizedProductName.startsWith(brandIdentityString)) {
           // Verify the match ends at a word boundary (space or end of string)
-          const afterMatch = normalizedProductName.slice(normalizedBrand.length);
+          const afterMatch = normalizedProductName.slice(brandIdentityString.length);
           if (afterMatch === '' || afterMatch.startsWith(' ')) {
             registryMatch = {
               brand: entry.brandName,
@@ -143,62 +194,48 @@ export function parseCollection(
         }
       }
       
-      // Strategy 2: First word match - for brands where the first word is the real brand identifier
-      // e.g., "Ones Sparkling White" matches "Ones+ Non-Alc BC Wine" because:
-      //   - "ones" (product first word) matches "ones" (brand first word)
-      //   - Brand's remaining words ("non", "alc", "bc", "wine") are descriptors/category words
-      // 
-      // This strategy avoids matching multi-word brands by their first word alone,
-      // which would cause "Field House 2024" to incorrectly match "Field House Brewing"
-      // when "Field House" is also in the registry.
-      
-      // Descriptor words that don't count toward brand identity
-      const descriptorWords = new Set([
-        'wine', 'wines', 'winery', 'vineyards', 'vineyard', 'estates', 'estate', 'cellars', 'cellar',
-        'spirits', 'spirit', 'distillery', 'distilling',
-        'cider', 'cidery',
-        'brewing', 'brewery', 'beer', 'beers',
-        'bc', 'okanagan', 'island', 'valley',
-        'non', 'alc', 'alcoholic',
-        'and', 'the', 'of', 'co', 'company',
-      ]);
-      
-      if (!registryMatch && normalizedFirstWord.length >= 3) {
-        // Collect all potential matches, then pick the best one
-        const potentialMatches: { entry: typeof sortedBrands[0]; score: number }[] = [];
+      // Strategy 2: First word(s) match with identity word comparison
+      // For brands where products use abbreviated names
+      // e.g., "Ones Sparkling White" matches "Ones+ Non-Alc BC Wine"
+      if (!registryMatch && normalizedProductWords.length > 0) {
+        const potentialMatches: { entry: typeof sortedBrands[0]; matchedWords: number; score: number }[] = [];
         
         for (const entry of sortedBrands) {
-          const brandWords = getBrandWords(entry.brandName);
-          const brandFirstWord = brandWords[0];
+          const brandIdentityWords = getBrandIdentityWords(entry.brandName);
+          if (brandIdentityWords.length === 0) continue;
           
-          if (brandFirstWord !== normalizedFirstWord) continue;
+          // Count how many consecutive words match from the start
+          let matchedWords = 0;
+          for (let i = 0; i < Math.min(normalizedProductWords.length, brandIdentityWords.length); i++) {
+            if (normalizedProductWords[i] === brandIdentityWords[i]) {
+              matchedWords++;
+            } else {
+              break;
+            }
+          }
           
-          // Get brand words that aren't descriptors (these are the "identity" words)
-          const brandIdentityWords = brandWords.filter(w => !descriptorWords.has(w));
-          
-          // Case 1: Brand effectively has only one identity word (rest are descriptors)
-          // e.g., "Ones+ Non-Alc BC Wine" → identity word is just "ones"
-          const isSingleIdentityBrand = brandIdentityWords.length === 1;
-          
-          // Case 2: Product's first two words match brand's first two words
-          // e.g., "Field House 2024" matches "Field House" (not "Field House Brewing")
-          const productSecondWord = normalizedProductWords.length > 1 ? normalizedProductWords[1] : null;
-          const brandSecondWord = brandWords.length > 1 ? brandWords[1] : null;
-          const firstTwoWordsMatch = productSecondWord && brandSecondWord && productSecondWord === brandSecondWord;
-          
-          if (isSingleIdentityBrand || firstTwoWordsMatch) {
-            // Score: prefer brands with fewer total words (more specific match)
-            // Lower score = better match
+          // Only consider if at least the first word matches
+          if (matchedWords > 0) {
+            // Score: prefer more matched words, then fewer total identity words (more specific)
+            // Higher matchedWords is better, lower identity word count is better
             potentialMatches.push({
               entry,
-              score: brandWords.length,
+              matchedWords,
+              score: brandIdentityWords.length - matchedWords, // Lower is better
             });
           }
         }
         
-        // Pick the best match (fewest words = most specific)
+        // Pick the best match:
+        // 1. Most matched words
+        // 2. Fewest remaining identity words (more specific match)
         if (potentialMatches.length > 0) {
-          potentialMatches.sort((a, b) => a.score - b.score);
+          potentialMatches.sort((a, b) => {
+            if (b.matchedWords !== a.matchedWords) {
+              return b.matchedWords - a.matchedWords; // More matched words first
+            }
+            return a.score - b.score; // Lower score (fewer unmatched) first
+          });
           const bestMatch = potentialMatches[0];
           registryMatch = {
             brand: bestMatch.entry.brandName,
