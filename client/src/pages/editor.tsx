@@ -345,42 +345,47 @@ export default function Editor() {
         collectionType = extractWineTypeFromProductName(productName);
       }
       
-      // FALLBACK: If collectionBrand is not set, extract brand from first word(s) of product name
-      // Most products are named starting with the brand name (e.g., "Synchromesh 2022 Riesling")
-      // Handle numeric prefixes like "1 Mill Road" by taking first two words if first is short/numeric
+      // FALLBACK: If collectionBrand is not set, match product name against brand registry
+      // Products are named starting with the brand name (e.g., "Mt. Bouchery 2024 Pinot Noir")
       if (!collectionBrand && productName) {
-        const words = productName.split(/\s+/).filter(w => w.trim());
-        let brandCandidate = words[0]?.trim() || '';
+        const brandRegistryEntries = (brandRegistry || []);
+        const productNameLower = productName.toLowerCase().trim();
         
-        // If first word is very short (1 char) or purely numeric, include second word
-        // E.g., "1 Mill Road 2024 Grenache" → "1 Mill" as brand candidate
-        if (brandCandidate.length === 1 || /^\d+$/.test(brandCandidate)) {
-          if (words.length > 1) {
-            brandCandidate = `${words[0]} ${words[1]}`.trim();
+        // PHASE 1: Check if product name starts with any registry brand (longest match first)
+        // Sort registry by brand name length descending so "Mt. Bouchery" matches before "Mt"
+        const sortedBrands = [...brandRegistryEntries]
+          .filter(b => b.brandName)
+          .sort((a, b) => b.brandName.length - a.brandName.length);
+        
+        for (const brand of sortedBrands) {
+          const brandNameLower = brand.brandName.toLowerCase();
+          // Check if product name starts with this brand name
+          if (productNameLower.startsWith(brandNameLower)) {
+            // Verify it's a word boundary (space, punctuation, or end of string after brand)
+            const afterBrand = productNameLower.slice(brandNameLower.length);
+            if (afterBrand === '' || /^[\s\-\.,]/.test(afterBrand)) {
+              collectionBrand = brand.brandName;
+              if (!collectionCategory) {
+                collectionCategory = brand.category as 'cider' | 'wine' | 'spirits' | 'nonAlc';
+              }
+              break;
+            }
           }
         }
         
-        if (brandCandidate) {
-          // Try to match against brand registry for proper capitalization/naming
-          const brandRegistryEntries = (brandRegistry || []);
-          const brandCandidateLower = brandCandidate.toLowerCase();
+        // PHASE 2: Only fall back to first-word extraction if no registry match
+        if (!collectionBrand) {
+          const words = productName.split(/\s+/).filter(w => w.trim());
+          let brandCandidate = words[0]?.trim() || '';
           
-          // Find best matching brand from registry
-          const matchedBrand = brandRegistryEntries.find(b => {
-            const brandNameLower = b.brandName.toLowerCase();
-            // Check if product starts with registry brand name or vice versa
-            return brandNameLower.startsWith(brandCandidateLower) ||
-                   brandCandidateLower.startsWith(brandNameLower.split(/\s+/)[0]);
-          });
-          
-          if (matchedBrand) {
-            collectionBrand = matchedBrand.brandName;
-            // Also set category from matched brand if not already set
-            if (!collectionCategory) {
-              collectionCategory = matchedBrand.category as 'cider' | 'wine' | 'spirits' | 'nonAlc';
+          // If first word is very short (1 char) or purely numeric, include more words
+          if (brandCandidate.length === 1 || /^\d+$/.test(brandCandidate)) {
+            if (words.length > 1) {
+              brandCandidate = `${words[0]} ${words[1]}`.trim();
             }
-          } else {
-            // Use candidate as brand name (will show as unmatched in Brand Registry)
+          }
+          
+          if (brandCandidate) {
             collectionBrand = brandCandidate;
           }
         }
@@ -573,42 +578,47 @@ export default function Editor() {
         collectionType = extractWineTypeFromProductName(productName);
       }
       
-      // FALLBACK: If collectionBrand is not set, extract brand from first word(s) of product name
-      // Most products are named starting with the brand name (e.g., "Synchromesh 2022 Riesling")
-      // Handle numeric prefixes like "1 Mill Road" by taking first two words if first is short/numeric
+      // FALLBACK: If collectionBrand is not set, match product name against brand registry
+      // Products are named starting with the brand name (e.g., "Mt. Bouchery 2024 Pinot Noir")
       if (!collectionBrand && productName) {
-        const words = productName.split(/\s+/).filter(w => w.trim());
-        let brandCandidate = words[0]?.trim() || '';
+        const brandRegistryEntries = (brandRegistry || []);
+        const productNameLower = productName.toLowerCase().trim();
         
-        // If first word is very short (1 char) or purely numeric, include second word
-        // E.g., "1 Mill Road 2024 Grenache" → "1 Mill" as brand candidate
-        if (brandCandidate.length === 1 || /^\d+$/.test(brandCandidate)) {
-          if (words.length > 1) {
-            brandCandidate = `${words[0]} ${words[1]}`.trim();
+        // PHASE 1: Check if product name starts with any registry brand (longest match first)
+        // Sort registry by brand name length descending so "Mt. Bouchery" matches before "Mt"
+        const sortedBrands = [...brandRegistryEntries]
+          .filter(b => b.brandName)
+          .sort((a, b) => b.brandName.length - a.brandName.length);
+        
+        for (const brand of sortedBrands) {
+          const brandNameLower = brand.brandName.toLowerCase();
+          // Check if product name starts with this brand name
+          if (productNameLower.startsWith(brandNameLower)) {
+            // Verify it's a word boundary (space, punctuation, or end of string after brand)
+            const afterBrand = productNameLower.slice(brandNameLower.length);
+            if (afterBrand === '' || /^[\s\-\.,]/.test(afterBrand)) {
+              collectionBrand = brand.brandName;
+              if (!collectionCategory) {
+                collectionCategory = brand.category as 'cider' | 'wine' | 'spirits' | 'nonAlc';
+              }
+              break;
+            }
           }
         }
         
-        if (brandCandidate) {
-          // Try to match against brand registry for proper capitalization/naming
-          const brandRegistryEntries = (brandRegistry || []);
-          const brandCandidateLower = brandCandidate.toLowerCase();
+        // PHASE 2: Only fall back to first-word extraction if no registry match
+        if (!collectionBrand) {
+          const words = productName.split(/\s+/).filter(w => w.trim());
+          let brandCandidate = words[0]?.trim() || '';
           
-          // Find best matching brand from registry
-          const matchedBrand = brandRegistryEntries.find(b => {
-            const brandNameLower = b.brandName.toLowerCase();
-            // Check if product starts with registry brand name or vice versa
-            return brandNameLower.startsWith(brandCandidateLower) ||
-                   brandCandidateLower.startsWith(brandNameLower.split(/\s+/)[0]);
-          });
-          
-          if (matchedBrand) {
-            collectionBrand = matchedBrand.brandName;
-            // Also set category from matched brand if not already set
-            if (!collectionCategory) {
-              collectionCategory = matchedBrand.category as 'cider' | 'wine' | 'spirits' | 'nonAlc';
+          // If first word is very short (1 char) or purely numeric, include more words
+          if (brandCandidate.length === 1 || /^\d+$/.test(brandCandidate)) {
+            if (words.length > 1) {
+              brandCandidate = `${words[0]} ${words[1]}`.trim();
             }
-          } else {
-            // Use candidate as brand name (will show as unmatched in Brand Registry)
+          }
+          
+          if (brandCandidate) {
             collectionBrand = brandCandidate;
           }
         }
