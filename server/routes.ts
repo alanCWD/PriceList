@@ -1044,28 +1044,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Also persist product order to brand registry for each brand
+        // Store SKUs (not product IDs) because SKUs are stable across CSV uploads
         // Group products by brand to save productOrder per brand
-        const productsByBrand: Record<string, string[]> = {};
+        const skusByBrand: Record<string, string[]> = {};
         req.body.reorderedProducts.forEach((product: any) => {
           const brandName = product.collectionBrand;
-          if (brandName) {
-            if (!productsByBrand[brandName]) {
-              productsByBrand[brandName] = [];
+          const sku = product.sku;
+          if (brandName && sku) {
+            if (!skusByBrand[brandName]) {
+              skusByBrand[brandName] = [];
             }
-            productsByBrand[brandName].push(product.id);
+            skusByBrand[brandName].push(sku);
           }
         });
         
-        // Update productOrder for each brand in registry
-        for (const [brandName, productIds] of Object.entries(productsByBrand)) {
+        // Update productOrder for each brand in registry (stores SKUs now)
+        for (const [brandName, skuList] of Object.entries(skusByBrand)) {
           try {
             // Find existing brand registry entry
             const existingBrand = await storage.getBrandByName(targetCompanyId, brandName);
             
             if (existingBrand) {
-              // Update existing brand with productOrder
+              // Update existing brand with productOrder (array of SKUs)
               await storage.updateBrand(existingBrand.id, {
-                productOrder: productIds,
+                productOrder: skuList,
               });
             }
             // If brand doesn't exist in registry, we don't create it automatically

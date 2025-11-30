@@ -538,12 +538,16 @@ export function getDisplayName(sortKey: string): string {
 /**
  * Inject manualSortIndex onto products based on brand registry productOrder
  * 
+ * productOrder stores SKUs (not product IDs) because SKUs are stable across CSV uploads.
+ * This allows manual ordering to persist when a new CSV is uploaded.
+ * 
  * @param products - Array of products to process
- * @param brandRegistry - Brand registry data with productOrder field
+ * @param brandRegistry - Brand registry data with productOrder field (contains SKUs)
  * @returns Products with manualSortIndex injected (undefined if no manual order set)
  */
 export interface ProductWithSortIndex {
   id: string;
+  sku: string;
   category: string;
   product: string;
   collectionBrand?: string;
@@ -553,7 +557,7 @@ export interface ProductWithSortIndex {
 
 export interface BrandWithOrder {
   brandName: string;
-  productOrder?: string[] | null;
+  productOrder?: string[] | null; // Array of SKUs in desired order
   [key: string]: any;
 }
 
@@ -561,7 +565,7 @@ export function injectManualSortIndex(
   products: any[],
   brandRegistry: BrandWithOrder[]
 ): ProductWithSortIndex[] {
-  // Create lookup map: brandName -> productOrder array
+  // Create lookup map: brandName -> productOrder array (of SKUs)
   const brandOrderMap = new Map<string, string[]>();
   
   brandRegistry.forEach(brand => {
@@ -570,15 +574,17 @@ export function injectManualSortIndex(
     }
   });
   
-  // Inject manualSortIndex onto each product
+  // Inject manualSortIndex onto each product based on SKU match
   return products.map(product => {
     const brandName = product.collectionBrand;
+    const sku = product.sku;
     
-    if (brandName && brandOrderMap.has(brandName)) {
+    if (brandName && sku && brandOrderMap.has(brandName)) {
       const productOrder = brandOrderMap.get(brandName)!;
-      const sortIndex = productOrder.indexOf(product.id);
+      // Look up by SKU (stable across uploads) instead of product ID
+      const sortIndex = productOrder.indexOf(sku);
       
-      // Only set manualSortIndex if product is found in the order array
+      // Only set manualSortIndex if product SKU is found in the order array
       if (sortIndex !== -1) {
         return {
           ...product,
@@ -587,7 +593,7 @@ export function injectManualSortIndex(
       }
     }
     
-    // No manual order set for this product's brand, or product not in order array
+    // No manual order set for this product's brand, or product SKU not in order array
     return product;
   });
 }
