@@ -1256,6 +1256,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get unassigned products (SKUs not mapped to any brand in registry)
+  // Returns products from latest pricelist that have SKUs not found in any brand's skus array
+  app.get("/api/brands/unassigned", isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Determine target company
+      let targetCompanyId: number;
+      if (user.role === "superAdmin" && req.query.companyId) {
+        targetCompanyId = parseInt(req.query.companyId as string);
+        if (isNaN(targetCompanyId)) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+      } else {
+        const effectiveCompanyId = getEffectiveCompanyId(req, user);
+        if (!effectiveCompanyId) {
+          return res.status(400).json({ error: "No company associated with user" });
+        }
+        targetCompanyId = effectiveCompanyId;
+      }
+
+      // Get brand registry with SKU mappings
+      const brands = await storage.getBrandsByCompanyId(targetCompanyId);
+      
+      // Build a Set of all assigned SKUs
+      const assignedSkus = new Set<string>();
+      for (const brand of brands) {
+        if (brand.skus && Array.isArray(brand.skus)) {
+          brand.skus.forEach(sku => assignedSkus.add(sku));
+        }
+      }
+
+      // Get latest pricelist
+      const latestPricelist = await storage.getLatestPricelistByCompanyId(targetCompanyId);
+      
+      if (!latestPricelist || !latestPricelist.products) {
+        return res.json({ 
+          unassignedProducts: [],
+          totalProducts: 0,
+          unassignedCount: 0,
+          registryHasSKUs: assignedSkus.size > 0,
+        });
+      }
+
+      // Find products with SKUs not in registry
+      const unassignedProducts: Array<{
+        sku: string;
+        product: string;
+        collectionBrand?: string;
+        collectionCategory?: string;
+      }> = [];
+
+      latestPricelist.products.forEach((product: any) => {
+        if (product.sku && !assignedSkus.has(product.sku)) {
+          unassignedProducts.push({
+            sku: product.sku,
+            product: product.product,
+            collectionBrand: product.collectionBrand,
+            collectionCategory: product.collectionCategory,
+          });
+        }
+      });
+
+      console.log(`[GET /api/brands/unassigned] Total products: ${latestPricelist.products.length}`);
+      console.log(`[GET /api/brands/unassigned] Assigned SKUs in registry: ${assignedSkus.size}`);
+      console.log(`[GET /api/brands/unassigned] Unassigned products: ${unassignedProducts.length}`);
+
+      res.json({
+        unassignedProducts,
+        totalProducts: latestPricelist.products.length,
+        unassignedCount: unassignedProducts.length,
+        registryHasSKUs: assignedSkus.size > 0,
+        brands: brands.map(b => ({
+          id: b.id,
+          brandName: b.brandName,
+          category: b.category,
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching unassigned products:", error);
+      res.status(500).json({ error: "Failed to fetch unassigned products" });
+    }
+  });
+
   // Get brand product ordering for current user's company (Client-accessible for PDF generation)
   app.get("/api/brands/ordering", isAuthenticated, async (req: any, res) => {
     try {

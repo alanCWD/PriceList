@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical, ArrowUpDown, Eye, EyeOff } from "lucide-react";
+import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical, ArrowUpDown, Eye, EyeOff, AlertCircle, Link as LinkIcon } from "lucide-react";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { CSVUpload } from "@/components/csv-upload";
 import { ColorPicker } from "@/components/color-picker";
@@ -2175,6 +2175,39 @@ function BrandRegistryManager() {
   // Extract productsByBrand and pricelistMeta from the response
   const productsByBrand = productsData?.productsByBrand;
   const pricelistMeta = productsData?.pricelistMeta;
+
+  // Fetch unassigned products (SKUs not mapped to any brand)
+  const { data: unassignedData } = useQuery<{
+    unassignedProducts: Array<{
+      sku: string;
+      product: string;
+      collectionBrand?: string;
+      collectionCategory?: string;
+    }>;
+    totalProducts: number;
+    unassignedCount: number;
+    registryHasSKUs: boolean;
+    brands: Array<{
+      id: number;
+      brandName: string;
+      category: string;
+    }>;
+  }>({
+    queryKey: isSuperAdmin ? ["/api/brands/unassigned", { companyId: selectedCompanyId }] : ["/api/brands/unassigned"],
+    queryFn: async () => {
+      const url = isSuperAdmin && selectedCompanyId
+        ? `/api/brands/unassigned?companyId=${selectedCompanyId}`
+        : "/api/brands/unassigned";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch unassigned products");
+      return res.json();
+    },
+    enabled: isSuperAdmin ? !!selectedCompanyId : true,
+  });
+  
+  // State for assigning products to brands
+  const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
+  const [assignToBrandId, setAssignToBrandId] = useState<number | null>(null);
   
   // Debug logging for Brand Registry products
   console.log('[BrandRegistry] productsByBrand:', productsByBrand);
@@ -2318,6 +2351,32 @@ function BrandRegistryManager() {
       toast({ 
         title: "Error", 
         description: error.message || "Failed to regenerate sort keys", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Assign SKUs to brand mutation
+  const assignSkusMutation = useMutation({
+    mutationFn: async ({ brandId, skus }: { brandId: number; skus: string[] }) => {
+      const res = await apiRequest("POST", `/api/brands/${brandId}/skus`, { skus });
+      return await res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/unassigned"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/sku-mappings"] });
+      toast({ 
+        title: "Products assigned!", 
+        description: `${variables.skus.length} product(s) assigned to brand` 
+      });
+      setSelectedSkus(new Set());
+      setAssignToBrandId(null);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to assign products to brand", 
         variant: "destructive" 
       });
     },
@@ -2842,6 +2901,135 @@ function BrandRegistryManager() {
           )}
         </CardContent>
       </Card>
+
+      {/* Unassigned Products Section */}
+      {unassignedData && unassignedData.unassignedCount > 0 && (
+        <Card className="border-amber-200 dark:border-amber-800">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-amber-500" />
+                <CardTitle className="text-lg">Unassigned Products</CardTitle>
+              </div>
+              <span className="text-sm bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-full">
+                {unassignedData.unassignedCount} product{unassignedData.unassignedCount !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <CardDescription>
+              These products have SKUs not mapped to any brand. Select products and assign them to a brand.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Assignment controls */}
+            {selectedSkus.size > 0 && (
+              <div className="flex items-center gap-4 mb-4 p-3 bg-muted rounded-lg">
+                <span className="text-sm font-medium">
+                  {selectedSkus.size} selected
+                </span>
+                <Select
+                  value={assignToBrandId?.toString() || ""}
+                  onValueChange={(val) => setAssignToBrandId(parseInt(val))}
+                >
+                  <SelectTrigger className="w-64" data-testid="select-assign-brand">
+                    <SelectValue placeholder="Select brand to assign" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unassignedData.brands.map((brand) => (
+                      <SelectItem key={brand.id} value={brand.id.toString()}>
+                        {brand.brandName} ({brand.category})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={() => {
+                    if (assignToBrandId) {
+                      assignSkusMutation.mutate({
+                        brandId: assignToBrandId,
+                        skus: Array.from(selectedSkus),
+                      });
+                    }
+                  }}
+                  disabled={!assignToBrandId || assignSkusMutation.isPending}
+                  data-testid="button-assign-skus"
+                >
+                  <LinkIcon className="w-4 h-4 mr-2" />
+                  {assignSkusMutation.isPending ? "Assigning..." : "Assign to Brand"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setSelectedSkus(new Set())}
+                >
+                  Clear Selection
+                </Button>
+              </div>
+            )}
+
+            {/* Unassigned products list */}
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {unassignedData.unassignedProducts.map((product) => (
+                <div
+                  key={product.sku}
+                  className={`flex items-center gap-3 p-3 rounded border text-sm transition-all ${
+                    selectedSkus.has(product.sku) ? 'bg-primary/10 border-primary' : 'bg-muted/30'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSkus.has(product.sku)}
+                    onChange={(e) => {
+                      const newSet = new Set(selectedSkus);
+                      if (e.target.checked) {
+                        newSet.add(product.sku);
+                      } else {
+                        newSet.delete(product.sku);
+                      }
+                      setSelectedSkus(newSet);
+                    }}
+                    className="h-4 w-4"
+                    data-testid={`checkbox-product-${product.sku}`}
+                  />
+                  <div className="flex-1 grid grid-cols-3 gap-3">
+                    <div>
+                      <div className="font-medium">{product.product}</div>
+                      <div className="text-xs text-muted-foreground">SKU: {product.sku}</div>
+                    </div>
+                    <div className="text-muted-foreground">
+                      {product.collectionBrand || "—"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {product.collectionCategory || "—"}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Select all / none controls */}
+            <div className="flex gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const allSkus = new Set(unassignedData.unassignedProducts.map(p => p.sku));
+                  setSelectedSkus(allSkus);
+                }}
+                data-testid="button-select-all"
+              >
+                Select All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedSkus(new Set())}
+                data-testid="button-select-none"
+              >
+                Select None
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add Brand Dialog */}
       {isAddDialogOpen && (
