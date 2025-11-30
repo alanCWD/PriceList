@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -39,6 +39,13 @@ export function ConfigurationPanel({
   onContinue,
 }: ConfigurationPanelProps) {
   const [logoPreview, setLogoPreview] = useState<string | undefined>(branding.logoUrl);
+
+  // Sync logoPreview when branding.logoUrl changes from outside (e.g., company defaults applied)
+  useEffect(() => {
+    if (branding.logoUrl !== logoPreview) {
+      setLogoPreview(branding.logoUrl);
+    }
+  }, [branding.logoUrl]);
 
   const { data: companyProfiles } = useQuery<CompanyProfile[]>({
     queryKey: ["/api/company-profiles"],
