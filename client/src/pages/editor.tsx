@@ -345,6 +345,47 @@ export default function Editor() {
         collectionType = extractWineTypeFromProductName(productName);
       }
       
+      // FALLBACK: If collectionBrand is not set, extract brand from first word(s) of product name
+      // Most products are named starting with the brand name (e.g., "Synchromesh 2022 Riesling")
+      // Handle numeric prefixes like "1 Mill Road" by taking first two words if first is short/numeric
+      if (!collectionBrand && productName) {
+        const words = productName.split(/\s+/).filter(w => w.trim());
+        let brandCandidate = words[0]?.trim() || '';
+        
+        // If first word is very short (1 char) or purely numeric, include second word
+        // E.g., "1 Mill Road 2024 Grenache" → "1 Mill" as brand candidate
+        if (brandCandidate.length === 1 || /^\d+$/.test(brandCandidate)) {
+          if (words.length > 1) {
+            brandCandidate = `${words[0]} ${words[1]}`.trim();
+          }
+        }
+        
+        if (brandCandidate) {
+          // Try to match against brand registry for proper capitalization/naming
+          const brandRegistryEntries = (brandRegistry || []);
+          const brandCandidateLower = brandCandidate.toLowerCase();
+          
+          // Find best matching brand from registry
+          const matchedBrand = brandRegistryEntries.find(b => {
+            const brandNameLower = b.brandName.toLowerCase();
+            // Check if product starts with registry brand name or vice versa
+            return brandNameLower.startsWith(brandCandidateLower) ||
+                   brandCandidateLower.startsWith(brandNameLower.split(/\s+/)[0]);
+          });
+          
+          if (matchedBrand) {
+            collectionBrand = matchedBrand.brandName;
+            // Also set category from matched brand if not already set
+            if (!collectionCategory) {
+              collectionCategory = matchedBrand.category as 'cider' | 'wine' | 'spirits' | 'nonAlc';
+            }
+          } else {
+            // Use candidate as brand name (will show as unmatched in Brand Registry)
+            collectionBrand = brandCandidate;
+          }
+        }
+      }
+      
       // Check if this product exists in the previous pricelist (by SKU)
       const existingProduct = existingProductsBySKU.get(sku);
       const isHidden = existingProduct?.isHidden ?? false;
@@ -530,6 +571,47 @@ export default function Editor() {
       // try to extract wine type from product name (common for non-alcoholic wines)
       if (!collectionType && (collectionCategory === 'wine' || collectionCategory === 'nonAlc')) {
         collectionType = extractWineTypeFromProductName(productName);
+      }
+      
+      // FALLBACK: If collectionBrand is not set, extract brand from first word(s) of product name
+      // Most products are named starting with the brand name (e.g., "Synchromesh 2022 Riesling")
+      // Handle numeric prefixes like "1 Mill Road" by taking first two words if first is short/numeric
+      if (!collectionBrand && productName) {
+        const words = productName.split(/\s+/).filter(w => w.trim());
+        let brandCandidate = words[0]?.trim() || '';
+        
+        // If first word is very short (1 char) or purely numeric, include second word
+        // E.g., "1 Mill Road 2024 Grenache" → "1 Mill" as brand candidate
+        if (brandCandidate.length === 1 || /^\d+$/.test(brandCandidate)) {
+          if (words.length > 1) {
+            brandCandidate = `${words[0]} ${words[1]}`.trim();
+          }
+        }
+        
+        if (brandCandidate) {
+          // Try to match against brand registry for proper capitalization/naming
+          const brandRegistryEntries = (brandRegistry || []);
+          const brandCandidateLower = brandCandidate.toLowerCase();
+          
+          // Find best matching brand from registry
+          const matchedBrand = brandRegistryEntries.find(b => {
+            const brandNameLower = b.brandName.toLowerCase();
+            // Check if product starts with registry brand name or vice versa
+            return brandNameLower.startsWith(brandCandidateLower) ||
+                   brandCandidateLower.startsWith(brandNameLower.split(/\s+/)[0]);
+          });
+          
+          if (matchedBrand) {
+            collectionBrand = matchedBrand.brandName;
+            // Also set category from matched brand if not already set
+            if (!collectionCategory) {
+              collectionCategory = matchedBrand.category as 'cider' | 'wine' | 'spirits' | 'nonAlc';
+            }
+          } else {
+            // Use candidate as brand name (will show as unmatched in Brand Registry)
+            collectionBrand = brandCandidate;
+          }
+        }
       }
       
       // Check if this product exists in the previous pricelist (by SKU)

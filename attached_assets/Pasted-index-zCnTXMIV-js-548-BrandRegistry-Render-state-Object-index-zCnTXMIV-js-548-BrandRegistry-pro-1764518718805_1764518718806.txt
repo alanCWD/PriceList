@@ -1,0 +1,52 @@
+index-zCnTXMIV.js:548 [BrandRegistry] Render state: Object
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand keys: N/A
+index-zCnTXMIV.js:548 [BrandRegistry] pricelistMeta: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] brands: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] brands names: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] Render state: Object
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand keys: N/A
+index-zCnTXMIV.js:548 [BrandRegistry] pricelistMeta: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] brands: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] brands names: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] Fetching brands from URL: /api/brands?companyId=2
+index-zCnTXMIV.js:548 [BrandRegistry] Query params: Object
+index-zCnTXMIV.js:548 [BrandRegistry] Response status: 200 
+index-zCnTXMIV.js:548 [BrandRegistry] Brands fetched successfully: 0 brands
+index-zCnTXMIV.js:548 [BrandRegistry] Brand names: Array(0)
+index-zCnTXMIV.js:548 [BrandRegistry] Render state: Object
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand keys: N/A
+index-zCnTXMIV.js:548 [BrandRegistry] pricelistMeta: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] brands: Array(0)
+index-zCnTXMIV.js:548 [BrandRegistry] brands names: Array(0)
+index-zCnTXMIV.js:548 [BrandRegistry] Render state: Object
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand: Object
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand keys: Array(0)
+index-zCnTXMIV.js:548 [BrandRegistry] pricelistMeta: null
+index-zCnTXMIV.js:548 [BrandRegistry] brands: Array(0)
+index-zCnTXMIV.js:548 [BrandRegistry] brands names: Array(0)
+index-zCnTXMIV.js:548 [BrandRegistry] Render state: Object
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand keys: N/A
+index-zCnTXMIV.js:548 [BrandRegistry] pricelistMeta: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] brands: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] brands names: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] Fetching brands from URL: /api/brands?companyId=1
+index-zCnTXMIV.js:548 [BrandRegistry] Query params: Object
+index-zCnTXMIV.js:548 [BrandRegistry] Response status: 200 
+index-zCnTXMIV.js:548 [BrandRegistry] Brands fetched successfully: 16 brands
+index-zCnTXMIV.js:548 [BrandRegistry] Brand names: Array(16)
+index-zCnTXMIV.js:548 [BrandRegistry] Render state: Object
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand keys: N/A
+index-zCnTXMIV.js:548 [BrandRegistry] pricelistMeta: undefined
+index-zCnTXMIV.js:548 [BrandRegistry] brands: Array(16)
+index-zCnTXMIV.js:548 [BrandRegistry] brands names: Array(16)
+index-zCnTXMIV.js:548 [BrandRegistry] Render state: Object
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand: Object
+index-zCnTXMIV.js:548 [BrandRegistry] productsByBrand keys: Array(15)
+index-zCnTXMIV.js:548 [BrandRegistry] pricelistMeta: Object
+index-zCnTXMIV.js:548 [BrandRegistry] brands: Array(16)
+index-zCnTXMIV.js:548 [BrandRegistry] brands names: Array(16)
