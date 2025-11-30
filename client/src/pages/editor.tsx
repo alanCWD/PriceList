@@ -257,12 +257,14 @@ export default function Editor() {
       return;
     }
     
-    // Create a fingerprint of full CSV dataset + field mapping
-    // This catches all changes: column changes, row reordering, mapping updates, etc.
+    // Create a fingerprint of full CSV dataset + field mapping + brand registry
+    // This catches all changes: column changes, row reordering, mapping updates, registry loads
+    // Including brandRegistry ensures products regenerate when registry data becomes available
     const csvFingerprint = JSON.stringify({
       headers: csvHeaders,
       csvData: csvData, // Full dataset including row order
       mapping: fieldMapping,
+      brandRegistryNames: (brandRegistry || []).map(b => b.brandName).sort(), // Registry brand names for matching
     });
     
     // Skip if we've already generated products from this exact CSV + mapping combination
