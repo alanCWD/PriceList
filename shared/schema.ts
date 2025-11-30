@@ -350,11 +350,12 @@ export const insertBrandRegistrySchema = createInsertSchema(brandRegistry, {
 
 export type InsertBrandRegistry = z.infer<typeof insertBrandRegistrySchema>;
 
-// Update schema for brand registry
+// Update schema for brand registry - allows null values for optional fields
 export const updateBrandRegistrySchema = insertBrandRegistrySchema.partial().extend({
   brandName: z.string().min(1).optional(),
   category: brandCategoryEnum.optional(),
-  type: z.string().optional(),
-  skus: z.array(z.string()).optional(),
-  productOrder: z.array(z.string()).optional(),
+  type: z.string().nullable().optional(),
+  displayOrder: z.number().int().positive().nullable().optional(),
+  skus: z.array(z.string()).nullable().optional(),
+  productOrder: z.array(z.string()).nullable().optional(),
 });
