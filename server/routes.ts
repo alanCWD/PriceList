@@ -1466,7 +1466,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Merge new SKUs with existing ones (no duplicates)
       const existingSkus = existing.skus || [];
-      const allSkus = [...new Set([...existingSkus, ...skus])];
+      const allSkusSet = new Set([...existingSkus, ...skus]);
+      const allSkus = Array.from(allSkusSet);
       
       const brand = await storage.updateBrand(id, { skus: allSkus });
       res.json(brand);

@@ -63,6 +63,55 @@ export interface BrandRegistryEntry {
   brandName: string;
   category: 'cider' | 'wine' | 'spirits' | 'nonAlc';
   displayOrder?: number | null;
+  skus?: string[] | null;
+}
+
+export interface SKUMappingResult {
+  brandName: string;
+  category: 'cider' | 'wine' | 'spirits' | 'nonAlc';
+  matched: boolean;
+}
+
+/**
+ * Look up a product's brand by its SKU using the brand registry
+ * This is the primary method for matching products to brands
+ * Only falls back to heuristics if registry is empty or SKU not found
+ */
+export function lookupBrandBySKU(
+  sku: string,
+  brandRegistry: BrandRegistryEntry[]
+): SKUMappingResult | null {
+  if (!sku || !brandRegistry || brandRegistry.length === 0) {
+    return null;
+  }
+
+  // Find the brand that has this SKU in its skus array
+  for (const brand of brandRegistry) {
+    if (brand.skus && Array.isArray(brand.skus)) {
+      if (brand.skus.includes(sku)) {
+        return {
+          brandName: brand.brandName,
+          category: brand.category,
+          matched: true,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if the brand registry has any SKU mappings
+ * Used to determine if we should use SKU-based matching or heuristics
+ */
+export function registryHasSKUMappings(brandRegistry: BrandRegistryEntry[]): boolean {
+  if (!brandRegistry || brandRegistry.length === 0) {
+    return false;
+  }
+  
+  // Registry has SKU mappings if at least one brand has non-empty skus array
+  return brandRegistry.some(b => b.skus && Array.isArray(b.skus) && b.skus.length > 0);
 }
 
 /**

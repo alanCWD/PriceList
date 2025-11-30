@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { stripHtml } from "@/lib/text-utils";
-import { parseCollection, extractWineTypeFromProductName, type BrandRegistryEntry } from "@/lib/collection-parser";
+import { parseCollection, extractWineTypeFromProductName, lookupBrandBySKU, registryHasSKUMappings, type BrandRegistryEntry } from "@/lib/collection-parser";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template, BrandRegistry } from "@shared/schema";
 
 export default function Editor() {
@@ -264,20 +264,24 @@ export default function Editor() {
 
   // NEW: Auto-generate products whenever CSV data and field mapping are available
   // This enables the save button without requiring manual "Apply" or tab navigation
+  // PRIMARY MATCHING: SKU-based lookup (when registry has SKU mappings)
+  // FALLBACK: Heuristic matching (first upload or legacy data)
   useEffect(() => {
     // Only run if we have CSV data and a complete field mapping (required fields filled)
     if (csvData.length === 0 || !fieldMapping.product || !fieldMapping.price) {
       return;
     }
     
-    // Create a fingerprint of full CSV dataset + field mapping + brand registry
+    // Create a fingerprint of full CSV dataset + field mapping + brand registry (including SKUs)
     // This catches all changes: column changes, row reordering, mapping updates, registry loads
-    // Including brandRegistry ensures products regenerate when registry data becomes available
     const csvFingerprint = JSON.stringify({
       headers: csvHeaders,
       csvData: csvData, // Full dataset including row order
       mapping: fieldMapping,
-      brandRegistryNames: (brandRegistry || []).map(b => b.brandName).sort(), // Registry brand names for matching
+      brandRegistryData: (brandRegistry || []).map(b => ({
+        name: b.brandName,
+        skus: b.skus || [],
+      })).sort((a, b) => a.name.localeCompare(b.name)),
     });
     
     // Skip if we've already generated products from this exact CSV + mapping combination
@@ -286,7 +290,18 @@ export default function Editor() {
     }
     
     csvFingerprintRef.current = csvFingerprint;
-    console.log('[Auto-generate products] Generating products from CSV + mapping');
+    
+    // Convert brand registry to the format expected by our matching functions
+    const brandRegistryEntries: BrandRegistryEntry[] = (brandRegistry || []).map(b => ({
+      brandName: b.brandName,
+      category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
+      displayOrder: b.displayOrder,
+      skus: b.skus,
+    }));
+    
+    // Check if registry has SKU mappings (determines matching strategy)
+    const hasSKUMappings = registryHasSKUMappings(brandRegistryEntries);
+    console.log('[Auto-generate products] Using SKU-based matching:', hasSKUMappings);
 
     // Build a map of existing products by SKU to preserve hidden state
     const existingProductsBySKU = new Map<string, Product>();
@@ -297,6 +312,9 @@ export default function Editor() {
         }
       });
     }
+    
+    // Track unassigned products for admin review
+    let unassignedCount = 0;
 
     const mappedProducts: Product[] = csvData.map((row, index) => {
       let imageUrl = fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "";
@@ -332,13 +350,21 @@ export default function Editor() {
       let collectionBrand: string | undefined;
       let collectionRegion: string | undefined;
       
-      if (collectionField) {
-        // Convert brand registry to the format expected by parseCollection
-        const brandRegistryEntries: BrandRegistryEntry[] = (brandRegistry || []).map(b => ({
-          brandName: b.brandName,
-          category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
-          displayOrder: b.displayOrder,
-        }));
+      // PRIMARY: Try SKU-based lookup first (when registry has SKU mappings)
+      if (hasSKUMappings && sku) {
+        const skuMatch = lookupBrandBySKU(sku, brandRegistryEntries);
+        if (skuMatch) {
+          collectionBrand = skuMatch.brandName;
+          collectionCategory = skuMatch.category;
+          console.log(`[SKU Match] ${sku} → ${skuMatch.brandName} (${skuMatch.category})`);
+        } else {
+          // SKU not found in registry - mark as unassigned
+          unassignedCount++;
+        }
+      }
+      
+      // FALLBACK: Use collection field + heuristic matching if SKU didn't match
+      if (!collectionBrand && collectionField) {
         // Pass productName to enable brand matching from product name when collection doesn't contain brand
         const parsed = parseCollection(collectionField, brandRegistryEntries, productName);
         if (parsed) {
@@ -362,8 +388,7 @@ export default function Editor() {
       
       // FALLBACK: If collectionBrand is not set, match product name against brand registry
       // Products are named starting with the brand name (e.g., "Mt. Bouchery 2024 Pinot Noir")
-      if (!collectionBrand && productName) {
-        const brandRegistryEntries = (brandRegistry || []);
+      if (!collectionBrand && productName && !hasSKUMappings) {
         const productNameLower = productName.toLowerCase().trim();
         
         // PHASE 1: Check if product name starts with any registry brand (longest match first)
@@ -431,6 +456,9 @@ export default function Editor() {
 
     setProducts(mappedProducts);
     console.log('[Auto-generate products] Generated', mappedProducts.length, 'products');
+    if (hasSKUMappings && unassignedCount > 0) {
+      console.log('[Auto-generate products] Unassigned products (SKU not in registry):', unassignedCount);
+    }
   }, [csvData, fieldMapping, brandRegistry, loadedPricelist?.products]);
 
   const handleCSVUpload = (data: any[], headers: string[]) => {
