@@ -579,7 +579,13 @@ export function injectManualSortIndex(
     const brandName = product.collectionBrand;
     const sku = product.sku;
     
-    if (brandName && sku && brandOrderMap.has(brandName)) {
+    // Skip if product has no brand or no SKU - can't apply manual ordering
+    if (!brandName || !sku) {
+      return product;
+    }
+    
+    // Check if this brand has a custom order defined
+    if (brandOrderMap.has(brandName)) {
       const productOrder = brandOrderMap.get(brandName)!;
       // Look up by SKU (stable across uploads) instead of product ID
       const sortIndex = productOrder.indexOf(sku);
@@ -591,6 +597,8 @@ export function injectManualSortIndex(
           manualSortIndex: sortIndex,
         };
       }
+      // Product SKU not in order array (new product added after order was set)
+      // Falls through to return without manualSortIndex - will use automatic sorting
     }
     
     // No manual order set for this product's brand, or product SKU not in order array
