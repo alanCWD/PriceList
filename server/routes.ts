@@ -1431,6 +1431,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add SKUs to a brand
+  app.post("/api/brands/:id/skus", isAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid brand ID" });
+      }
+
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Verify brand exists and belongs to user's company
+      const existing = await storage.getBrandById(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Brand not found" });
+      }
+
+      if (user.role !== "superAdmin") {
+        const effectiveCompanyId = getEffectiveCompanyId(req, user);
+        if (effectiveCompanyId && existing.companyId !== effectiveCompanyId) {
+          return res.status(403).json({ error: "Access denied: Brand belongs to different company" });
+        }
+      }
+
+      const { skus } = req.body;
+      if (!Array.isArray(skus) || !skus.every(s => typeof s === 'string')) {
+        return res.status(400).json({ error: "skus must be an array of strings" });
+      }
+
+      // Merge new SKUs with existing ones (no duplicates)
+      const existingSkus = existing.skus || [];
+      const allSkus = [...new Set([...existingSkus, ...skus])];
+      
+      const brand = await storage.updateBrand(id, { skus: allSkus });
+      res.json(brand);
+    } catch (error) {
+      console.error("Error adding SKUs to brand:", error);
+      res.status(500).json({ error: "Failed to add SKUs to brand" });
+    }
+  });
+
+  // Remove SKUs from a brand
+  app.delete("/api/brands/:id/skus", isAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid brand ID" });
+      }
+
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Verify brand exists and belongs to user's company
+      const existing = await storage.getBrandById(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Brand not found" });
+      }
+
+      if (user.role !== "superAdmin") {
+        const effectiveCompanyId = getEffectiveCompanyId(req, user);
+        if (effectiveCompanyId && existing.companyId !== effectiveCompanyId) {
+          return res.status(403).json({ error: "Access denied: Brand belongs to different company" });
+        }
+      }
+
+      const { skus } = req.body;
+      if (!Array.isArray(skus) || !skus.every(s => typeof s === 'string')) {
+        return res.status(400).json({ error: "skus must be an array of strings" });
+      }
+
+      // Remove specified SKUs from existing ones
+      const existingSkus = existing.skus || [];
+      const skusToRemove = new Set(skus);
+      const remainingSkus = existingSkus.filter(s => !skusToRemove.has(s));
+      
+      const brand = await storage.updateBrand(id, { skus: remainingSkus });
+      res.json(brand);
+    } catch (error) {
+      console.error("Error removing SKUs from brand:", error);
+      res.status(500).json({ error: "Failed to remove SKUs from brand" });
+    }
+  });
+
+  // Get all SKU→Brand mappings for a company (for CSV upload resolution)
+  app.get("/api/brands/sku-mappings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      let effectiveCompanyId: number | null = null;
+      if (user.role === "superAdmin" && req.query.companyId) {
+        effectiveCompanyId = parseInt(req.query.companyId as string);
+        if (isNaN(effectiveCompanyId)) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+      } else {
+        effectiveCompanyId = getEffectiveCompanyId(req, user);
+      }
+
+      if (!effectiveCompanyId) {
+        return res.json({ mappings: {}, brands: [] });
+      }
+
+      const brands = await storage.getBrandsByCompanyId(effectiveCompanyId);
+      
+      // Build SKU→Brand lookup map
+      const mappings: Record<string, { brandId: number; brandName: string; category: string }> = {};
+      for (const brand of brands) {
+        if (brand.skus && Array.isArray(brand.skus)) {
+          for (const sku of brand.skus) {
+            mappings[sku] = {
+              brandId: brand.id,
+              brandName: brand.brandName,
+              category: brand.category,
+            };
+          }
+        }
+      }
+
+      res.json({ 
+        mappings,
+        brands: brands.map(b => ({
+          id: b.id,
+          brandName: b.brandName,
+          category: b.category,
+          displayOrder: b.displayOrder,
+          skuCount: b.skus?.length || 0,
+        })),
+        isEmpty: brands.length === 0,
+      });
+    } catch (error) {
+      console.error("Error fetching SKU mappings:", error);
+      res.status(500).json({ error: "Failed to fetch SKU mappings" });
+    }
+  });
+
   // Delete a brand (Admin & Company Admin)
   // Super Admins can delete brands for any company
   app.delete("/api/brands/:id", isAdmin, async (req: any, res) => {

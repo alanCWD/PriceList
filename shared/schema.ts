@@ -299,6 +299,7 @@ export type InsertSalesAgentProfile = z.infer<typeof insertSalesAgentProfileSche
 
 // Brand Registry table - master list of brands with categorization
 // Used for consistent brand grouping and sorting in pricelists
+// SKUs are the source of truth for product→brand mapping
 export const brandRegistry = pgTable("brand_registry", {
   id: serial("id").primaryKey(),
   
@@ -315,7 +316,11 @@ export const brandRegistry = pgTable("brand_registry", {
   // Optional display order override (null = alphabetical, integer = custom sort)
   displayOrder: integer("display_order"),
   
-  // Optional manual product ordering (array of product IDs in desired order)
+  // SKU→Brand mapping: Array of SKUs that belong to this brand
+  // This is the source of truth for product categorization on subsequent CSV uploads
+  skus: text("skus").array(),
+  
+  // Optional manual product ordering (array of SKUs in desired order)
   // When set, overrides automatic wine type sorting for this brand's products
   productOrder: text("product_order").array(),
   
@@ -339,6 +344,7 @@ export const insertBrandRegistrySchema = createInsertSchema(brandRegistry, {
   category: brandCategoryEnum,
   type: z.string().optional(),
   displayOrder: z.number().int().positive().optional(),
+  skus: z.array(z.string()).optional(),
   productOrder: z.array(z.string()).optional(),
 }).omit({ id: true, createdAt: true, updatedAt: true });
 
@@ -349,5 +355,6 @@ export const updateBrandRegistrySchema = insertBrandRegistrySchema.partial().ext
   brandName: z.string().min(1).optional(),
   category: brandCategoryEnum.optional(),
   type: z.string().optional(),
+  skus: z.array(z.string()).optional(),
   productOrder: z.array(z.string()).optional(),
 });
