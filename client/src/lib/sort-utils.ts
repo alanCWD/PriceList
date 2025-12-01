@@ -107,27 +107,17 @@ export function sortBrandGroups(
       return categoryOrderA - categoryOrderB;
     }
     
-    // Secondary sort: by displayOrder if available (null = alphabetical)
-    const displayOrderA = entryA?.displayOrder;
-    const displayOrderB = entryB?.displayOrder;
+    // Secondary sort: by displayOrder
+    // NULL displayOrder = 0 (sort alphabetically among other nulls at the start)
+    // Explicit displayOrder = positioned at that value (higher = later in list)
+    const displayOrderA = entryA?.displayOrder ?? 0;
+    const displayOrderB = entryB?.displayOrder ?? 0;
     
-    // Brands with displayOrder come before those without
-    if (displayOrderA !== null && displayOrderA !== undefined && 
-        (displayOrderB === null || displayOrderB === undefined)) {
-      return -1;
-    }
-    if ((displayOrderA === null || displayOrderA === undefined) && 
-        displayOrderB !== null && displayOrderB !== undefined) {
-      return 1;
-    }
-    
-    // Both have displayOrder - sort by it
-    if (displayOrderA !== null && displayOrderA !== undefined && 
-        displayOrderB !== null && displayOrderB !== undefined) {
+    if (displayOrderA !== displayOrderB) {
       return displayOrderA - displayOrderB;
     }
     
-    // Tertiary sort: alphabetical by brand name
+    // Tertiary sort: alphabetical by brand name (for same displayOrder or both null/0)
     return brandA.localeCompare(brandB);
   });
 }
