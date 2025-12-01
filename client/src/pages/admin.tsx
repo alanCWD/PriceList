@@ -2205,9 +2205,13 @@ function BrandRegistryManager() {
     enabled: isSuperAdmin ? !!selectedCompanyId : true,
   });
   
-  // State for assigning products to brands
+  // State for assigning products to brands (from unassigned section)
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
   const [assignToBrandId, setAssignToBrandId] = useState<number | null>(null);
+  
+  // State for reassigning products from within brands
+  const [brandSelectedSkus, setBrandSelectedSkus] = useState<Map<string, Set<string>>>(new Map());
+  const [reassignToBrandId, setReassignToBrandId] = useState<number | null>(null);
   
   // Debug logging for Brand Registry products
   console.log('[BrandRegistry] productsByBrand:', productsByBrand);
@@ -2366,6 +2370,7 @@ function BrandRegistryManager() {
       queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
       queryClient.invalidateQueries({ queryKey: ["/api/brands/unassigned"] });
       queryClient.invalidateQueries({ queryKey: ["/api/brands/sku-mappings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
       toast({ 
         title: "Products assigned!", 
         description: `${variables.skus.length} product(s) assigned to brand` 
@@ -2381,6 +2386,107 @@ function BrandRegistryManager() {
       });
     },
   });
+
+  // Remove SKUs from brand mutation (for reassignment)
+  const removeSkusMutation = useMutation({
+    mutationFn: async ({ brandId, skus }: { brandId: number; skus: string[] }) => {
+      const res = await apiRequest("DELETE", `/api/brands/${brandId}/skus`, { skus });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/unassigned"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/sku-mappings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to remove products from brand", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Reassign products: remove from current brand and add to new brand
+  // Uses brand ID directly instead of looking up by name
+  const handleReassignProducts = async (fromBrandId: number, fromBrandName: string, toBrandId: number, skus: string[]) => {
+    try {
+      // First remove from current brand
+      await removeSkusMutation.mutateAsync({ brandId: fromBrandId, skus });
+      
+      try {
+        // Then add to new brand
+        await assignSkusMutation.mutateAsync({ brandId: toBrandId, skus });
+      } catch (assignError) {
+        // Assignment failed - try to rollback by re-adding to original brand
+        try {
+          await apiRequest("POST", `/api/brands/${fromBrandId}/skus`, { skus });
+          toast({ 
+            title: "Error", 
+            description: "Failed to assign to new brand. Products restored to original brand.", 
+            variant: "destructive" 
+          });
+        } catch (rollbackError) {
+          toast({ 
+            title: "Critical Error", 
+            description: "Assignment failed and rollback failed. Products may be unassigned.", 
+            variant: "destructive" 
+          });
+        }
+        return;
+      }
+      
+      // Success - clear selection and refresh data
+      setBrandSelectedSkus(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(fromBrandName);
+        return newMap;
+      });
+      setReassignToBrandId(null);
+      
+      // Explicitly invalidate all relevant queries
+      await queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/brands/unassigned"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/brands/sku-mappings"] });
+      
+      toast({ 
+        title: "Products reassigned!", 
+        description: `${skus.length} product(s) moved to new brand` 
+      });
+    } catch (error) {
+      // Error already handled in mutation callbacks
+    }
+  };
+
+  // Remove products from brand (make them unassigned)
+  // Uses brand ID directly instead of looking up by name
+  const handleRemoveFromBrand = async (brandId: number, brandName: string, skus: string[]) => {
+    try {
+      await removeSkusMutation.mutateAsync({ brandId, skus });
+      
+      // Clear selection for this brand
+      setBrandSelectedSkus(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(brandName);
+        return newMap;
+      });
+      
+      // Explicitly invalidate all relevant queries
+      await queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/brands/unassigned"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/brands/sku-mappings"] });
+      
+      toast({ 
+        title: "Products removed!", 
+        description: `${skus.length} product(s) removed from ${brandName}` 
+      });
+    } catch (error) {
+      // Error handling is done in mutation callback
+    }
+  };
 
   const resetForm = () => {
     setBrandName("");
@@ -2779,13 +2885,78 @@ function BrandRegistryManager() {
                                 </div>
                               ) : (
                                 <div className="space-y-2 pb-4">
-                                  <div className="text-xs text-muted-foreground mb-2">
-                                    Products from latest pricelist:
-                                  </div>
+                                  {/* Reassignment control bar */}
+                                  {(() => {
+                                    const selectedForBrand = brandSelectedSkus.get(brand.brandName) || new Set();
+                                    const hasSelection = selectedForBrand.size > 0;
+                                    
+                                    return hasSelection ? (
+                                      <div className="flex items-center gap-4 mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                          {selectedForBrand.size} selected
+                                        </span>
+                                        <Select
+                                          value={reassignToBrandId?.toString() || ""}
+                                          onValueChange={(val) => setReassignToBrandId(parseInt(val))}
+                                        >
+                                          <SelectTrigger className="w-56" data-testid={`select-reassign-brand-${brand.id}`}>
+                                            <SelectValue placeholder="Move to brand..." />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {brands?.filter(b => b.id !== brand.id).map((b) => (
+                                              <SelectItem key={b.id} value={b.id.toString()}>
+                                                {b.brandName} ({b.category})
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <Button
+                                          size="sm"
+                                          onClick={() => {
+                                            if (reassignToBrandId) {
+                                              handleReassignProducts(brand.id, brand.brandName, reassignToBrandId, Array.from(selectedForBrand));
+                                            }
+                                          }}
+                                          disabled={!reassignToBrandId || removeSkusMutation.isPending || assignSkusMutation.isPending}
+                                          data-testid={`button-reassign-products-${brand.id}`}
+                                        >
+                                          Move
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleRemoveFromBrand(brand.id, brand.brandName, Array.from(selectedForBrand))}
+                                          disabled={removeSkusMutation.isPending}
+                                          data-testid={`button-remove-from-brand-${brand.id}`}
+                                        >
+                                          Remove from Brand
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setBrandSelectedSkus(prev => {
+                                              const newMap = new Map(prev);
+                                              newMap.delete(brand.brandName);
+                                              return newMap;
+                                            });
+                                          }}
+                                        >
+                                          Clear
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-muted-foreground mb-2">
+                                        Products from latest pricelist (check to select for reassignment):
+                                      </div>
+                                    );
+                                  })()}
                                   {brandProducts.map((product, idx) => {
                                     const isEditing = editingProductId === product.id;
                                     const isDragging = draggedProductId === product.id;
                                     const isDraggedOver = draggedOverProductId === product.id;
+                                    const selectedForBrand = brandSelectedSkus.get(brand.brandName) || new Set();
+                                    const isSelected = product.sku && selectedForBrand.has(product.sku);
                                     
                                     return (
                                       <div
@@ -2799,8 +2970,34 @@ function BrandRegistryManager() {
                                           isDragging ? 'opacity-50 bg-muted' : 'bg-muted/30'
                                         } ${isDraggedOver ? 'border-primary border-2' : ''} ${
                                           product.isHidden ? 'opacity-50 line-through' : ''
-                                        }`}
+                                        } ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : ''}`}
                                       >
+                                        {/* Selection checkbox */}
+                                        {product.sku && (
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={(e) => {
+                                              setBrandSelectedSkus(prev => {
+                                                const newMap = new Map(prev);
+                                                const currentSet = new Set(prev.get(brand.brandName) || []);
+                                                if (e.target.checked) {
+                                                  currentSet.add(product.sku);
+                                                } else {
+                                                  currentSet.delete(product.sku);
+                                                }
+                                                if (currentSet.size === 0) {
+                                                  newMap.delete(brand.brandName);
+                                                } else {
+                                                  newMap.set(brand.brandName, currentSet);
+                                                }
+                                                return newMap;
+                                              });
+                                            }}
+                                            className="h-4 w-4"
+                                            data-testid={`checkbox-brand-product-${product.sku}`}
+                                          />
+                                        )}
                                         <GripVertical 
                                           className="w-4 h-4 text-muted-foreground cursor-grab active:cursor-grabbing" 
                                         />
