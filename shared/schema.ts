@@ -359,3 +359,5 @@ export const updateBrandRegistrySchema = insertBrandRegistrySchema.partial().ext
   skus: z.array(z.string()).nullable().optional(),
   productOrder: z.array(z.string()).nullable().optional(),
 });
+
+export type UpdateBrandRegistry = z.infer<typeof updateBrandRegistrySchema>;

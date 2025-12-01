@@ -19,6 +19,7 @@ import {
   brandRegistry,
   type BrandRegistry,
   type InsertBrandRegistry,
+  type UpdateBrandRegistry,
 } from "@shared/schema";
 import { eq, desc, and, asc, sql } from "drizzle-orm";
 
@@ -67,7 +68,7 @@ export interface IStorage {
   getBrandById(id: number): Promise<BrandRegistry | undefined>;
   getBrandByName(companyId: number, brandName: string): Promise<BrandRegistry | undefined>;
   createBrand(brand: InsertBrandRegistry): Promise<BrandRegistry>;
-  updateBrand(id: number, brand: Partial<InsertBrandRegistry>): Promise<BrandRegistry | undefined>;
+  updateBrand(id: number, brand: UpdateBrandRegistry): Promise<BrandRegistry | undefined>;
   deleteBrand(id: number): Promise<boolean>;
 }
 
@@ -404,7 +405,7 @@ export class DatabaseStorage implements IStorage {
     return result[0]!;
   }
   
-  async updateBrand(id: number, updates: Partial<InsertBrandRegistry>): Promise<BrandRegistry | undefined> {
+  async updateBrand(id: number, updates: UpdateBrandRegistry): Promise<BrandRegistry | undefined> {
     // If brandName is being updated, check for duplicates
     if (updates.brandName) {
       const current = await this.getBrandById(id);

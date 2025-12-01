@@ -1220,12 +1220,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Group products by brand
+      // Get brand registry with SKU mappings for this company
+      const brands = await storage.getBrandsByCompanyId(targetCompanyId);
+      
+      // Build SKU → brandName lookup map from registry
+      const skuToBrand = new Map<string, string>();
+      for (const brand of brands) {
+        if (brand.skus && Array.isArray(brand.skus)) {
+          for (const sku of brand.skus) {
+            skuToBrand.set(sku, brand.brandName);
+          }
+        }
+      }
+      
+      const registryHasSKUs = skuToBrand.size > 0;
+
+      // Group products by brand using SKU-based matching (primary) or collectionBrand (fallback)
       const productsByBrand: Record<string, any[]> = {};
       let productsWithoutBrand = 0;
+      let skuMatched = 0;
+      let collectionBrandMatched = 0;
       
       latestPricelist.products.forEach((product: any) => {
-        const brandName = product.collectionBrand;
+        let brandName: string | null = null;
+        
+        // Primary: Look up brand by SKU if registry has SKU mappings
+        if (registryHasSKUs && product.sku) {
+          const mappedBrand = skuToBrand.get(product.sku);
+          if (mappedBrand) {
+            brandName = mappedBrand;
+            skuMatched++;
+          }
+        }
+        
+        // Fallback: Use collectionBrand from CSV parsing
+        if (!brandName && product.collectionBrand) {
+          brandName = product.collectionBrand;
+          collectionBrandMatched++;
+        }
+        
         if (brandName) {
           if (!productsByBrand[brandName]) {
             productsByBrand[brandName] = [];
@@ -1237,9 +1270,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log(`[GET /api/brands/products] Total products: ${latestPricelist.products.length}`);
+      console.log(`[GET /api/brands/products] Registry has SKUs: ${registryHasSKUs} (${skuToBrand.size} mappings)`);
+      console.log(`[GET /api/brands/products] SKU-matched: ${skuMatched}, collectionBrand-matched: ${collectionBrandMatched}`);
       console.log(`[GET /api/brands/products] Products without brand: ${productsWithoutBrand}`);
       console.log(`[GET /api/brands/products] Brands found: ${Object.keys(productsByBrand).length}`);
-      console.log(`[GET /api/brands/products] Brand names:`, Object.keys(productsByBrand));
 
       // Return products grouped by brand along with pricelist metadata
       res.json({
