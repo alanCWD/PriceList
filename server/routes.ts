@@ -1122,6 +1122,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "Product ID is required" });
         }
 
+        // Find the product to get its SKU
+        const product = latestPricelist.products.find((p: any) => p.id === productId);
+        if (!product) {
+          return res.status(404).json({ error: "Product not found" });
+        }
+
         // Update the product in the products array
         const updatedProducts = latestPricelist.products.map((p: any) => {
           if (p.id === productId) {
@@ -1134,6 +1140,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updatePricelist(latestPricelist.id, {
           products: updatedProducts,
         });
+
+        // If isHidden was updated, also persist to the visibility table for cross-upload persistence
+        if (updates.isHidden !== undefined && product.sku) {
+          try {
+            await storage.upsertVisibility(targetCompanyId, product.sku, updates.isHidden);
+            console.log(`[Visibility] Persisted visibility for SKU ${product.sku}: isHidden=${updates.isHidden}`);
+          } catch (visErr) {
+            console.error(`[Visibility] Failed to persist visibility for SKU ${product.sku}:`, visErr);
+            // Don't fail the request - pricelist was updated successfully
+          }
+        }
 
         res.json({ success: true });
       }
@@ -1512,6 +1529,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching brand ordering:", error);
       res.status(500).json({ error: "Failed to fetch brand ordering" });
+    }
+  });
+
+  // Get hidden SKUs for the current user's company (accessible to all authenticated users)
+  // Returns an array of SKUs that should be hidden from pricelists
+  // Super Admins can pass companyId query parameter to view any company's hidden SKUs
+  app.get("/api/visibility/hidden-skus", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Super Admins can query for any company via companyId query param
+      let targetCompanyId: number | null = null;
+      if (user.role === "superAdmin" && req.query.companyId) {
+        targetCompanyId = parseInt(req.query.companyId as string);
+        if (isNaN(targetCompanyId)) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+      } else {
+        targetCompanyId = getEffectiveCompanyId(req, user);
+      }
+      
+      // If no company ID available (super admin without company/impersonation), return empty array
+      if (!targetCompanyId) {
+        return res.json([]);
+      }
+
+      // Fetch hidden SKUs from the persistent visibility table
+      const hiddenSkus = await storage.getHiddenSkusByCompanyId(targetCompanyId);
+      
+      // Prevent HTTP caching to ensure fresh data
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
+      res.json(hiddenSkus);
+    } catch (error) {
+      console.error("Error fetching hidden SKUs:", error);
+      res.status(500).json({ error: "Failed to fetch hidden SKUs" });
     }
   });
 

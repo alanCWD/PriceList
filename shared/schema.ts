@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { sql } from 'drizzle-orm';
-import { pgTable, varchar, text, timestamp, jsonb, serial, index, integer } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, timestamp, jsonb, serial, index, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 
 // Product schema for pricelist items
@@ -361,3 +361,36 @@ export const updateBrandRegistrySchema = insertBrandRegistrySchema.partial().ext
 });
 
 export type UpdateBrandRegistry = z.infer<typeof updateBrandRegistrySchema>;
+
+// ===== PRODUCT VISIBILITY TABLE =====
+
+// Product Visibility table - persists hidden SKUs across pricelist uploads
+// This is the authoritative source for product visibility settings
+export const productVisibility = pgTable("product_visibility", {
+  id: serial("id").primaryKey(),
+  
+  // Company association (multi-tenant support)
+  companyId: integer("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  // SKU is the unique identifier for product visibility
+  sku: varchar("sku", { length: 255 }).notNull(),
+  
+  // Visibility flag - true means hidden (excluded from preview/PDF)
+  isHidden: boolean("is_hidden").notNull().default(false),
+  
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  // Unique constraint: one visibility record per SKU per company
+  index("product_visibility_company_sku_idx").on(table.companyId, table.sku),
+]);
+
+export type ProductVisibility = typeof productVisibility.$inferSelect;
+
+export const insertProductVisibilitySchema = createInsertSchema(productVisibility, {
+  sku: z.string().min(1, "SKU is required"),
+  isHidden: z.boolean().default(false),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type InsertProductVisibility = z.infer<typeof insertProductVisibilitySchema>;

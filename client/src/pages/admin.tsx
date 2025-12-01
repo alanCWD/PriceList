@@ -2360,6 +2360,8 @@ function BrandRegistryManager() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
+      // Also invalidate hidden-SKUs cache so CSV uploads use fresh visibility data
+      queryClient.invalidateQueries({ queryKey: ["/api/visibility/hidden-skus"] });
       toast({ 
         title: variables.isHidden ? "Product hidden" : "Product visible",
         description: variables.isHidden 

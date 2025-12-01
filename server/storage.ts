@@ -20,6 +20,9 @@ import {
   type BrandRegistry,
   type InsertBrandRegistry,
   type UpdateBrandRegistry,
+  productVisibility,
+  type ProductVisibility,
+  type InsertProductVisibility,
 } from "@shared/schema";
 import { eq, desc, and, asc, sql } from "drizzle-orm";
 
@@ -70,6 +73,12 @@ export interface IStorage {
   createBrand(brand: InsertBrandRegistry): Promise<BrandRegistry>;
   updateBrand(id: number, brand: UpdateBrandRegistry): Promise<BrandRegistry | undefined>;
   deleteBrand(id: number): Promise<boolean>;
+  
+  // Product Visibility operations
+  getVisibilityByCompanyId(companyId: number): Promise<ProductVisibility[]>;
+  getVisibilityBySku(companyId: number, sku: string): Promise<ProductVisibility | undefined>;
+  upsertVisibility(companyId: number, sku: string, isHidden: boolean): Promise<ProductVisibility>;
+  getHiddenSkusByCompanyId(companyId: number): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -440,6 +449,63 @@ export class DatabaseStorage implements IStorage {
   async deleteBrand(id: number): Promise<boolean> {
     const result = await db.delete(brandRegistry).where(eq(brandRegistry.id, id)).returning();
     return result.length > 0;
+  }
+  
+  // Product Visibility operations
+  async getVisibilityByCompanyId(companyId: number): Promise<ProductVisibility[]> {
+    return await db
+      .select()
+      .from(productVisibility)
+      .where(eq(productVisibility.companyId, companyId));
+  }
+  
+  async getVisibilityBySku(companyId: number, sku: string): Promise<ProductVisibility | undefined> {
+    const results = await db
+      .select()
+      .from(productVisibility)
+      .where(
+        and(
+          eq(productVisibility.companyId, companyId),
+          eq(productVisibility.sku, sku)
+        )
+      )
+      .limit(1);
+    return results[0];
+  }
+  
+  async upsertVisibility(companyId: number, sku: string, isHidden: boolean): Promise<ProductVisibility> {
+    // Check if visibility record exists
+    const existing = await this.getVisibilityBySku(companyId, sku);
+    
+    if (existing) {
+      // Update existing record
+      const result = await db
+        .update(productVisibility)
+        .set({ isHidden, updatedAt: new Date() })
+        .where(eq(productVisibility.id, existing.id))
+        .returning();
+      return result[0]!;
+    } else {
+      // Create new record
+      const result = await db
+        .insert(productVisibility)
+        .values({ companyId, sku, isHidden })
+        .returning();
+      return result[0]!;
+    }
+  }
+  
+  async getHiddenSkusByCompanyId(companyId: number): Promise<string[]> {
+    const results = await db
+      .select({ sku: productVisibility.sku })
+      .from(productVisibility)
+      .where(
+        and(
+          eq(productVisibility.companyId, companyId),
+          eq(productVisibility.isHidden, true)
+        )
+      );
+    return results.map(r => r.sku);
   }
 }
 

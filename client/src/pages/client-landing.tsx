@@ -89,6 +89,20 @@ export default function ClientLanding() {
     enabled: impersonatedCompanyId !== null || user?.role !== 'superAdmin',
   });
 
+  // Fetch hidden SKUs for persistent visibility across CSV re-uploads
+  const { data: hiddenSkus } = useQuery<string[]>({
+    queryKey: ['/api/visibility/hidden-skus', { impersonatedCompanyId }],
+    queryFn: async () => {
+      const url = impersonatedCompanyId 
+        ? `/api/visibility/hidden-skus?companyId=${impersonatedCompanyId}`
+        : '/api/visibility/hidden-skus';
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch hidden SKUs');
+      return response.json();
+    },
+    enabled: impersonatedCompanyId !== null || user?.role !== 'superAdmin',
+  });
+
   // Extract unique brands from visible products (must be before early returns due to Rules of Hooks)
   const uniqueBrands = useMemo(() => {
     if (!latestPricelist?.products) return [];
@@ -237,6 +251,9 @@ export default function ClientLanding() {
           });
         }
 
+        // Build set of hidden SKUs from the persistent visibility table
+        const hiddenSkusSet = new Set<string>(hiddenSkus || []);
+
         // Map CSV data to products and strip HTML tags (for Wix exports)
         const products: Product[] = csvData.map((row: any, index: number) => {
           let imageUrl = fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "";
@@ -249,9 +266,11 @@ export default function ClientLanding() {
           // Get SKU for reconciliation
           const sku = stripHtml(fieldMapping.sku ? row[fieldMapping.sku] || "" : "");
           
-          // Check if this product exists in the previous pricelist (by SKU)
+          // Determine visibility: 
+          // 1. First check the persistent visibility table (authoritative source)
+          // 2. Fall back to existing pricelist if not in visibility table
           const existingProduct = existingProductsBySKU.get(sku);
-          const isHidden = existingProduct?.isHidden ?? false;
+          const isHidden = hiddenSkusSet.has(sku) || (existingProduct?.isHidden ?? false);
           
           return {
             id: `product-${index}`,
@@ -262,7 +281,7 @@ export default function ClientLanding() {
             category: stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : ""),
             notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
             productImageUrl: imageUrl,
-            isHidden, // Preserve hidden state from existing pricelist
+            isHidden, // Preserve hidden state from visibility table or existing pricelist
           };
         });
 
@@ -295,10 +314,10 @@ export default function ClientLanding() {
             return;
           }
           
-          // Build branding with validated company name
+          // Build branding from all company defaults, including colors
           const branding: CompanyBranding = {
+            ...companyDefaults.defaultBranding,
             companyName: companyDefaults.defaultBranding.companyName.trim(),
-            tagline: companyDefaults.defaultBranding.tagline || "",
           };
           
           const template = companyDefaults.defaultTemplate;
