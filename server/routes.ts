@@ -1270,8 +1270,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         targetPricelist = await storage.getLatestPricelistByCompanyId(targetCompanyId);
+        // DEFENSE-IN-DEPTH: Verify storage returned correct company's data
+        if (targetPricelist && targetPricelist.companyId !== targetCompanyId) {
+          console.error(`[SECURITY] Storage returned pricelist ${targetPricelist.id} for wrong company (expected ${targetCompanyId}, got ${targetPricelist.companyId})`);
+          return res.status(500).json({ error: "Internal error: data integrity check failed" });
+        }
       }
       
+      // Empty state is valid - company simply has no pricelists yet
       if (!targetPricelist || !targetPricelist.products) {
         return res.json({ 
           productsByBrand: {},
@@ -1413,8 +1419,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         targetPricelist = await storage.getLatestPricelistByCompanyId(targetCompanyId);
+        // DEFENSE-IN-DEPTH: Verify storage returned correct company's data
+        if (targetPricelist && targetPricelist.companyId !== targetCompanyId) {
+          console.error(`[SECURITY] Storage returned pricelist ${targetPricelist.id} for wrong company (expected ${targetCompanyId}, got ${targetPricelist.companyId})`);
+          return res.status(500).json({ error: "Internal error: data integrity check failed" });
+        }
       }
       
+      // Empty state is valid - company simply has no pricelists yet
       if (!targetPricelist || !targetPricelist.products) {
         return res.json({ 
           unassignedProducts: [],
