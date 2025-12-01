@@ -26,7 +26,8 @@ import type {
   Template,
   FieldMapping,
   BrandRegistry,
-  BrandCategory
+  BrandCategory,
+  Pricelist
 } from "@shared/schema";
 
 export default function AdminPage() {
@@ -2087,6 +2088,7 @@ function BrandRegistryManager() {
   const [type, setType] = useState("");
   const [displayOrder, setDisplayOrder] = useState<number | undefined>(undefined);
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
+  const [selectedPricelistId, setSelectedPricelistId] = useState<number | null>(null);
   
   // Product editing state
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -2114,6 +2116,33 @@ function BrandRegistryManager() {
       setSelectedCompanyId(companies[0].id);
     }
   }, [companies, isSuperAdmin, selectedCompanyId]);
+
+  // Fetch pricelists for the selected company (for pricelist selector)
+  const { data: companyPricelists } = useQuery<Pricelist[]>({
+    queryKey: isSuperAdmin 
+      ? ["/api/pricelists/company", { companyId: selectedCompanyId }] 
+      : ["/api/pricelists/company"],
+    queryFn: async () => {
+      // Use the /api/pricelists endpoint which already filters by company for non-superadmins
+      const url = isSuperAdmin && selectedCompanyId
+        ? `/api/pricelists?companyId=${selectedCompanyId}`
+        : "/api/pricelists";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch pricelists");
+      const allPricelists = await res.json();
+      // Filter to only this company's pricelists for super admin
+      if (isSuperAdmin && selectedCompanyId) {
+        return allPricelists.filter((p: Pricelist) => p.companyId === selectedCompanyId);
+      }
+      return allPricelists;
+    },
+    enabled: isSuperAdmin ? !!selectedCompanyId : true,
+  });
+
+  // Reset selected pricelist when company changes
+  useEffect(() => {
+    setSelectedPricelistId(null);
+  }, [selectedCompanyId]);
 
   // Fetch brands for selected company (Super Admin) or current company (Company Admin)
   const { data: brands, isLoading, error } = useQuery<BrandRegistry[]>({
@@ -2149,7 +2178,7 @@ function BrandRegistryManager() {
     console.error('[BrandRegistry] Query error state:', error);
   }
 
-  // Fetch products grouped by brand from latest pricelist (with pricelist metadata)
+  // Fetch products grouped by brand from selected pricelist (or latest if none selected)
   const { data: productsData } = useQuery<{
     productsByBrand: Record<string, any[]>;
     pricelistMeta: {
@@ -2160,11 +2189,17 @@ function BrandRegistryManager() {
       productsWithoutBrand: number;
     } | null;
   }>({
-    queryKey: isSuperAdmin ? ["/api/brands/products", { companyId: selectedCompanyId }] : ["/api/brands/products"],
+    queryKey: isSuperAdmin 
+      ? ["/api/brands/products", { companyId: selectedCompanyId, pricelistId: selectedPricelistId }] 
+      : ["/api/brands/products", { pricelistId: selectedPricelistId }],
     queryFn: async () => {
-      const url = isSuperAdmin && selectedCompanyId
+      let url = isSuperAdmin && selectedCompanyId
         ? `/api/brands/products?companyId=${selectedCompanyId}`
         : "/api/brands/products";
+      // Add pricelistId if selected
+      if (selectedPricelistId) {
+        url += url.includes('?') ? `&pricelistId=${selectedPricelistId}` : `?pricelistId=${selectedPricelistId}`;
+      }
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch products");
       return res.json();
@@ -2193,11 +2228,17 @@ function BrandRegistryManager() {
       category: string;
     }>;
   }>({
-    queryKey: isSuperAdmin ? ["/api/brands/unassigned", { companyId: selectedCompanyId }] : ["/api/brands/unassigned"],
+    queryKey: isSuperAdmin 
+      ? ["/api/brands/unassigned", { companyId: selectedCompanyId, pricelistId: selectedPricelistId }] 
+      : ["/api/brands/unassigned", { pricelistId: selectedPricelistId }],
     queryFn: async () => {
-      const url = isSuperAdmin && selectedCompanyId
+      let url = isSuperAdmin && selectedCompanyId
         ? `/api/brands/unassigned?companyId=${selectedCompanyId}`
         : "/api/brands/unassigned";
+      // Add pricelistId if selected
+      if (selectedPricelistId) {
+        url += url.includes('?') ? `&pricelistId=${selectedPricelistId}` : `?pricelistId=${selectedPricelistId}`;
+      }
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch unassigned products");
       return res.json();
@@ -2794,6 +2835,46 @@ function BrandRegistryManager() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+          
+          {/* Pricelist Selector */}
+          {companyPricelists && companyPricelists.length > 0 && (
+            <div className="mt-4">
+              <Label htmlFor="pricelist-selector">Select Pricelist</Label>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={selectedPricelistId?.toString() || "latest"}
+                  onValueChange={(val) => setSelectedPricelistId(val === "latest" ? null : parseInt(val))}
+                >
+                  <SelectTrigger id="pricelist-selector" data-testid="select-pricelist" className="w-full md:w-96">
+                    <SelectValue placeholder="Latest pricelist (auto)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="latest">Latest pricelist (auto)</SelectItem>
+                    {companyPricelists
+                      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                      .map((pricelist) => (
+                        <SelectItem key={pricelist.id} value={pricelist.id.toString()}>
+                          {pricelist.name} ({new Date(pricelist.updatedAt).toLocaleDateString()})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {selectedPricelistId && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setSelectedPricelistId(null)}
+                    data-testid="button-reset-pricelist"
+                  >
+                    Reset to Latest
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Choose which pricelist to view products from. Hidden product settings are stored per-pricelist.
+              </p>
             </div>
           )}
         </CardHeader>

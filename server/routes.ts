@@ -597,6 +597,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyId: finalCompanyId,
       };
 
+      // Preserve isHidden settings from previous pricelist when uploading new CSV
+      // Match products by SKU and copy the isHidden flag from the previous pricelist
+      try {
+        const previousPricelist = await storage.getLatestPricelistByCompanyId(finalCompanyId);
+        if (previousPricelist && previousPricelist.products && pricelistData.products) {
+          // Build SKU → isHidden map from previous pricelist
+          const skuVisibilityMap = new Map<string, boolean>();
+          for (const product of previousPricelist.products) {
+            if (product.sku && product.isHidden !== undefined) {
+              skuVisibilityMap.set(product.sku, product.isHidden);
+            }
+          }
+          
+          // Apply isHidden values to matching SKUs in new products
+          let preservedCount = 0;
+          pricelistData.products = pricelistData.products.map((product: any) => {
+            if (product.sku && skuVisibilityMap.has(product.sku)) {
+              const previousIsHidden = skuVisibilityMap.get(product.sku);
+              if (previousIsHidden) {
+                preservedCount++;
+                return { ...product, isHidden: true };
+              }
+            }
+            return product;
+          });
+          
+          if (preservedCount > 0) {
+            console.log(`[POST /api/pricelists] Preserved isHidden settings for ${preservedCount} products from previous pricelist`);
+          }
+        }
+      } catch (err) {
+        console.log("[POST /api/pricelists] No previous pricelist found or error getting it:", err);
+        // Continue without preserving settings - this is not a critical failure
+      }
+
       console.log("[POST /api/pricelists] Validation passed, creating pricelist...");
       console.log("[POST /api/pricelists] categoryFilter in validation.data:", validation.data.categoryFilter);
       console.log("[POST /api/pricelists] categoryFilter in pricelistData:", pricelistData.categoryFilter);
@@ -1195,14 +1230,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Determine target company (Super Admin can specify, others use their own)
+      // SECURITY: Determine target company with strict validation
+      // Super Admins MUST provide explicit companyId - never fall back to impersonation for brand routes
       let targetCompanyId: number;
-      if (user.role === "superAdmin" && req.query.companyId) {
+      
+      if (user.role === "superAdmin") {
+        // Super Admin: REQUIRE explicit companyId query parameter
+        if (!req.query.companyId) {
+          return res.status(400).json({ error: "companyId query parameter is required for Super Admins" });
+        }
         targetCompanyId = parseInt(req.query.companyId as string);
-        if (isNaN(targetCompanyId)) {
+        if (isNaN(targetCompanyId) || targetCompanyId <= 0) {
           return res.status(400).json({ error: "Invalid company ID" });
         }
       } else {
+        // Regular admin: use their company
         const effectiveCompanyId = getEffectiveCompanyId(req, user);
         if (!effectiveCompanyId) {
           return res.status(400).json({ error: "No company associated with user" });
@@ -1210,10 +1252,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         targetCompanyId = effectiveCompanyId;
       }
 
-      // Get latest pricelist for this company
-      const latestPricelist = await storage.getLatestPricelistByCompanyId(targetCompanyId);
+      // Get specific pricelist if ID provided, otherwise get latest
+      let targetPricelist: Pricelist | undefined;
+      if (req.query.pricelistId) {
+        const pricelistId = parseInt(req.query.pricelistId as string);
+        if (isNaN(pricelistId) || pricelistId <= 0) {
+          return res.status(400).json({ error: "Invalid pricelist ID" });
+        }
+        targetPricelist = await storage.getPricelistById(pricelistId);
+        
+        // SECURITY: Verify pricelist exists AND belongs to the target company
+        if (!targetPricelist) {
+          return res.status(404).json({ error: "Pricelist not found" });
+        }
+        if (targetPricelist.companyId !== targetCompanyId) {
+          return res.status(403).json({ error: "Access denied: Pricelist does not belong to this company" });
+        }
+      } else {
+        targetPricelist = await storage.getLatestPricelistByCompanyId(targetCompanyId);
+      }
       
-      if (!latestPricelist || !latestPricelist.products) {
+      if (!targetPricelist || !targetPricelist.products) {
         return res.json({ 
           productsByBrand: {},
           pricelistMeta: null 
@@ -1241,7 +1300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let skuMatched = 0;
       let collectionBrandMatched = 0;
       
-      latestPricelist.products.forEach((product: any) => {
+      targetPricelist.products.forEach((product: any) => {
         let brandName: string | null = null;
         
         // Primary: Look up brand by SKU if registry has SKU mappings
@@ -1269,7 +1328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      console.log(`[GET /api/brands/products] Total products: ${latestPricelist.products.length}`);
+      console.log(`[GET /api/brands/products] Total products: ${targetPricelist.products.length}`);
       console.log(`[GET /api/brands/products] Registry has SKUs: ${registryHasSKUs} (${skuToBrand.size} mappings)`);
       console.log(`[GET /api/brands/products] SKU-matched: ${skuMatched}, collectionBrand-matched: ${collectionBrandMatched}`);
       console.log(`[GET /api/brands/products] Products without brand: ${productsWithoutBrand}`);
@@ -1279,10 +1338,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         productsByBrand,
         pricelistMeta: {
-          id: latestPricelist.id,
-          name: latestPricelist.name,
-          updatedAt: latestPricelist.updatedAt,
-          totalProducts: latestPricelist.products.length,
+          id: targetPricelist.id,
+          name: targetPricelist.name,
+          updatedAt: targetPricelist.updatedAt,
+          totalProducts: targetPricelist.products.length,
           productsWithoutBrand,
         }
       });
@@ -1303,14 +1362,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Determine target company
+      // SECURITY: Determine target company with strict validation
+      // Super Admins MUST provide explicit companyId - never fall back to impersonation for brand routes
       let targetCompanyId: number;
-      if (user.role === "superAdmin" && req.query.companyId) {
+      
+      if (user.role === "superAdmin") {
+        // Super Admin: REQUIRE explicit companyId query parameter
+        if (!req.query.companyId) {
+          return res.status(400).json({ error: "companyId query parameter is required for Super Admins" });
+        }
         targetCompanyId = parseInt(req.query.companyId as string);
-        if (isNaN(targetCompanyId)) {
+        if (isNaN(targetCompanyId) || targetCompanyId <= 0) {
           return res.status(400).json({ error: "Invalid company ID" });
         }
       } else {
+        // Regular admin: use their company
         const effectiveCompanyId = getEffectiveCompanyId(req, user);
         if (!effectiveCompanyId) {
           return res.status(400).json({ error: "No company associated with user" });
@@ -1329,10 +1395,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Get latest pricelist
-      const latestPricelist = await storage.getLatestPricelistByCompanyId(targetCompanyId);
+      // Get specific pricelist if ID provided, otherwise get latest
+      let targetPricelist: Pricelist | undefined;
+      if (req.query.pricelistId) {
+        const pricelistId = parseInt(req.query.pricelistId as string);
+        if (isNaN(pricelistId) || pricelistId <= 0) {
+          return res.status(400).json({ error: "Invalid pricelist ID" });
+        }
+        targetPricelist = await storage.getPricelistById(pricelistId);
+        
+        // SECURITY: Verify pricelist exists AND belongs to the target company
+        if (!targetPricelist) {
+          return res.status(404).json({ error: "Pricelist not found" });
+        }
+        if (targetPricelist.companyId !== targetCompanyId) {
+          return res.status(403).json({ error: "Access denied: Pricelist does not belong to this company" });
+        }
+      } else {
+        targetPricelist = await storage.getLatestPricelistByCompanyId(targetCompanyId);
+      }
       
-      if (!latestPricelist || !latestPricelist.products) {
+      if (!targetPricelist || !targetPricelist.products) {
         return res.json({ 
           unassignedProducts: [],
           totalProducts: 0,
@@ -1349,7 +1432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         collectionCategory?: string;
       }> = [];
 
-      latestPricelist.products.forEach((product: any) => {
+      targetPricelist.products.forEach((product: any) => {
         if (product.sku && !assignedSkus.has(product.sku)) {
           unassignedProducts.push({
             sku: product.sku,
@@ -1360,13 +1443,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      console.log(`[GET /api/brands/unassigned] Total products: ${latestPricelist.products.length}`);
+      console.log(`[GET /api/brands/unassigned] Total products: ${targetPricelist.products.length}`);
       console.log(`[GET /api/brands/unassigned] Assigned SKUs in registry: ${assignedSkus.size}`);
       console.log(`[GET /api/brands/unassigned] Unassigned products: ${unassignedProducts.length}`);
 
       res.json({
         unassignedProducts,
-        totalProducts: latestPricelist.products.length,
+        totalProducts: targetPricelist.products.length,
         unassignedCount: unassignedProducts.length,
         registryHasSKUs: assignedSkus.size > 0,
         brands: brands.map(b => ({
