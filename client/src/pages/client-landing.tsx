@@ -70,8 +70,13 @@ export default function ClientLanding() {
   });
 
   // Fetch brand ordering data for manual product ordering (client-accessible endpoint)
-  // Returns lightweight payload with just brandName + productOrder for PDF generation
-  const { data: brandOrderingData, isLoading: isBrandOrderingLoading, isError: isBrandOrderingError } = useQuery<{ brandName: string; productOrder: string[] | null }[]>({
+  // Returns category, displayOrder for brand sorting, and productOrder for product sorting
+  const { data: brandOrderingData, isLoading: isBrandOrderingLoading, isError: isBrandOrderingError } = useQuery<{ 
+    brandName: string; 
+    category: 'cider' | 'wine' | 'spirits' | 'nonAlc';
+    displayOrder: number | null;
+    productOrder: string[] | null;
+  }[]>({
     queryKey: ['/api/brands/ordering', { impersonatedCompanyId }],
     queryFn: async () => {
       const url = impersonatedCompanyId 

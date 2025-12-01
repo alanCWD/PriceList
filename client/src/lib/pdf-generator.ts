@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getDisplayName, injectManualSortIndex, type BrandWithOrder } from "./collection-parser";
+import { sortBrandGroups, type BrandOrderingEntry } from "./sort-utils";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
 // Helper function to format price with 2 decimal places
@@ -39,6 +40,17 @@ interface PDFConfig {
   pricelistName?: string;
   brandName?: string; // For single-brand downloads
   brandRegistry?: BrandRegistry[]; // For manual product ordering
+}
+
+// Helper to convert BrandRegistry to BrandOrderingEntry for sorting
+function toBrandOrderingEntries(brandRegistry?: BrandRegistry[]): BrandOrderingEntry[] {
+  if (!brandRegistry) return [];
+  return brandRegistry.map(b => ({
+    brandName: b.brandName,
+    category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
+    displayOrder: b.displayOrder,
+    productOrder: b.productOrder,
+  }));
 }
 
 // Helper to extract image format from data URL
@@ -519,13 +531,9 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     });
   });
 
-  // Render products by brand (sorted by sortKey to maintain category hierarchy)
-  Object.entries(groupedProducts)
-    .sort(([brandA, productsA], [brandB, productsB]) => {
-      const sortKeyA = productsA[0]?.category || brandA;
-      const sortKeyB = productsB[0]?.category || brandB;
-      return sortKeyA.localeCompare(sortKeyB);
-    })
+  // Render products by brand (sorted using brand registry ordering)
+  const brandOrderingData = toBrandOrderingEntries(config.brandRegistry);
+  sortBrandGroups(Object.entries(groupedProducts), brandOrderingData)
     .forEach(([groupBrandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 20;
@@ -798,12 +806,9 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     });
   });
 
-  Object.entries(groupedProducts)
-    .sort(([brandA, productsA], [brandB, productsB]) => {
-      const sortKeyA = productsA[0]?.category || brandA;
-      const sortKeyB = productsB[0]?.category || brandB;
-      return sortKeyA.localeCompare(sortKeyB);
-    })
+  // Sort using brand registry ordering
+  const brandOrderingData2 = toBrandOrderingEntries(config.brandRegistry);
+  sortBrandGroups(Object.entries(groupedProducts), brandOrderingData2)
     .forEach(([groupBrandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 25;
@@ -1188,13 +1193,9 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     });
   });
 
-  // Render products by brand (sorted by sortKey to maintain category hierarchy)
-  Object.entries(groupedProducts)
-    .sort(([brandA, productsA], [brandB, productsB]) => {
-      const sortKeyA = productsA[0]?.category || brandA;
-      const sortKeyB = productsB[0]?.category || brandB;
-      return sortKeyA.localeCompare(sortKeyB);
-    })
+  // Render products by brand (sorted using brand registry ordering)
+  const brandOrderingData3 = toBrandOrderingEntries(config.brandRegistry);
+  sortBrandGroups(Object.entries(groupedProducts), brandOrderingData3)
     .forEach(([groupBrandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 12; // Minimal spacing between categories

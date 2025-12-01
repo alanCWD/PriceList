@@ -7,7 +7,7 @@ import { generatePDF } from "@/lib/pdf-generator";
 import { generateSpreadsheet, downloadSpreadsheet } from "@/lib/spreadsheet-generator";
 import { useToast } from "@/hooks/use-toast";
 import { parseCollection, extractWineTypeFromProductName, injectManualSortIndex, type BrandRegistryEntry } from "@/lib/collection-parser";
-import { sortBrandGroups } from "@/lib/sort-utils";
+import { sortBrandGroups, type BrandOrderingEntry } from "@/lib/sort-utils";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
 interface PreviewPanelProps {
@@ -394,9 +394,20 @@ export function PreviewPanel({
     });
   });
 
-  // Sort brand groups using shared utility
-  // Ensures Wine → Spirits → Cider → NonAlc order with alphabetical brands within each category
-  const orderedBrandGroups = sortBrandGroups(Object.entries(groupedProducts));
+  // Convert brand registry to the format expected by sortBrandGroups
+  const brandOrderingData: BrandOrderingEntry[] = useMemo(() => {
+    if (!brandRegistry) return [];
+    return brandRegistry.map(b => ({
+      brandName: b.brandName,
+      category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
+      displayOrder: b.displayOrder,
+      productOrder: b.productOrder,
+    }));
+  }, [brandRegistry]);
+
+  // Sort brand groups using shared utility with brand registry ordering
+  // Ensures Wine → Spirits → Cider → NonAlc order, then by displayOrder, then alphabetical
+  const orderedBrandGroups = sortBrandGroups(Object.entries(groupedProducts), brandOrderingData);
 
   return (
     <div className="space-y-6">
@@ -455,6 +466,7 @@ export function PreviewPanel({
             salesAgents={salesAgents}
             qrCodeConfig={qrCodeConfig}
             template={template}
+            brandOrdering={brandOrderingData}
           />
         </div>
       </div>

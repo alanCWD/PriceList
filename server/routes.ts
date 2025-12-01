@@ -1493,10 +1493,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      // Fetch brands and return only brandName + productOrder (safe for clients)
+      // Fetch brands and return ordering data (safe for clients)
+      // Includes category, displayOrder for brand sorting, and productOrder for product sorting
       const brands = await storage.getBrandsByCompanyId(effectiveCompanyId);
       const brandOrdering = brands.map(b => ({
         brandName: b.brandName,
+        category: b.category,
+        displayOrder: b.displayOrder,
         productOrder: b.productOrder,
       }));
       

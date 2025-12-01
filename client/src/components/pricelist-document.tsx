@@ -1,7 +1,7 @@
 import { Mail, Phone } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { getDisplayName } from "@/lib/collection-parser";
-import { sortBrandGroups } from "@/lib/sort-utils";
+import { sortBrandGroups, type BrandOrderingEntry } from "@/lib/sort-utils";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template } from "@shared/schema";
 
 // Helper function to format price with 2 decimal places
@@ -18,6 +18,7 @@ interface PricelistDocumentProps {
   salesAgents: SalesAgent[];
   qrCodeConfig?: QRCodeConfig;
   template?: Template;
+  brandOrdering?: BrandOrderingEntry[];  // Optional brand ordering data for sorting
 }
 
 export function PricelistDocument({
@@ -27,6 +28,7 @@ export function PricelistDocument({
   salesAgents,
   qrCodeConfig,
   template = "modern",
+  brandOrdering,
 }: PricelistDocumentProps) {
   // Format date as "Day Month Year" (e.g., "15 January 2025")
   const dayMonthDate = new Date().toLocaleDateString("en-GB", {
@@ -37,7 +39,7 @@ export function PricelistDocument({
 
   // Defensive sorting: ensure brand groups are in correct order
   // even if caller bypasses PreviewPanel sorting
-  const sortedGroupedProducts = sortBrandGroups([...groupedProducts]);
+  const sortedGroupedProducts = sortBrandGroups([...groupedProducts], brandOrdering);
 
   if (template === "classic") {
     return <ClassicTemplate 
