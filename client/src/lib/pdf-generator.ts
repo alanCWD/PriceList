@@ -174,44 +174,43 @@ function extractBrandFromProductName(productName: string, brandRegistry?: any[])
   return null;
 }
 
-// Helper to get the brand key for grouping products (now accepts brandRegistry)
+// Build SKU→Brand map from brand registry for fast lookup
+function buildSkuToBrandMap(brandRegistry?: any[]): Map<string, string> {
+  const map = new Map<string, string>();
+  if (brandRegistry) {
+    brandRegistry.forEach((brand: any) => {
+      if (brand.skus && Array.isArray(brand.skus)) {
+        brand.skus.forEach((sku: string) => {
+          map.set(sku, brand.brandName);
+        });
+      }
+    });
+  }
+  return map;
+}
+
+// Cached SKU→Brand map (rebuilt when brandRegistry changes)
+let cachedBrandRegistry: any[] | undefined;
+let cachedSkuToBrandMap: Map<string, string> = new Map();
+
+// Helper to get the brand key for grouping products using SKU-based matching
+// This ensures products ONLY appear under registry brands, preventing phantom brands
 function getBrandKey(product: any, brandRegistry?: any[]): string {
-  // Skip words that should never be used as brand names (regions, categories, wine types)
-  const skipWords = ['wine', 'wines', 'cider', 'spirits', 'non alcoholic', 'non-alcoholic',
-                     'white', 'red', 'rosé', 'rose', 'sparkling', 
-                     'okanagan', 'vancouver island', 'similkameen', 'fraser valley',
-                     'gulf islands', 'kootenays', 'bc', 'british columbia', 'lower mainland'];
-  
-  // PRIORITY 1: Check if product name matches a brand in registry (highest priority)
-  // This ensures "Rust Wines 2022 Merlot" matches "Rust Wines" brand even if collectionBrand says otherwise
-  const registryMatch = extractBrandFromProductName(product.product, brandRegistry);
-  if (registryMatch && brandRegistry?.some(b => b.brandName === registryMatch)) {
-    return registryMatch;
+  // Rebuild cache if brandRegistry changed
+  if (brandRegistry !== cachedBrandRegistry) {
+    cachedBrandRegistry = brandRegistry;
+    cachedSkuToBrandMap = buildSkuToBrandMap(brandRegistry);
   }
   
-  // PRIORITY 2: collectionBrand (if not a skip word)
-  let brandKey = product.collectionBrand;
-  
-  // Check if collectionBrand is a skip word (region/category) - if so, don't use it
-  if (brandKey && skipWords.includes(brandKey.toLowerCase().trim())) {
-    brandKey = null;
+  // PRIORITY 1: SKU-based lookup from brand registry (authoritative source)
+  // This prevents phantom brands like "Mt." or "Unsworth" 
+  if (product.sku && cachedSkuToBrandMap.has(product.sku)) {
+    return cachedSkuToBrandMap.get(product.sku)!;
   }
   
-  // PRIORITY 3: extracted from category
-  if (!brandKey) {
-    brandKey = extractBrandFromCategory(product.category);
-  }
-  
-  // PRIORITY 4: extracted from product name (fallback for non-registry brands)
-  if (!brandKey || brandKey.toLowerCase() === "uncategorized") {
-    if (registryMatch) {
-      brandKey = registryMatch;
-    } else {
-      brandKey = "Uncategorized";
-    }
-  }
-  
-  return brandKey;
+  // FALLBACK: If no SKU match, product is unassigned
+  // This ensures only products with SKUs in the brand registry appear in the PDF
+  return "Uncategorized";
 }
 
 export async function generatePDF(config: PDFConfig): Promise<void> {

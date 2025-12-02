@@ -70,12 +70,13 @@ export default function ClientLanding() {
   });
 
   // Fetch brand ordering data for manual product ordering (client-accessible endpoint)
-  // Returns category, displayOrder for brand sorting, and productOrder for product sorting
+  // Returns category, displayOrder for brand sorting, productOrder for product sorting, and skus for SKU-based matching
   const { data: brandOrderingData, isLoading: isBrandOrderingLoading, isError: isBrandOrderingError } = useQuery<{ 
     brandName: string; 
     category: 'cider' | 'wine' | 'spirits' | 'nonAlc';
     displayOrder: number | null;
     productOrder: string[] | null;
+    skus: string[];
   }[]>({
     queryKey: ['/api/brands/ordering', { impersonatedCompanyId }],
     queryFn: async () => {
@@ -103,7 +104,23 @@ export default function ClientLanding() {
     enabled: impersonatedCompanyId !== null || user?.role !== 'superAdmin',
   });
 
-  // Extract unique brands from visible products (must be before early returns due to Rules of Hooks)
+  // Build SKU→Brand map from brand ordering data for consistent brand matching
+  const skuToBrandMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (brandOrderingData) {
+      brandOrderingData.forEach(brand => {
+        if (brand.skus) {
+          brand.skus.forEach(sku => {
+            map.set(sku, brand.brandName);
+          });
+        }
+      });
+    }
+    return map;
+  }, [brandOrderingData]);
+
+  // Extract unique brands from visible products using SKU-based matching
+  // This ensures brands match exactly with the Brand Registry
   const uniqueBrands = useMemo(() => {
     if (!latestPricelist?.products) return [];
     
@@ -112,16 +129,19 @@ export default function ClientLanding() {
     const brandSet = new Set<string>();
     
     visibleProducts.forEach(product => {
-      // Try to get brand from collectionBrand first, then fall back to parsing category
-      const brand = product.collectionBrand || product.category || "Uncategorized";
-      if (brand && brand !== "Uncategorized") {
-        brandSet.add(brand);
+      // Use SKU-based lookup to match product to brand from registry
+      // This prevents phantom brands like "Mt." or "Unsworth"
+      if (product.sku) {
+        const registryBrand = skuToBrandMap.get(product.sku);
+        if (registryBrand) {
+          brandSet.add(registryBrand);
+        }
       }
     });
     
     // Convert to array and sort alphabetically
     return Array.from(brandSet).sort((a, b) => a.localeCompare(b));
-  }, [latestPricelist?.products]);
+  }, [latestPricelist?.products, skuToBrandMap]);
 
   // Update pricelist mutation
   const updateMutation = useMutation({

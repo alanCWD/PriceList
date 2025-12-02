@@ -1321,28 +1321,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const registryHasSKUs = skuToBrand.size > 0;
 
-      // Group products by brand using SKU-based matching (primary) or collectionBrand (fallback)
+      // Group products by brand using ONLY SKU-based matching from brand registry
+      // This ensures products only appear under registry brands, preventing phantom brands
       const productsByBrand: Record<string, any[]> = {};
       let productsWithoutBrand = 0;
       let skuMatched = 0;
-      let collectionBrandMatched = 0;
       
       targetPricelist.products.forEach((product: any) => {
         let brandName: string | null = null;
         
-        // Primary: Look up brand by SKU if registry has SKU mappings
-        if (registryHasSKUs && product.sku) {
+        // ONLY use SKU-based matching from brand registry
+        // No fallback to collectionBrand - this prevents phantom brands like "Mt." or "Unsworth"
+        if (product.sku) {
           const mappedBrand = skuToBrand.get(product.sku);
           if (mappedBrand) {
             brandName = mappedBrand;
             skuMatched++;
           }
-        }
-        
-        // Fallback: Use collectionBrand from CSV parsing
-        if (!brandName && product.collectionBrand) {
-          brandName = product.collectionBrand;
-          collectionBrandMatched++;
         }
         
         if (brandName) {
@@ -1358,9 +1353,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log(`[GET /api/brands/products] Total products: ${targetPricelist.products.length}`);
-      console.log(`[GET /api/brands/products] Registry has SKUs: ${registryHasSKUs} (${skuToBrand.size} mappings)`);
-      console.log(`[GET /api/brands/products] SKU-matched: ${skuMatched}, collectionBrand-matched: ${collectionBrandMatched}`);
-      console.log(`[GET /api/brands/products] Products without brand: ${productsWithoutBrand}`);
+      console.log(`[GET /api/brands/products] Registry has SKUs: ${registryHasSKUs} (${skuToBrand.size} SKU mappings)`);
+      console.log(`[GET /api/brands/products] SKU-matched: ${skuMatched}`);
+      console.log(`[GET /api/brands/products] Products without brand (unassigned): ${productsWithoutBrand}`);
       console.log(`[GET /api/brands/products] Brands found: ${Object.keys(productsByBrand).length}`);
 
       // Return products grouped by brand along with pricelist metadata
@@ -1517,13 +1512,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch brands and return ordering data (safe for clients)
-      // Includes category, displayOrder for brand sorting, and productOrder for product sorting
+      // Includes category, displayOrder for brand sorting, productOrder for product sorting, and skus for SKU-based matching
       const brands = await storage.getBrandsByCompanyId(effectiveCompanyId);
       const brandOrdering = brands.map(b => ({
         brandName: b.brandName,
         category: b.category,
         displayOrder: b.displayOrder,
         productOrder: b.productOrder,
+        skus: b.skus || [], // Include SKUs for client-side brand matching
       }));
       
       // Prevent HTTP caching to ensure fresh data after reordering
