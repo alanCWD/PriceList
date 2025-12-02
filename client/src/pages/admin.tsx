@@ -2833,7 +2833,7 @@ function BrandRegistryManager() {
                 onValueChange={(val) => setSelectedCompanyId(parseInt(val))}
                 disabled={companiesLoading}
               >
-                <SelectTrigger id="company-selector" data-testid="select-company" className="w-full md:w-96">
+                <SelectTrigger id="company-selector" data-testid="select-company" className="w-full md:w-96 text-left">
                   <SelectValue placeholder="Select a company" />
                 </SelectTrigger>
                 <SelectContent>
