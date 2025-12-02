@@ -530,6 +530,8 @@ export default function ClientLanding() {
 
   // Main state - pricelist exists
   const products = latestPricelist.products as Product[];
+  // Filter to only visible products (matching what the PDF will contain)
+  const visibleProducts = products.filter(p => !p.isHidden);
 
   // Handler for downloading a single brand
   const handleDownloadBrandPDF = async () => {
@@ -772,7 +774,7 @@ export default function ClientLanding() {
                 {latestPricelist.name}
               </p>
               <p className="text-xs text-muted-foreground">
-                {products.length} products · Last updated {new Date(latestPricelist.updatedAt).toLocaleDateString()}
+                {visibleProducts.length} products · Last updated {new Date(latestPricelist.updatedAt).toLocaleDateString()}
               </p>
             </div>
 
