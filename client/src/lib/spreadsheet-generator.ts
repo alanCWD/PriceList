@@ -87,10 +87,36 @@ function extractBrandFromCategory(category: string): string {
   return category;
 }
 
-function getBrandForProduct(product: Product, brandRegistry?: BrandRegistry[]): string {
+// Build SKU to brand name lookup map for efficient brand assignment
+function buildSkuToBrandMap(brandRegistry?: BrandRegistry[]): Map<string, string> {
+  const skuMap = new Map<string, string>();
+  if (!brandRegistry) return skuMap;
+  
+  for (const brand of brandRegistry) {
+    if (brand.brandName && brand.skus && Array.isArray(brand.skus)) {
+      for (const sku of brand.skus) {
+        if (sku) {
+          skuMap.set(sku, brand.brandName);
+        }
+      }
+    }
+  }
+  return skuMap;
+}
+
+// Get brand for product using SKU-based lookup (authoritative) with fallbacks
+function getBrandForProduct(product: Product, brandRegistry?: BrandRegistry[], skuToBrandMap?: Map<string, string>): string {
+  // PRIORITY 1 (HIGHEST): SKU-based lookup from brand registry
+  // This is the authoritative source - if product SKU is in a brand's SKU list, use that brand name
+  if (skuToBrandMap && product.sku && skuToBrandMap.has(product.sku)) {
+    return skuToBrandMap.get(product.sku)!;
+  }
+  
+  // PRIORITY 2: Check if product name matches a brand in registry
   const brandFromName = extractBrandFromProductName(product.product, brandRegistry);
   if (brandFromName) return brandFromName;
   
+  // PRIORITY 3: collectionBrand (if not a skip word)
   if (product.collectionBrand) {
     const lower = product.collectionBrand.toLowerCase().trim();
     if (!skipWords.some(skip => lower === skip)) {
@@ -98,6 +124,7 @@ function getBrandForProduct(product: Product, brandRegistry?: BrandRegistry[]): 
     }
   }
   
+  // PRIORITY 4: extracted from category
   if (product.category) {
     return extractBrandFromCategory(product.category);
   }
@@ -234,9 +261,12 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
     ? injectManualSortIndex(visibleProducts, brandRegistry)
     : visibleProducts;
   
+  // Build SKU to brand lookup map for authoritative brand assignment
+  const skuToBrandMap = buildSkuToBrandMap(brandRegistry);
+  
   const productsByBrand: Record<string, ProductWithSortIndex[]> = {};
   productsWithSortIndex.forEach(product => {
-    const brand = getBrandForProduct(product as Product, brandRegistry);
+    const brand = getBrandForProduct(product as Product, brandRegistry, skuToBrandMap);
     if (!productsByBrand[brand]) {
       productsByBrand[brand] = [];
     }

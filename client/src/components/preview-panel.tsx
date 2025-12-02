@@ -279,7 +279,25 @@ export function PreviewPanel({
     return null;
   };
 
+  // Build SKU to brand name lookup map for efficient brand assignment
+  const skuToBrandMap = useMemo(() => {
+    const skuMap = new Map<string, string>();
+    if (!brandRegistry) return skuMap;
+    
+    for (const brand of brandRegistry) {
+      if (brand.brandName && brand.skus && Array.isArray(brand.skus)) {
+        for (const sku of brand.skus) {
+          if (sku) {
+            skuMap.set(sku, brand.brandName);
+          }
+        }
+      }
+    }
+    return skuMap;
+  }, [brandRegistry]);
+
   // Get brand key for grouping - same logic as PDF generator
+  // Uses SKU-based lookup as the authoritative source for brand assignment
   const getBrandKey = (product: any): string => {
     // Skip words that should never be used as brand names (regions, categories, wine types)
     const skipWords = ['wine', 'wines', 'cider', 'spirits', 'non alcoholic', 'non-alcoholic',
@@ -287,14 +305,20 @@ export function PreviewPanel({
                        'okanagan', 'vancouver island', 'similkameen', 'fraser valley',
                        'gulf islands', 'kootenays', 'bc', 'british columbia', 'lower mainland'];
     
-    // PRIORITY 1: Check if product name matches a brand in registry (highest priority)
+    // PRIORITY 1 (HIGHEST): SKU-based lookup from brand registry
+    // This is the authoritative source - if product SKU is in a brand's SKU list, use that brand name
+    if (product.sku && skuToBrandMap.has(product.sku)) {
+      return skuToBrandMap.get(product.sku)!;
+    }
+    
+    // PRIORITY 2: Check if product name matches a brand in registry
     // This ensures "Rust Wines 2022 Merlot" matches "Rust Wines" brand even if collectionBrand says otherwise
     const registryMatch = extractBrandFromProductName(product.product);
     if (registryMatch && brandRegistry?.some(b => b.brandName === registryMatch)) {
       return registryMatch;
     }
     
-    // PRIORITY 2: collectionBrand (if not a skip word)
+    // PRIORITY 3: collectionBrand (if not a skip word)
     let brandKey = product.collectionBrand;
     
     // Check if collectionBrand is a skip word (region/category) - if so, don't use it
@@ -302,12 +326,12 @@ export function PreviewPanel({
       brandKey = null;
     }
     
-    // PRIORITY 3: extracted from category
+    // PRIORITY 4: extracted from category
     if (!brandKey) {
       brandKey = extractBrandFromCategory(product.category);
     }
     
-    // PRIORITY 4: extracted from product name (fallback for non-registry brands)
+    // PRIORITY 5: extracted from product name (fallback for non-registry brands)
     if (!brandKey || brandKey.toLowerCase() === "uncategorized") {
       if (registryMatch) {
         brandKey = registryMatch;
