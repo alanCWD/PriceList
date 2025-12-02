@@ -1,4 +1,5 @@
 import { useRef, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Printer, FileSpreadsheet } from "lucide-react";
@@ -33,6 +34,27 @@ export function PreviewPanel({
 }: PreviewPanelProps) {
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Fetch hidden SKUs from visibility table (authoritative source)
+  const { data: hiddenSkus } = useQuery<string[]>({
+    queryKey: ['/api/visibility/hidden-skus'],
+    queryFn: async () => {
+      const response = await fetch('/api/visibility/hidden-skus', { credentials: 'include' });
+      if (!response.ok) return [];
+      return response.json();
+    },
+  });
+
+  // Create a Set of hidden SKUs for efficient lookup
+  const hiddenSkusSet = useMemo(() => new Set(hiddenSkus || []), [hiddenSkus]);
+
+  // Check if a product is hidden using the authoritative visibility table
+  const isProductHidden = (product: Product): boolean => {
+    if (product.sku && hiddenSkusSet.has(product.sku)) {
+      return true;
+    }
+    return product.isHidden || false;
+  };
 
   // Normalize products: re-parse collection data for any product missing parsed fields
   const normalizedProducts = useMemo(() => {
@@ -101,9 +123,9 @@ export function PreviewPanel({
     });
   }, [products, brandRegistry]);
 
-  // Filter products: exclude hidden, uncategorized, and apply category filter if set
+  // Filter products: exclude hidden (using visibility table), uncategorized, and apply category filter if set
   const filteredProducts = normalizedProducts
-    .filter((p) => !p.isHidden) // Exclude hidden products
+    .filter((p) => !isProductHidden(p)) // Exclude hidden products using authoritative visibility table
     .filter((p) => !p.category || p.category.toLowerCase() !== "uncategorized") // Exclude uncategorized products
     .filter((p) => !categoryFilter || p.category === categoryFilter); // Apply category filter if set
 

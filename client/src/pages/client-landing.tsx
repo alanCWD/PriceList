@@ -119,6 +119,18 @@ export default function ClientLanding() {
     return map;
   }, [brandOrderingData]);
 
+  // Create a Set of hidden SKUs for efficient lookup (authoritative source from visibility table)
+  const hiddenSkusSet = useMemo(() => new Set(hiddenSkus || []), [hiddenSkus]);
+
+  // Check if a product is hidden using the authoritative visibility table
+  const isProductHidden = (product: Product): boolean => {
+    // Use visibility table as authoritative source, fall back to stored isHidden
+    if (product.sku && hiddenSkusSet.has(product.sku)) {
+      return true;
+    }
+    return product.isHidden || false;
+  };
+
   // SKU-only matching: product must have a SKU in the brand registry
   const matchProductToBrand = (product: Product): string | null => {
     if (product.sku && skuToBrandMap.has(product.sku)) {
@@ -133,7 +145,7 @@ export default function ClientLanding() {
     if (!latestPricelist?.products) return [];
     
     const products = latestPricelist.products as Product[];
-    const visibleProducts = products.filter(p => !p.isHidden);
+    const visibleProducts = products.filter(p => !isProductHidden(p));
     const brandSet = new Set<string>();
     
     visibleProducts.forEach(product => {
@@ -145,7 +157,7 @@ export default function ClientLanding() {
     
     // Convert to array and sort alphabetically
     return Array.from(brandSet).sort((a, b) => a.localeCompare(b));
-  }, [latestPricelist?.products, skuToBrandMap]);
+  }, [latestPricelist?.products, skuToBrandMap, hiddenSkusSet]);
 
   // Update pricelist mutation
   const updateMutation = useMutation({
@@ -374,9 +386,9 @@ export default function ClientLanding() {
 
     setIsGeneratingPDF(true);
     try {
-      // Filter out hidden products before PDF generation
+      // Filter out hidden products using authoritative visibility table
       const allProducts = latestPricelist.products as Product[];
-      const visibleProducts = allProducts.filter(p => !p.isHidden);
+      const visibleProducts = allProducts.filter(p => !isProductHidden(p));
       
       await generatePDF({
         products: visibleProducts,
@@ -554,8 +566,8 @@ export default function ClientLanding() {
 
   // Main state - pricelist exists
   const products = latestPricelist.products as Product[];
-  // Filter to only visible products (matching what the PDF will contain)
-  const visibleProducts = products.filter(p => !p.isHidden);
+  // Filter to only visible products using authoritative visibility table
+  const visibleProducts = products.filter(p => !isProductHidden(p));
 
   // Handler for downloading a single brand
   const handleDownloadBrandPDF = async () => {
@@ -573,12 +585,13 @@ export default function ClientLanding() {
 
     setIsGeneratingPDF(true);
     try {
-      // Filter products by selected brand and exclude hidden products
+      // Filter products by selected brand using SKU-based matching and visibility table
       const allProducts = latestPricelist.products as Product[];
-      const brandProducts = allProducts.filter(p => 
-        !p.isHidden && 
-        (p.collectionBrand === selectedBrand || p.category === selectedBrand)
-      );
+      const brandProducts = allProducts.filter(p => {
+        if (isProductHidden(p)) return false;
+        const matchedBrand = matchProductToBrand(p);
+        return matchedBrand === selectedBrand;
+      });
       
       if (brandProducts.length === 0) {
         toast({
@@ -598,7 +611,7 @@ export default function ClientLanding() {
         template: latestPricelist.template as Template,
         pricelistName: `${latestPricelist.name} - ${selectedBrand}`,
         brandName: selectedBrand,
-        brandRegistry: brandOrderingData as any || [], // Pass brand ordering for manual product ordering (only brandName + productOrder needed)
+        brandRegistry: brandOrderingData as any || [],
       });
       
       toast({
@@ -623,12 +636,13 @@ export default function ClientLanding() {
 
     setIsGeneratingPDF(true);
     try {
-      // Filter products by selected brand and exclude hidden products
+      // Filter products by selected brand using SKU-based matching and visibility table
       const allProducts = latestPricelist.products as Product[];
-      const brandProducts = allProducts.filter(p => 
-        !p.isHidden && 
-        (p.collectionBrand === selectedBrand || p.category === selectedBrand)
-      );
+      const brandProducts = allProducts.filter(p => {
+        if (isProductHidden(p)) return false;
+        const matchedBrand = matchProductToBrand(p);
+        return matchedBrand === selectedBrand;
+      });
       
       if (brandProducts.length === 0) {
         toast({
