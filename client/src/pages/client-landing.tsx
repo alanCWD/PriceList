@@ -70,13 +70,12 @@ export default function ClientLanding() {
   });
 
   // Fetch brand ordering data for manual product ordering (client-accessible endpoint)
-  // Returns category, displayOrder for brand sorting, productOrder for product sorting, and skus for filtering
+  // Returns category, displayOrder for brand sorting, and productOrder for product sorting
   const { data: brandOrderingData, isLoading: isBrandOrderingLoading, isError: isBrandOrderingError } = useQuery<{ 
     brandName: string; 
     category: 'cider' | 'wine' | 'spirits' | 'nonAlc';
     displayOrder: number | null;
     productOrder: string[] | null;
-    skus: string[];
   }[]>({
     queryKey: ['/api/brands/ordering', { impersonatedCompanyId }],
     queryFn: async () => {
@@ -104,7 +103,7 @@ export default function ClientLanding() {
     enabled: impersonatedCompanyId !== null || user?.role !== 'superAdmin',
   });
 
-  // Extract unique brands - merge SKU-mapped brands from registry with brands from product data
+  // Extract unique brands from visible products (must be before early returns due to Rules of Hooks)
   const uniqueBrands = useMemo(() => {
     if (!latestPricelist?.products) return [];
     
@@ -112,29 +111,17 @@ export default function ClientLanding() {
     const visibleProducts = products.filter(p => !p.isHidden);
     const brandSet = new Set<string>();
     
-    // First: Add brands from registry that have visible products via SKU mapping
-    if (brandOrderingData && brandOrderingData.length > 0) {
-      const visibleSkus = new Set(visibleProducts.map(p => p.sku).filter(Boolean));
-      brandOrderingData.forEach(brand => {
-        if (brand.skus && brand.skus.length > 0) {
-          // Brand has SKU mappings - check if any are visible
-          if (brand.skus.some(sku => visibleSkus.has(sku))) {
-            brandSet.add(brand.brandName);
-          }
-        }
-      });
-    }
-    
-    // Second: Add brands from product data (for products not mapped via SKU in registry)
     visibleProducts.forEach(product => {
+      // Try to get brand from collectionBrand first, then fall back to parsing category
       const brand = product.collectionBrand || product.category || "Uncategorized";
       if (brand && brand !== "Uncategorized") {
         brandSet.add(brand);
       }
     });
     
+    // Convert to array and sort alphabetically
     return Array.from(brandSet).sort((a, b) => a.localeCompare(b));
-  }, [brandOrderingData, latestPricelist?.products]);
+  }, [latestPricelist?.products]);
 
   // Update pricelist mutation
   const updateMutation = useMutation({
@@ -560,28 +547,12 @@ export default function ClientLanding() {
 
     setIsGeneratingPDF(true);
     try {
+      // Filter products by selected brand and exclude hidden products
       const allProducts = latestPricelist.products as Product[];
-      
-      // Check if brand registry has SKU mappings for this brand
-      const selectedBrandEntry = brandOrderingData?.find(b => b.brandName === selectedBrand);
-      const hasSKUMapping = selectedBrandEntry?.skus && selectedBrandEntry.skus.length > 0;
-      
-      let brandProducts: Product[];
-      if (hasSKUMapping) {
-        // Use SKU-based filtering (accurate, from brand registry)
-        const brandSkus = new Set(selectedBrandEntry!.skus);
-        brandProducts = allProducts.filter(p => 
-          !p.isHidden && 
-          p.sku && 
-          brandSkus.has(p.sku)
-        );
-      } else {
-        // Fallback: use collectionBrand/category matching (legacy behavior)
-        brandProducts = allProducts.filter(p => 
-          !p.isHidden && 
-          (p.collectionBrand === selectedBrand || p.category === selectedBrand)
-        );
-      }
+      const brandProducts = allProducts.filter(p => 
+        !p.isHidden && 
+        (p.collectionBrand === selectedBrand || p.category === selectedBrand)
+      );
       
       if (brandProducts.length === 0) {
         toast({
@@ -601,7 +572,7 @@ export default function ClientLanding() {
         template: latestPricelist.template as Template,
         pricelistName: `${latestPricelist.name} - ${selectedBrand}`,
         brandName: selectedBrand,
-        brandRegistry: brandOrderingData as any || [], // Pass brand ordering for manual product ordering
+        brandRegistry: brandOrderingData as any || [], // Pass brand ordering for manual product ordering (only brandName + productOrder needed)
       });
       
       toast({
@@ -626,28 +597,12 @@ export default function ClientLanding() {
 
     setIsGeneratingPDF(true);
     try {
+      // Filter products by selected brand and exclude hidden products
       const allProducts = latestPricelist.products as Product[];
-      
-      // Check if brand registry has SKU mappings for this brand
-      const selectedBrandEntry = brandOrderingData?.find(b => b.brandName === selectedBrand);
-      const hasSKUMapping = selectedBrandEntry?.skus && selectedBrandEntry.skus.length > 0;
-      
-      let brandProducts: Product[];
-      if (hasSKUMapping) {
-        // Use SKU-based filtering (accurate, from brand registry)
-        const brandSkus = new Set(selectedBrandEntry!.skus);
-        brandProducts = allProducts.filter(p => 
-          !p.isHidden && 
-          p.sku && 
-          brandSkus.has(p.sku)
-        );
-      } else {
-        // Fallback: use collectionBrand/category matching (legacy behavior)
-        brandProducts = allProducts.filter(p => 
-          !p.isHidden && 
-          (p.collectionBrand === selectedBrand || p.category === selectedBrand)
-        );
-      }
+      const brandProducts = allProducts.filter(p => 
+        !p.isHidden && 
+        (p.collectionBrand === selectedBrand || p.category === selectedBrand)
+      );
       
       if (brandProducts.length === 0) {
         toast({

@@ -174,46 +174,22 @@ function extractBrandFromProductName(productName: string, brandRegistry?: any[])
   return null;
 }
 
-// Build SKU to brand name lookup map for efficient brand assignment
-function buildSkuToBrandMap(brandRegistry?: any[]): Map<string, string> {
-  const skuMap = new Map<string, string>();
-  if (!brandRegistry) return skuMap;
-  
-  for (const brand of brandRegistry) {
-    if (brand.brandName && brand.skus && Array.isArray(brand.skus)) {
-      for (const sku of brand.skus) {
-        if (sku) {
-          skuMap.set(sku, brand.brandName);
-        }
-      }
-    }
-  }
-  return skuMap;
-}
-
 // Helper to get the brand key for grouping products (now accepts brandRegistry)
-// Uses SKU-based lookup as the authoritative source for brand assignment
-function getBrandKey(product: any, brandRegistry?: any[], skuToBrandMap?: Map<string, string>): string {
+function getBrandKey(product: any, brandRegistry?: any[]): string {
   // Skip words that should never be used as brand names (regions, categories, wine types)
   const skipWords = ['wine', 'wines', 'cider', 'spirits', 'non alcoholic', 'non-alcoholic',
                      'white', 'red', 'rosé', 'rose', 'sparkling', 
                      'okanagan', 'vancouver island', 'similkameen', 'fraser valley',
                      'gulf islands', 'kootenays', 'bc', 'british columbia', 'lower mainland'];
   
-  // PRIORITY 1 (HIGHEST): SKU-based lookup from brand registry
-  // This is the authoritative source - if product SKU is in a brand's SKU list, use that brand name
-  if (skuToBrandMap && product.sku && skuToBrandMap.has(product.sku)) {
-    return skuToBrandMap.get(product.sku)!;
-  }
-  
-  // PRIORITY 2: Check if product name matches a brand in registry
+  // PRIORITY 1: Check if product name matches a brand in registry (highest priority)
   // This ensures "Rust Wines 2022 Merlot" matches "Rust Wines" brand even if collectionBrand says otherwise
   const registryMatch = extractBrandFromProductName(product.product, brandRegistry);
   if (registryMatch && brandRegistry?.some(b => b.brandName === registryMatch)) {
     return registryMatch;
   }
   
-  // PRIORITY 3: collectionBrand (if not a skip word)
+  // PRIORITY 2: collectionBrand (if not a skip word)
   let brandKey = product.collectionBrand;
   
   // Check if collectionBrand is a skip word (region/category) - if so, don't use it
@@ -221,12 +197,12 @@ function getBrandKey(product: any, brandRegistry?: any[], skuToBrandMap?: Map<st
     brandKey = null;
   }
   
-  // PRIORITY 4: extracted from category
+  // PRIORITY 3: extracted from category
   if (!brandKey) {
     brandKey = extractBrandFromCategory(product.category);
   }
   
-  // PRIORITY 5: extracted from product name (fallback for non-registry brands)
+  // PRIORITY 4: extracted from product name (fallback for non-registry brands)
   if (!brandKey || brandKey.toLowerCase() === "uncategorized") {
     if (registryMatch) {
       brandKey = registryMatch;
@@ -477,14 +453,11 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     return !product.category || product.category.toLowerCase() !== "uncategorized";
   });
 
-  // Build SKU to brand lookup map for authoritative brand assignment
-  const skuToBrandMap = buildSkuToBrandMap(config.brandRegistry);
-
   // Group products by brand (collectionBrand), excluding only explicitly "Uncategorized" items
   const groupedProducts = filteredProducts
     .reduce((acc, product) => {
-      // Group by brand using SKU-based lookup (authoritative) with fallback to registry/collectionBrand
-      const brandKey = getBrandKey(product, config.brandRegistry, skuToBrandMap);
+      // Group by brand to get single bar per brand (pass brand registry for fallback matching)
+      const brandKey = getBrandKey(product, config.brandRegistry);
       if (!acc[brandKey]) {
         acc[brandKey] = [];
       }
@@ -758,11 +731,8 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     return !product.category || product.category.toLowerCase() !== "uncategorized";
   });
 
-  // Build SKU to brand lookup map for authoritative brand assignment
-  const skuToBrandMap = buildSkuToBrandMap(config.brandRegistry);
-
   const groupedProducts = filteredProducts.reduce((acc, product) => {
-    const brandKey = getBrandKey(product, config.brandRegistry, skuToBrandMap);
+    const brandKey = getBrandKey(product, config.brandRegistry);
     if (!acc[brandKey]) {
       acc[brandKey] = [];
     }
@@ -1145,14 +1115,11 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     return !product.category || product.category.toLowerCase() !== "uncategorized";
   });
 
-  // Build SKU to brand lookup map for authoritative brand assignment
-  const skuToBrandMap = buildSkuToBrandMap(config.brandRegistry);
-
   // Group products by brand, excluding only explicitly "Uncategorized" items
   const groupedProducts = filteredProducts
     .reduce((acc, product) => {
-      // Group by brand using SKU-based lookup (authoritative) with fallback to registry/collectionBrand
-      const brandKey = getBrandKey(product, config.brandRegistry, skuToBrandMap);
+      // Group by brand to get single bar per brand (pass brand registry for fallback matching)
+      const brandKey = getBrandKey(product, config.brandRegistry);
       if (!acc[brandKey]) {
         acc[brandKey] = [];
       }
