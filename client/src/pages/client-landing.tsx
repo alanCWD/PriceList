@@ -119,51 +119,16 @@ export default function ClientLanding() {
     return map;
   }, [brandOrderingData]);
 
-  // Build set of registry brand names for fallback matching
-  const registryBrandNames = useMemo(() => {
-    if (!brandOrderingData) return new Set<string>();
-    return new Set(brandOrderingData.map(b => b.brandName.toLowerCase()));
-  }, [brandOrderingData]);
-
-  // Helper to match product name to registry brand
+  // SKU-only matching: product must have a SKU in the brand registry
   const matchProductToBrand = (product: Product): string | null => {
-    // If no brand registry available, fall back to collectionBrand (legacy behavior)
-    if (!brandOrderingData || brandOrderingData.length === 0) {
-      return product.collectionBrand || product.category || null;
-    }
-    
-    // Priority 1: SKU-based lookup
     if (product.sku && skuToBrandMap.has(product.sku)) {
       return skuToBrandMap.get(product.sku)!;
     }
-    
-    // Priority 2: Check if product name starts with a brand name
-    if (product.product) {
-      const productLower = product.product.toLowerCase();
-      // Sort by brand name length (longest first) to match most specific brands
-      const sortedBrands = [...brandOrderingData].sort((a, b) => 
-        b.brandName.length - a.brandName.length
-      );
-      for (const brand of sortedBrands) {
-        if (productLower.startsWith(brand.brandName.toLowerCase())) {
-          return brand.brandName;
-        }
-      }
-    }
-    
-    // Priority 3: Check if collectionBrand matches a registry brand exactly
-    if (product.collectionBrand && registryBrandNames.has(product.collectionBrand.toLowerCase())) {
-      const matchingBrand = brandOrderingData.find(b => 
-        b.brandName.toLowerCase() === product.collectionBrand?.toLowerCase()
-      );
-      return matchingBrand?.brandName || null;
-    }
-    
     return null;
   };
 
-  // Extract unique brands from visible products using SKU-based matching with fallbacks
-  // This ensures brands match exactly with the Brand Registry
+  // Extract unique brands from visible products using SKU-only matching
+  // Products only appear if their SKU exists in the brand registry
   const uniqueBrands = useMemo(() => {
     if (!latestPricelist?.products) return [];
     
@@ -180,7 +145,7 @@ export default function ClientLanding() {
     
     // Convert to array and sort alphabetically
     return Array.from(brandSet).sort((a, b) => a.localeCompare(b));
-  }, [latestPricelist?.products, skuToBrandMap, registryBrandNames, brandOrderingData]);
+  }, [latestPricelist?.products, skuToBrandMap]);
 
   // Update pricelist mutation
   const updateMutation = useMutation({

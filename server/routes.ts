@@ -1321,92 +1321,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const registryHasSKUs = skuToBrand.size > 0;
 
-      // Build lookup structures for fast brand matching
-      const registryBrandNames = new Map<string, string>(); // lowercase → proper name
-      brands.forEach(b => registryBrandNames.set(b.brandName.toLowerCase(), b.brandName));
-      
-      // Pre-sort brands by name length (longest first) once for all products
-      const sortedBrands = [...brands].sort((a, b) => 
-        b.brandName.length - a.brandName.length
-      );
-      
-      // Helper: Match product name to registry brand (uses cached sorted list)
-      const matchProductNameToBrand = (productName: string): string | null => {
-        if (!productName) return null;
-        const productLower = productName.toLowerCase();
-        for (const brand of sortedBrands) {
-          if (productLower.startsWith(brand.brandName.toLowerCase())) {
-            return brand.brandName;
-          }
-        }
-        return null;
-      };
-
-      // Group products by brand using SKU-based matching (primary) with fallbacks to ensure
-      // products only appear under registry brands, preventing phantom brands
+      // Group products by brand using SKU-only matching from brand registry
+      // Products only appear if their SKU exists in the registry - no fallbacks
       const productsByBrand: Record<string, any[]> = {};
       let productsWithoutBrand = 0;
       let skuMatched = 0;
-      let nameMatched = 0;
-      let collectionBrandMatched = 0;
-      let legacyFallbackMatched = 0;
-      
-      // Check if registry has any brands
-      const hasRegistry = brands.length > 0;
       
       targetPricelist.products.forEach((product: any) => {
-        let brandName: string | null = null;
-        
-        // If no brand registry available, fall back to legacy collectionBrand/category behavior
-        if (!hasRegistry) {
-          brandName = product.collectionBrand || product.category || null;
+        // SKU-only matching: product must have a SKU that exists in brand registry
+        if (product.sku) {
+          const brandName = skuToBrand.get(product.sku);
           if (brandName) {
-            legacyFallbackMatched++;
-          }
-        } else {
-          // PRIORITY 1: SKU-based lookup from brand registry
-          if (product.sku) {
-            const mappedBrand = skuToBrand.get(product.sku);
-            if (mappedBrand) {
-              brandName = mappedBrand;
-              skuMatched++;
+            if (!productsByBrand[brandName]) {
+              productsByBrand[brandName] = [];
             }
+            // Apply hidden status based on visibility table
+            const isHidden = hiddenSkuSet.has(product.sku);
+            productsByBrand[brandName].push({ ...product, isHidden });
+            skuMatched++;
+          } else {
+            productsWithoutBrand++;
           }
-          
-          // PRIORITY 2: Match product name against brand registry
-          if (!brandName && product.product) {
-            const nameMatch = matchProductNameToBrand(product.product);
-            if (nameMatch) {
-              brandName = nameMatch;
-              nameMatched++;
-            }
-          }
-          
-          // PRIORITY 3: Check if collectionBrand matches a registry brand exactly
-          if (!brandName && product.collectionBrand) {
-            const matchedBrand = registryBrandNames.get(product.collectionBrand.toLowerCase());
-            if (matchedBrand) {
-              brandName = matchedBrand;
-              collectionBrandMatched++;
-            }
-          }
-        }
-        
-        if (brandName) {
-          if (!productsByBrand[brandName]) {
-            productsByBrand[brandName] = [];
-          }
-          // Apply hidden status based on visibility table
-          const isHidden = product.sku ? hiddenSkuSet.has(product.sku) : false;
-          productsByBrand[brandName].push({ ...product, isHidden });
         } else {
           productsWithoutBrand++;
         }
       });
 
       console.log(`[GET /api/brands/products] Total products: ${targetPricelist.products.length}`);
-      console.log(`[GET /api/brands/products] Registry has SKUs: ${registryHasSKUs} (${skuToBrand.size} SKU mappings)`);
-      console.log(`[GET /api/brands/products] SKU-matched: ${skuMatched}, Name-matched: ${nameMatched}, CollectionBrand-matched: ${collectionBrandMatched}`);
+      console.log(`[GET /api/brands/products] Registry SKU mappings: ${skuToBrand.size}`);
+      console.log(`[GET /api/brands/products] SKU-matched: ${skuMatched}`);
       console.log(`[GET /api/brands/products] Products without brand (unassigned): ${productsWithoutBrand}`);
       console.log(`[GET /api/brands/products] Brands found: ${Object.keys(productsByBrand).length}`);
 
