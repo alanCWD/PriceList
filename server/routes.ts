@@ -1305,6 +1305,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get brand registry with SKU mappings for this company
       const brands = await storage.getBrandsByCompanyId(targetCompanyId);
       
+      // Fetch hidden SKUs for this company to apply visibility status
+      const hiddenSkus = await storage.getHiddenSkusByCompanyId(targetCompanyId);
+      const hiddenSkuSet = new Set(hiddenSkus);
+      
       // Build SKU → brandName lookup map from registry
       const skuToBrand = new Map<string, string>();
       for (const brand of brands) {
@@ -1345,7 +1349,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!productsByBrand[brandName]) {
             productsByBrand[brandName] = [];
           }
-          productsByBrand[brandName].push(product);
+          // Apply hidden status based on visibility table
+          const isHidden = product.sku ? hiddenSkuSet.has(product.sku) : false;
+          productsByBrand[brandName].push({ ...product, isHidden });
         } else {
           productsWithoutBrand++;
         }
