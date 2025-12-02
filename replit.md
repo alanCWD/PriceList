@@ -53,6 +53,7 @@ The system features a robust, database-centric security model where all authoriz
 - **Inline CSV Upload**: Allows clients to easily update pricelists.
 - **CSV-Based Field Mapping**: Admins configure default mappings that clients inherit.
 - **Brand Registry System**: Company-scoped master brand list for explicit brand categorization and consistent product grouping. It is database-driven with category assignment, optional type field, display order, and manual product ordering.
+  - **SKU-Based Brand Resolution**: All output formats (PDF, Excel spreadsheet, preview panel) use a unified SKU-based brand lookup as the primary method for grouping products. The `buildSkuToBrandMap()` helper builds a SKU→brand name lookup table from the registry, ensuring products appear under their canonical registry brand names (e.g., "Cobble Hill Winery" not "Cobble").
   - **SKU-Based Brand Matching**: The brand registry uses a two-phase workflow:
     1. **Initial Upload (Seeding)**: When the registry is empty, heuristic parsing extracts brands from CSV collection fields. SKUs from matched products are automatically assigned to their detected brands.
     2. **Subsequent Uploads**: Products are matched to brands via SKU lookup first (primary). Unmatched SKUs are flagged for admin review.
