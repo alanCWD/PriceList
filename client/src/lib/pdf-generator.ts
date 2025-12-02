@@ -189,27 +189,62 @@ function buildSkuToBrandMap(brandRegistry?: any[]): Map<string, string> {
   return map;
 }
 
-// Cached SKU→Brand map (rebuilt when brandRegistry changes)
+// Build lowercase brand name→proper brand name map for fast lookup
+function buildBrandNameMap(brandRegistry?: any[]): Map<string, string> {
+  const map = new Map<string, string>();
+  if (brandRegistry) {
+    brandRegistry.forEach((brand: any) => {
+      if (brand.brandName) {
+        map.set(brand.brandName.toLowerCase(), brand.brandName);
+      }
+    });
+  }
+  return map;
+}
+
+// Cached maps (rebuilt when brandRegistry changes)
 let cachedBrandRegistry: any[] | undefined;
 let cachedSkuToBrandMap: Map<string, string> = new Map();
+let cachedBrandNameMap: Map<string, string> = new Map();
 
-// Helper to get the brand key for grouping products using SKU-based matching
-// This ensures products ONLY appear under registry brands, preventing phantom brands
+// Helper to get the brand key for grouping products
+// Uses SKU-based matching as primary, with fallback to product name matching against registry
 function getBrandKey(product: any, brandRegistry?: any[]): string {
   // Rebuild cache if brandRegistry changed
   if (brandRegistry !== cachedBrandRegistry) {
     cachedBrandRegistry = brandRegistry;
     cachedSkuToBrandMap = buildSkuToBrandMap(brandRegistry);
+    cachedBrandNameMap = buildBrandNameMap(brandRegistry);
+  }
+  
+  // If no brand registry, fall back to legacy behavior using collectionBrand
+  if (!brandRegistry || brandRegistry.length === 0) {
+    if (product.collectionBrand) {
+      return product.collectionBrand;
+    }
+    return extractBrandFromCategory(product.category);
   }
   
   // PRIORITY 1: SKU-based lookup from brand registry (authoritative source)
-  // This prevents phantom brands like "Mt." or "Unsworth" 
+  // This ensures products match exact brand names from registry
   if (product.sku && cachedSkuToBrandMap.has(product.sku)) {
     return cachedSkuToBrandMap.get(product.sku)!;
   }
   
-  // FALLBACK: If no SKU match, product is unassigned
-  // This ensures only products with SKUs in the brand registry appear in the PDF
+  // PRIORITY 2: Match product name against brand registry
+  // This handles cases where SKUs aren't assigned yet but brand name is in product
+  const registryMatch = extractBrandFromProductName(product.product, brandRegistry);
+  if (registryMatch && cachedBrandNameMap.has(registryMatch.toLowerCase())) {
+    return cachedBrandNameMap.get(registryMatch.toLowerCase())!;
+  }
+  
+  // PRIORITY 3: Check if collectionBrand matches a registry brand name exactly
+  // Only use collectionBrand if it matches a known brand in registry
+  if (product.collectionBrand && cachedBrandNameMap.has(product.collectionBrand.toLowerCase())) {
+    return cachedBrandNameMap.get(product.collectionBrand.toLowerCase())!;
+  }
+  
+  // FALLBACK: If no match found, mark as uncategorized
   return "Uncategorized";
 }
 
