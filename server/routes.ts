@@ -1685,7 +1685,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Brand not found" });
       }
 
-      if (user.role !== "super_admin") {
+      if (user.role !== "superAdmin") {
         const effectiveCompanyId = getEffectiveCompanyId(req, user);
         if (effectiveCompanyId && existing.companyId !== effectiveCompanyId) {
           return res.status(403).json({ error: "Access denied: Brand belongs to different company" });
