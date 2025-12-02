@@ -1511,13 +1511,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch brands and return ordering data (safe for clients)
-      // Includes category, displayOrder for brand sorting, and productOrder for product sorting
+      // Includes category, displayOrder for brand sorting, productOrder for product sorting, and skus for filtering
       const brands = await storage.getBrandsByCompanyId(effectiveCompanyId);
       const brandOrdering = brands.map(b => ({
         brandName: b.brandName,
         category: b.category,
         displayOrder: b.displayOrder,
         productOrder: b.productOrder,
+        skus: b.skus || [],
       }));
       
       // Prevent HTTP caching to ensure fresh data after reordering
