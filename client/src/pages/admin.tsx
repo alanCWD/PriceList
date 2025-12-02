@@ -2144,6 +2144,13 @@ function BrandRegistryManager() {
     setSelectedPricelistId(null);
   }, [selectedCompanyId]);
 
+  // Auto-select latest pricelist when pricelists load
+  useEffect(() => {
+    if (companyPricelists && companyPricelists.length > 0 && !selectedPricelistId) {
+      setSelectedPricelistId(companyPricelists[0].id);
+    }
+  }, [companyPricelists, selectedPricelistId]);
+
   // Fetch brands for selected company (Super Admin) or current company (Company Admin)
   const { data: brands, isLoading, error } = useQuery<BrandRegistry[]>({
     queryKey: isSuperAdmin ? ["/api/brands", { companyId: selectedCompanyId }] : ["/api/brands"],
