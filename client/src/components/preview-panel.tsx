@@ -20,6 +20,7 @@ interface PreviewPanelProps {
   pricelistName?: string;
   categoryFilter?: string | null;
   brandRegistry?: BrandRegistry[];
+  companyId?: number | null;
 }
 
 export function PreviewPanel({
@@ -31,15 +32,20 @@ export function PreviewPanel({
   pricelistName,
   categoryFilter,
   brandRegistry,
+  companyId,
 }: PreviewPanelProps) {
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Fetch hidden SKUs from visibility table (authoritative source)
+  // Pass companyId for Super Admin context
   const { data: hiddenSkus } = useQuery<string[]>({
-    queryKey: ['/api/visibility/hidden-skus'],
+    queryKey: ['/api/visibility/hidden-skus', { companyId }],
     queryFn: async () => {
-      const response = await fetch('/api/visibility/hidden-skus', { credentials: 'include' });
+      const url = companyId 
+        ? `/api/visibility/hidden-skus?companyId=${companyId}`
+        : '/api/visibility/hidden-skus';
+      const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) return [];
       return response.json();
     },

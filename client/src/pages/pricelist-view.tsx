@@ -136,6 +136,7 @@ export default function PricelistView() {
           pricelistName={pricelist.name}
           categoryFilter={categoryFilter}
           brandRegistry={brandRegistry}
+          companyId={pricelist.companyId}
         />
       </main>
     </div>
