@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +19,11 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+
+  // Force refresh pricelists on mount to prevent stale cache issues
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['/api/pricelists'] });
+  }, []);
 
   // Fetch user's company info
   const { data: company, isLoading: companyLoading } = useQuery<Company>({

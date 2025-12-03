@@ -43,6 +43,8 @@ export function UserProfileMenu() {
 
   const handleViewAsAdmin = () => {
     setViewMode("admin");
+    // Invalidate pricelists cache to ensure fresh data on dashboard
+    queryClient.invalidateQueries({ queryKey: ['/api/pricelists'] });
     setLocation("/dashboard");
   };
 
