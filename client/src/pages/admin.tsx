@@ -2137,6 +2137,7 @@ function BrandRegistryManager() {
       return allPricelists;
     },
     enabled: isSuperAdmin ? !!selectedCompanyId : true,
+    staleTime: 0, // Always fetch fresh data to show latest pricelists
   });
 
   // Reset selected pricelist when company changes
@@ -2862,10 +2863,10 @@ function BrandRegistryManager() {
                   <SelectContent>
                     <SelectItem value="latest">Latest pricelist (auto)</SelectItem>
                     {companyPricelists
-                      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                       .map((pricelist) => (
                         <SelectItem key={pricelist.id} value={pricelist.id.toString()}>
-                          {pricelist.name} ({new Date(pricelist.updatedAt).toLocaleDateString()})
+                          {pricelist.name} ({new Date(pricelist.createdAt).toLocaleDateString()})
                         </SelectItem>
                       ))}
                   </SelectContent>
