@@ -43,9 +43,6 @@ export default function Editor() {
   const [products, setProducts] = useState<Product[]>([]);
   const [companyBranding, setCompanyBranding] = useState<CompanyBranding>({
     companyName: "",
-    headerBackgroundColor: "",
-    headerTextColor: "",
-    logoUrl: "",
   });
   const [salesAgents, setSalesAgents] = useState<SalesAgent[]>([]);
   const [qrCodeConfig, setQRCodeConfig] = useState<QRCodeConfig | undefined>();
@@ -194,9 +191,6 @@ export default function Editor() {
       console.log('[Company Change] Clearing branding for company change');
       setCompanyBranding({
         companyName: '',
-        headerBackgroundColor: '',
-        headerTextColor: '',
-        logoUrl: '',
       });
     }
   }, [companyIdForDefaults, pricelistId]);
