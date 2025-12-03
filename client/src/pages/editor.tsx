@@ -59,8 +59,9 @@ export default function Editor() {
   // Track CSV + mapping fingerprint to detect when products need regeneration
   const csvFingerprintRef = useRef<string>('');
   
-  // Track if company defaults have been applied (prevents overwriting user edits on refetch)
-  const defaultsAppliedRef = useRef<boolean>(false);
+  // Track which company's defaults have been applied (prevents overwriting user edits on refetch)
+  // Stores the company ID whose defaults were last applied, or null if none
+  const defaultsAppliedForCompanyRef = useRef<number | null>(null);
 
   // For super admins, load list of companies
   const { data: companies, isLoading: isLoadingCompanies } = useQuery<Array<{ id: number; name: string }>>({
@@ -95,7 +96,9 @@ export default function Editor() {
   }));
 
   // Load company defaults for new pricelists
-  const { data: companyDefaults, isLoading: isLoadingDefaults, error: defaultsError } = useQuery<{
+  // Include companyId in the response so we can verify data matches the expected company
+  const { data: companyDefaults, isLoading: isLoadingDefaults, isFetching: isFetchingDefaults, error: defaultsError } = useQuery<{
+    companyId: number; // Added to verify data provenance
     defaultTemplate: Template;
     defaultFieldMapping: FieldMapping | null;
     defaultBranding: CompanyBranding | null;
@@ -117,9 +120,12 @@ export default function Editor() {
         throw new Error('Failed to fetch company defaults');
       }
       
-      return response.json();
+      const data = await response.json();
+      // Attach the company ID to the response so we can verify data provenance
+      return { ...data, companyId: companyIdForDefaults };
     },
     enabled: pricelistId === null && companyIdForDefaults !== null, // Only fetch for new pricelists with a company
+    staleTime: 0, // Always consider data stale to ensure fresh fetch on company switch
   });
 
   // Load pricelist from query params (for editing)
@@ -182,13 +188,13 @@ export default function Editor() {
     }
   }, [loadedPricelist, user?.role]);
 
-  // Reset defaults flag when company selection changes (allows re-applying new company's defaults)
+  // Clear branding when company selection changes (allows new defaults to load fresh)
+  // NOTE: We don't reset defaultsAppliedForCompanyRef here - the Apply Defaults effect
+  // will check if defaults were already applied for the CURRENT company
   useEffect(() => {
-    if (pricelistId === null) { // Only for new pricelists
-      defaultsAppliedRef.current = false;
+    if (pricelistId === null && companyIdForDefaults !== null) { // Only for new pricelists
       // Clear branding when company changes so new defaults load fresh
-      // This prevents old branding from lingering during the refetch
-      console.log('[Company Change] Clearing branding for company change');
+      console.log('[Company Change] Clearing branding for company:', companyIdForDefaults);
       setCompanyBranding({
         companyName: '',
       });
@@ -196,13 +202,15 @@ export default function Editor() {
   }, [companyIdForDefaults, pricelistId]);
 
   // Effect to apply company defaults for new pricelists
-  // IMPORTANT: Only runs when companyDefaults actually changes (after query fetches new data)
-  // DO NOT add companyIdForDefaults to deps - that would cause this to run with stale data
+  // CRITICAL: Only applies defaults when data provenance is verified (companyId matches expected)
+  // This prevents stale cached data from being applied when switching companies
   useEffect(() => {
     console.log('[Apply Defaults] ===== DEFAULTS EFFECT =====');
-    console.log('[Apply Defaults] defaultsAppliedRef:', defaultsAppliedRef.current);
+    console.log('[Apply Defaults] defaultsAppliedForCompanyRef:', defaultsAppliedForCompanyRef.current);
+    console.log('[Apply Defaults] companyIdForDefaults:', companyIdForDefaults);
+    console.log('[Apply Defaults] isFetchingDefaults:', isFetchingDefaults);
     console.log('[Apply Defaults] pricelistId:', pricelistId);
-    console.log('[Apply Defaults] companyDefaults:', companyDefaults);
+    console.log('[Apply Defaults] companyDefaults?.companyId:', companyDefaults?.companyId);
     
     // Skip if editing existing pricelist
     if (pricelistId) {
@@ -210,15 +218,29 @@ export default function Editor() {
       return;
     }
     
-    // Skip if defaults already applied for this specific company (prevents overwriting user edits)
-    if (defaultsAppliedRef.current) {
-      console.log('[Apply Defaults] SKIPPING - defaults already applied for this company');
+    // Skip if no company selected yet
+    if (companyIdForDefaults === null) {
+      console.log('[Apply Defaults] SKIPPING - no company selected');
       return;
     }
     
-    if (companyDefaults) {
-      defaultsAppliedRef.current = true; // Mark as applied to prevent overwriting user edits
-      console.log('[Apply Defaults] APPLYING DEFAULTS...');
+    // Skip if still fetching (wait for fresh data)
+    if (isFetchingDefaults) {
+      console.log('[Apply Defaults] SKIPPING - still fetching defaults');
+      return;
+    }
+    
+    // Skip if defaults already applied for THIS specific company (prevents overwriting user edits)
+    if (defaultsAppliedForCompanyRef.current === companyIdForDefaults) {
+      console.log('[Apply Defaults] SKIPPING - defaults already applied for company:', companyIdForDefaults);
+      return;
+    }
+    
+    // CRITICAL: Verify data provenance - only apply if data is for the expected company
+    if (companyDefaults && companyDefaults.companyId === companyIdForDefaults) {
+      // Mark that we've applied defaults for THIS company
+      defaultsAppliedForCompanyRef.current = companyIdForDefaults;
+      console.log('[Apply Defaults] APPLYING DEFAULTS for company:', companyIdForDefaults);
       
       // Apply default template
       if (companyDefaults.defaultTemplate) {
@@ -252,10 +274,13 @@ export default function Editor() {
       }
       
       console.log('[Apply Defaults] DEFAULTS APPLIED SUCCESSFULLY');
+    } else if (companyDefaults) {
+      console.log('[Apply Defaults] SKIPPING - data provenance mismatch:', 
+        'expected:', companyIdForDefaults, 'got:', companyDefaults.companyId);
     } else {
       console.log('[Apply Defaults] No companyDefaults available yet');
     }
-  }, [companyDefaults, pricelistId]);
+  }, [companyDefaults, pricelistId, companyIdForDefaults, isFetchingDefaults]);
 
   // Effect to handle company defaults error
   useEffect(() => {
