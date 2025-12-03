@@ -232,13 +232,14 @@ export class DatabaseStorage implements IStorage {
   // Pricelist operations
   async getAllPricelists(): Promise<Pricelist[]> {
     const results = await db.select().from(pricelists);
-    // Sort by most recent first
-    return results.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+    // Sort by creation date, most recent first
+    return results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
   
   async getPricelistsByCompanyId(companyId: number): Promise<Pricelist[]> {
     const results = await db.select().from(pricelists).where(eq(pricelists.companyId, companyId));
-    return results.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+    // Sort by creation date, most recent first
+    return results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async getLatestPricelistByCompanyId(companyId: number): Promise<Pricelist | undefined> {
@@ -246,7 +247,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(pricelists)
       .where(eq(pricelists.companyId, companyId))
-      .orderBy(desc(pricelists.updatedAt))
+      .orderBy(desc(pricelists.createdAt))
       .limit(1);
     return results[0];
   }

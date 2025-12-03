@@ -188,10 +188,13 @@ export default function Editor() {
   }, [loadedPricelist, user?.role]);
 
   // Clear branding when company selection changes (allows new defaults to load fresh)
-  // NOTE: We don't reset defaultsAppliedForCompanyRef here - the Apply Defaults effect
-  // will check if defaults were already applied for the CURRENT company
+  // CRITICAL: Reset defaultsAppliedForCompanyRef so fresh defaults will be applied
   useEffect(() => {
     if (pricelistId === null && companyIdForDefaults !== null) { // Only for new pricelists
+      // Reset the tracking ref so defaults will be applied for the new company
+      console.log('[Company Change] Resetting defaultsAppliedForCompanyRef for company:', companyIdForDefaults);
+      defaultsAppliedForCompanyRef.current = null;
+      
       // Clear branding when company changes so new defaults load fresh
       console.log('[Company Change] Clearing branding for company:', companyIdForDefaults);
       setCompanyBranding({

@@ -55,6 +55,28 @@ export function PreviewPanel({
   // Create a Set of hidden SKUs for efficient lookup
   const hiddenSkusSet = useMemo(() => new Set(hiddenSkus || []), [hiddenSkus]);
 
+  // Create a Set of valid SKUs from brand registry (only these products should appear)
+  const registrySkusSet = useMemo(() => {
+    if (!brandRegistry || brandRegistry.length === 0) return null;
+    const skus = new Set<string>();
+    for (const brand of brandRegistry) {
+      if (brand.skus && Array.isArray(brand.skus)) {
+        for (const sku of brand.skus) {
+          if (sku) skus.add(sku);
+        }
+      }
+    }
+    return skus.size > 0 ? skus : null;
+  }, [brandRegistry]);
+
+  // Check if a product's SKU exists in the brand registry
+  const isProductInRegistry = (product: Product): boolean => {
+    // If no registry, allow all products (backwards compatibility)
+    if (!registrySkusSet) return true;
+    // Product must have a SKU that exists in the registry
+    return !!(product.sku && registrySkusSet.has(product.sku));
+  };
+
   // Check if a product is hidden using the authoritative visibility table
   const isProductHidden = (product: Product): boolean => {
     if (product.sku && hiddenSkusSet.has(product.sku)) {
@@ -130,8 +152,13 @@ export function PreviewPanel({
     });
   }, [products, brandRegistry]);
 
-  // Filter products: exclude hidden (using visibility table), uncategorized, and apply category filter if set
+  // Filter products: 
+  // 1. Only include products whose SKU exists in brand registry
+  // 2. Exclude hidden products (using visibility table)
+  // 3. Exclude uncategorized
+  // 4. Apply category filter if set
   const filteredProducts = normalizedProducts
+    .filter((p) => isProductInRegistry(p)) // FIRST: Only products with SKUs in brand registry
     .filter((p) => !isProductHidden(p)) // Exclude hidden products using authoritative visibility table
     .filter((p) => !p.category || p.category.toLowerCase() !== "uncategorized") // Exclude uncategorized products
     .filter((p) => !categoryFilter || p.category === categoryFilter); // Apply category filter if set
