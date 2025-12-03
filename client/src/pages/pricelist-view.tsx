@@ -18,9 +18,17 @@ export default function PricelistView() {
     enabled: !!pricelistId,
   });
 
-  // Load brand registry for the current company
+  // Load brand registry for the pricelist's company
+  // Must pass companyId for Super Admin context (otherwise returns empty array)
   const { data: brandRegistry } = useQuery<BrandRegistry[]>({
-    queryKey: ['/api/brands'],
+    queryKey: ['/api/brands', { companyId: pricelist?.companyId }],
+    queryFn: async () => {
+      if (!pricelist?.companyId) return [];
+      const res = await fetch(`/api/brands?companyId=${pricelist.companyId}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!pricelist?.companyId,
   });
 
   if (!pricelistId) {
