@@ -1492,6 +1492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get brand product ordering for current user's company (Client-accessible for PDF generation)
+  // Super Admins can pass companyId query parameter to view any company's brand ordering
   app.get("/api/brands/ordering", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -1501,16 +1502,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      const effectiveCompanyId = getEffectiveCompanyId(req, user);
+      // Super Admins can query for any company via companyId query param
+      let targetCompanyId: number | null = null;
+      if (user.role === "superAdmin" && req.query.companyId) {
+        targetCompanyId = parseInt(req.query.companyId as string);
+        if (isNaN(targetCompanyId)) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+      } else {
+        targetCompanyId = getEffectiveCompanyId(req, user);
+      }
       
       // If no company ID available (super admin without company/impersonation), return empty array
-      if (!effectiveCompanyId) {
+      if (!targetCompanyId) {
         return res.json([]);
       }
 
       // Fetch brands and return ordering data (safe for clients)
       // Includes category, displayOrder for brand sorting, productOrder for product sorting, and skus for SKU-based matching
-      const brands = await storage.getBrandsByCompanyId(effectiveCompanyId);
+      const brands = await storage.getBrandsByCompanyId(targetCompanyId);
       const brandOrdering = brands.map(b => ({
         brandName: b.brandName,
         category: b.category,
@@ -1884,7 +1894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Brand not found" });
       }
 
-      if (user.role !== "super_admin") {
+      if (user.role !== "superAdmin") {
         const effectiveCompanyId = getEffectiveCompanyId(req, user);
         if (effectiveCompanyId && existing.companyId !== effectiveCompanyId) {
           return res.status(403).json({ error: "Access denied: Brand belongs to different company" });
@@ -1900,6 +1910,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting brand:", error);
       res.status(500).json({ error: "Failed to delete brand" });
+    }
+  });
+
+  // Backfill brand registry SKUs from latest pricelist (Super Admin only - one-time migration)
+  // This populates the skus column based on product brand matching in the latest pricelist
+  app.post("/api/brands/backfill-skus", isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Only Super Admins can run this migration
+      if (user.role !== "superAdmin") {
+        return res.status(403).json({ error: "Only Super Admins can run this migration" });
+      }
+
+      // Get target company ID from query param or request body
+      const targetCompanyId = req.body.companyId || req.query.companyId;
+      if (!targetCompanyId) {
+        return res.status(400).json({ error: "companyId is required" });
+      }
+
+      const companyId = parseInt(targetCompanyId);
+      if (isNaN(companyId)) {
+        return res.status(400).json({ error: "Invalid company ID" });
+      }
+
+      console.log(`[Backfill SKUs] Starting backfill for company ${companyId}`);
+
+      // Get the latest pricelist for the company
+      const latestPricelist = await storage.getLatestPricelistByCompanyId(companyId);
+      if (!latestPricelist || !latestPricelist.products) {
+        return res.status(404).json({ error: "No pricelist found for this company" });
+      }
+
+      // Get all brands for the company
+      const brands = await storage.getBrandsByCompanyId(companyId);
+      if (brands.length === 0) {
+        return res.status(404).json({ error: "No brands found for this company" });
+      }
+
+      console.log(`[Backfill SKUs] Found ${brands.length} brands and ${latestPricelist.products.length} products`);
+
+      // Build brand name → SKUs map from pricelist products
+      // Match products to brands by comparing collection brand name
+      const brandSkuMap: Record<string, string[]> = {};
+      for (const brand of brands) {
+        brandSkuMap[brand.brandName.toLowerCase()] = [];
+      }
+
+      let matchedCount = 0;
+      let unmatchedCount = 0;
+
+      for (const product of latestPricelist.products) {
+        const productBrand = (product as any).collectionBrand || '';
+        const productSku = (product as any).sku;
+        
+        if (!productSku) {
+          continue; // Skip products without SKU
+        }
+
+        // Try exact match first
+        const lowerBrand = productBrand.toLowerCase();
+        if (brandSkuMap[lowerBrand] !== undefined) {
+          brandSkuMap[lowerBrand].push(productSku);
+          matchedCount++;
+        } else {
+          // Try to find brand by partial match (brand name in product name or collection)
+          let matched = false;
+          for (const brand of brands) {
+            const brandNameLower = brand.brandName.toLowerCase();
+            const productNameLower = ((product as any).product || '').toLowerCase();
+            
+            if (productNameLower.includes(brandNameLower)) {
+              brandSkuMap[brandNameLower].push(productSku);
+              matchedCount++;
+              matched = true;
+              break;
+            }
+          }
+          if (!matched) {
+            unmatchedCount++;
+          }
+        }
+      }
+
+      console.log(`[Backfill SKUs] Matched ${matchedCount} products, ${unmatchedCount} unmatched`);
+
+      // Update each brand with its SKUs
+      let updatedCount = 0;
+      for (const brand of brands) {
+        const skus = brandSkuMap[brand.brandName.toLowerCase()];
+        if (skus && skus.length > 0) {
+          // Remove duplicates
+          const uniqueSkus = Array.from(new Set(skus));
+          await storage.updateBrand(brand.id, { 
+            skus: uniqueSkus,
+            productOrder: uniqueSkus // Also update productOrder to use real SKUs
+          });
+          updatedCount++;
+          console.log(`[Backfill SKUs] Updated ${brand.brandName} with ${uniqueSkus.length} SKUs`);
+        }
+      }
+
+      res.json({
+        success: true,
+        brandsUpdated: updatedCount,
+        productsMatched: matchedCount,
+        productsUnmatched: unmatchedCount,
+        totalBrands: brands.length,
+      });
+    } catch (error) {
+      console.error("Error backfilling SKUs:", error);
+      res.status(500).json({ error: "Failed to backfill SKUs" });
     }
   });
 

@@ -53,6 +53,7 @@ The system features a robust, database-centric security model where all authoriz
 - **Inline CSV Upload**: Allows clients to easily update pricelists.
 - **CSV-Based Field Mapping**: Admins configure default mappings that clients inherit.
 - **Brand Registry System**: Company-scoped master brand list for explicit brand categorization and consistent product grouping. It is database-driven with category assignment, optional type field, display order, and manual product ordering.
+  - **IMPORTANT DATA NOTE**: ALL products have SKUs in the Brand Registry for Storied Wines company in both Development and Production environments. Any "missing SKUs" message indicates a company context bug (fetching wrong company's data), NOT actual missing data.
   - **SKU-Based Brand Matching**: The brand registry uses a two-phase workflow:
     1. **Initial Upload (Seeding)**: When the registry is empty, heuristic parsing extracts brands from CSV collection fields. SKUs from matched products are automatically assigned to their detected brands.
     2. **Subsequent Uploads**: Products are matched to brands via SKU lookup first (primary). Unmatched SKUs are flagged for admin review.
