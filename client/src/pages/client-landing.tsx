@@ -30,12 +30,9 @@ export default function ClientLanding() {
     enabled: user?.role === 'superAdmin',
   });
   
-  // Auto-select first company if Super Admin hasn't selected one yet
-  useEffect(() => {
-    if (user?.role === 'superAdmin' && !impersonatedCompanyId && companies && companies.length > 0) {
-      setImpersonatedCompanyId(companies[0].id);
-    }
-  }, [user, impersonatedCompanyId, companies, setImpersonatedCompanyId]);
+  // REMOVED: Auto-select first company - Super Admins MUST explicitly select a company
+  // This prevents accidentally using wrong company's brand registry and hidden SKUs
+  // The company selector is displayed in the header for Super Admins to choose
 
   // Fetch latest pricelist (includes impersonatedCompanyId in queryKey to refetch when company changes)
   const { data: latestPricelist, isLoading, error } = useQuery<Pricelist>({
@@ -69,6 +66,11 @@ export default function ClientLanding() {
     enabled: impersonatedCompanyId !== null || user?.role !== 'superAdmin',
   });
 
+  // CRITICAL: Use the pricelist's companyId for brand registry and hidden SKUs
+  // This ensures we always use the correct company's data when viewing a pricelist
+  // even if Super Admin is impersonating a different company
+  const pricelistCompanyId = latestPricelist?.companyId || impersonatedCompanyId;
+
   // Fetch brand ordering data for manual product ordering (client-accessible endpoint)
   // Returns category, displayOrder for brand sorting, productOrder for product sorting, and skus for SKU-based matching
   const { data: brandOrderingData, isLoading: isBrandOrderingLoading, isError: isBrandOrderingError } = useQuery<{ 
@@ -78,30 +80,31 @@ export default function ClientLanding() {
     productOrder: string[] | null;
     skus: string[];
   }[]>({
-    queryKey: ['/api/brands/ordering', { impersonatedCompanyId }],
+    queryKey: ['/api/brands/ordering', { companyId: pricelistCompanyId }],
     queryFn: async () => {
-      const url = impersonatedCompanyId 
-        ? `/api/brands/ordering?companyId=${impersonatedCompanyId}`
+      const url = pricelistCompanyId 
+        ? `/api/brands/ordering?companyId=${pricelistCompanyId}`
         : '/api/brands/ordering';
       const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch brand ordering');
       return response.json();
     },
-    enabled: impersonatedCompanyId !== null || user?.role !== 'superAdmin',
+    enabled: pricelistCompanyId !== null || user?.role !== 'superAdmin',
   });
 
   // Fetch hidden SKUs for persistent visibility across CSV re-uploads
+  // CRITICAL: Use pricelist's companyId, not impersonated company
   const { data: hiddenSkus } = useQuery<string[]>({
-    queryKey: ['/api/visibility/hidden-skus', { impersonatedCompanyId }],
+    queryKey: ['/api/visibility/hidden-skus', { companyId: pricelistCompanyId }],
     queryFn: async () => {
-      const url = impersonatedCompanyId 
-        ? `/api/visibility/hidden-skus?companyId=${impersonatedCompanyId}`
+      const url = pricelistCompanyId 
+        ? `/api/visibility/hidden-skus?companyId=${pricelistCompanyId}`
         : '/api/visibility/hidden-skus';
       const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch hidden SKUs');
       return response.json();
     },
-    enabled: impersonatedCompanyId !== null || user?.role !== 'superAdmin',
+    enabled: pricelistCompanyId !== null || user?.role !== 'superAdmin',
   });
 
   // Build SKU→Brand map from brand ordering data for consistent brand matching
@@ -803,7 +806,40 @@ export default function ClientLanding() {
           </Card>
         </div>
 
-        {/* Pricelist Actions */}
+        {/* Super Admin: Company Selection Required */}
+        {user?.role === 'superAdmin' && !impersonatedCompanyId && (
+          <div className="text-center bg-card border rounded-lg p-12">
+            <div className="space-y-6 max-w-md mx-auto">
+              <Building2 className="w-16 h-16 mx-auto text-muted-foreground" />
+              <div className="space-y-2">
+                <h3 className="text-xl font-semibold">Select a Company</h3>
+                <p className="text-muted-foreground">
+                  Please select a company from the dropdown above to view their pricelist and brand registry.
+                </p>
+              </div>
+              {companies && companies.length > 0 && (
+                <Select 
+                  value="" 
+                  onValueChange={(value) => setImpersonatedCompanyId(parseInt(value))}
+                >
+                  <SelectTrigger className="w-full" data-testid="select-company-prompt">
+                    <SelectValue placeholder="Choose a company..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id.toString()}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Pricelist Actions - Only show when company is selected or user is not Super Admin */}
+        {(user?.role !== 'superAdmin' || impersonatedCompanyId) && latestPricelist && (
         <div className="text-center bg-card border rounded-lg p-12">
           <div className="space-y-6 max-w-md mx-auto">
             <div className="space-y-2">
@@ -919,6 +955,7 @@ export default function ClientLanding() {
             </div>
           </div>
         </div>
+        )}
       </main>
 
       {/* Footer */}
