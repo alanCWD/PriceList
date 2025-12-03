@@ -62,6 +62,12 @@ export default function Editor() {
   // Track which company's defaults have been applied (prevents overwriting user edits on refetch)
   // Stores the company ID whose defaults were last applied, or null if none
   const defaultsAppliedForCompanyRef = useRef<number | null>(null);
+  
+  // Track the previous company ID to detect user-initiated company changes vs. initial load
+  const previousCompanyIdRef = useRef<number | null | undefined>(null);
+  
+  // Track if we're loading an existing pricelist (to skip clearing branding on initial company set)
+  const isLoadingPricelistRef = useRef<boolean>(!!pricelistId);
 
   // For super admins, load list of companies
   const { data: companies, isLoading: isLoadingCompanies } = useQuery<Array<{ id: number; name: string }>>({
@@ -165,6 +171,9 @@ export default function Editor() {
   // Effect to populate form when pricelist is loaded (editing mode)
   useEffect(() => {
     if (loadedPricelist) {
+      // Mark that we're in the middle of loading a pricelist (to protect branding)
+      isLoadingPricelistRef.current = true;
+      
       setCurrentPricelistId(loadedPricelist.id);
       setCurrentPricelistName(loadedPricelist.name);
       setCurrentPricelistDescription(loadedPricelist.description || "");
@@ -183,24 +192,61 @@ export default function Editor() {
         setSelectedCompanyId(loadedPricelist.companyId);
       }
       
+      // Mark that defaults have been applied for this company (pricelist already has branding)
+      // This prevents the defaults effect from overwriting saved branding for ALL users
+      if (loadedPricelist.companyId) {
+        defaultsAppliedForCompanyRef.current = loadedPricelist.companyId;
+      }
+      
       setActiveTab("preview");
+      
+      // Mark loading complete AFTER state is set
+      // Use setTimeout to ensure this runs after the company change effect
+      setTimeout(() => {
+        isLoadingPricelistRef.current = false;
+        console.log('[Load Pricelist] Loading complete, branding protection disabled');
+      }, 100);
     }
   }, [loadedPricelist, user?.role]);
 
   // Clear branding when company selection changes (allows new defaults to load fresh)
   // CRITICAL: Reset defaultsAppliedForCompanyRef so fresh defaults will be applied
   // This runs for BOTH new and existing pricelists to ensure colors reload on company switch
+  // GUARD: Skip ONLY if we're loading an existing pricelist (to preserve loaded branding)
   useEffect(() => {
     if (companyIdForDefaults !== null) {
-      // Reset the tracking ref so defaults will be applied for the new company
-      console.log('[Company Change] Resetting defaultsAppliedForCompanyRef for company:', companyIdForDefaults);
-      defaultsAppliedForCompanyRef.current = null;
+      // Skip ONLY if this is the initial company set from loading an existing pricelist
+      // (not for new pricelists - they need defaults to apply)
+      if (isLoadingPricelistRef.current) {
+        console.log('[Company Change] SKIPPING - loading pricelist, preserving branding');
+        previousCompanyIdRef.current = companyIdForDefaults;
+        return;
+      }
       
-      // Clear branding when company changes so new defaults load fresh
-      console.log('[Company Change] Clearing branding for company:', companyIdForDefaults);
-      setCompanyBranding({
-        companyName: '',
-      });
+      // For first company set on NEW pricelists: allow defaults to apply but don't clear branding
+      // (branding is already empty, no need to clear)
+      if (previousCompanyIdRef.current === null) {
+        console.log('[Company Change] Initial company set for new pricelist:', companyIdForDefaults);
+        previousCompanyIdRef.current = companyIdForDefaults;
+        // Don't return - allow defaults to apply via the other effect
+        return;
+      }
+      
+      // Only clear branding if company actually changed (user switched)
+      if (previousCompanyIdRef.current !== companyIdForDefaults) {
+        console.log('[Company Change] User switched company from', previousCompanyIdRef.current, 'to', companyIdForDefaults);
+        
+        // Reset the tracking ref so defaults will be applied for the new company
+        defaultsAppliedForCompanyRef.current = null;
+        
+        // Clear branding when company changes so new defaults load fresh
+        console.log('[Company Change] Clearing branding for company:', companyIdForDefaults);
+        setCompanyBranding({
+          companyName: '',
+        });
+        
+        previousCompanyIdRef.current = companyIdForDefaults;
+      }
     }
   }, [companyIdForDefaults]);
 
