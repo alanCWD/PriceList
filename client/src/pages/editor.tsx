@@ -120,9 +120,8 @@ export default function Editor() {
         throw new Error('Failed to fetch company defaults');
       }
       
-      const data = await response.json();
-      // Attach the company ID to the response so we can verify data provenance
-      return { ...data, companyId: companyIdForDefaults };
+      // Server now returns companyId in response for provenance verification
+      return await response.json();
     },
     enabled: pricelistId === null && companyIdForDefaults !== null, // Only fetch for new pricelists with a company
     staleTime: 0, // Always consider data stale to ensure fresh fetch on company switch

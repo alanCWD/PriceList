@@ -151,7 +151,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // Return only default settings (not full company data), with fallbacks
+      // Include companyId so client can verify data provenance when switching companies
       res.json({
+        companyId: effectiveCompanyId,
         defaultTemplate: company.defaultTemplate || "modern",
         defaultFieldMapping: normalizedFieldMapping,
         defaultBranding: normalizedBranding,
