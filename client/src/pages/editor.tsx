@@ -182,6 +182,15 @@ export default function Editor() {
   useEffect(() => {
     if (pricelistId === null) { // Only for new pricelists
       defaultsAppliedRef.current = false;
+      // Clear branding when company changes so new defaults load fresh
+      // This prevents old branding from lingering during the refetch
+      console.log('[Company Change] Clearing branding for company change');
+      setCompanyBranding({
+        companyName: '',
+        headerBackgroundColor: '',
+        headerTextColor: '',
+        logoUrl: '',
+      });
     }
   }, [companyIdForDefaults, pricelistId]);
 
