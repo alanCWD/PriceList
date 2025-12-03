@@ -123,7 +123,7 @@ export default function Editor() {
       // Server now returns companyId in response for provenance verification
       return await response.json();
     },
-    enabled: pricelistId === null && companyIdForDefaults !== null, // Only fetch for new pricelists with a company
+    enabled: companyIdForDefaults !== null, // Fetch whenever a company is selected (for both new and existing pricelists)
     staleTime: 0, // Always consider data stale to ensure fresh fetch on company switch
   });
 
@@ -189,8 +189,9 @@ export default function Editor() {
 
   // Clear branding when company selection changes (allows new defaults to load fresh)
   // CRITICAL: Reset defaultsAppliedForCompanyRef so fresh defaults will be applied
+  // This runs for BOTH new and existing pricelists to ensure colors reload on company switch
   useEffect(() => {
-    if (pricelistId === null && companyIdForDefaults !== null) { // Only for new pricelists
+    if (companyIdForDefaults !== null) {
       // Reset the tracking ref so defaults will be applied for the new company
       console.log('[Company Change] Resetting defaultsAppliedForCompanyRef for company:', companyIdForDefaults);
       defaultsAppliedForCompanyRef.current = null;
@@ -201,11 +202,12 @@ export default function Editor() {
         companyName: '',
       });
     }
-  }, [companyIdForDefaults, pricelistId]);
+  }, [companyIdForDefaults]);
 
-  // Effect to apply company defaults for new pricelists
+  // Effect to apply company defaults when company changes
   // CRITICAL: Only applies defaults when data provenance is verified (companyId matches expected)
   // This prevents stale cached data from being applied when switching companies
+  // Now works for BOTH new pricelists AND when super admin switches companies
   useEffect(() => {
     console.log('[Apply Defaults] ===== DEFAULTS EFFECT =====');
     console.log('[Apply Defaults] defaultsAppliedForCompanyRef:', defaultsAppliedForCompanyRef.current);
@@ -213,12 +215,6 @@ export default function Editor() {
     console.log('[Apply Defaults] isFetchingDefaults:', isFetchingDefaults);
     console.log('[Apply Defaults] pricelistId:', pricelistId);
     console.log('[Apply Defaults] companyDefaults?.companyId:', companyDefaults?.companyId);
-    
-    // Skip if editing existing pricelist
-    if (pricelistId) {
-      console.log('[Apply Defaults] SKIPPING - editing existing pricelist');
-      return;
-    }
     
     // Skip if no company selected yet
     if (companyIdForDefaults === null) {
@@ -282,7 +278,7 @@ export default function Editor() {
     } else {
       console.log('[Apply Defaults] No companyDefaults available yet');
     }
-  }, [companyDefaults, pricelistId, companyIdForDefaults, isFetchingDefaults]);
+  }, [companyDefaults, companyIdForDefaults, isFetchingDefaults]);
 
   // Effect to handle company defaults error
   useEffect(() => {
