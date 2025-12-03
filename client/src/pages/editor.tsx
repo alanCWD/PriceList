@@ -25,6 +25,8 @@ export default function Editor() {
   const [location] = useLocation();
   const urlParams = new URLSearchParams(location.split('?')[1] || '');
   const pricelistId = urlParams.get('id') ? parseInt(urlParams.get('id')!) : null;
+  // Support companyId URL param for Super Admins creating new pricelists
+  const urlCompanyId = urlParams.get('companyId') ? parseInt(urlParams.get('companyId')!) : null;
   const { toast } = useToast();
   const { user } = useAuth();
   const [csvData, setCSVData] = useState<any[]>([]);
@@ -40,8 +42,10 @@ export default function Editor() {
   });
   const [products, setProducts] = useState<Product[]>([]);
   const [companyBranding, setCompanyBranding] = useState<CompanyBranding>({
-    companyName: "Your Company Name",
-    tagline: "Quality Products",
+    companyName: "",
+    headerBackgroundColor: "",
+    headerTextColor: "",
+    logoUrl: "",
   });
   const [salesAgents, setSalesAgents] = useState<SalesAgent[]>([]);
   const [qrCodeConfig, setQRCodeConfig] = useState<QRCodeConfig | undefined>();
@@ -52,7 +56,8 @@ export default function Editor() {
   const [currentPricelistDescription, setCurrentPricelistDescription] = useState<string>("");
   const [template, setTemplate] = useState<Template>("modern");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null); // null = ALL categories
-  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
+  // Initialize from URL param if present, otherwise null (will auto-select for super admins)
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(urlCompanyId);
   
   // Track CSV + mapping fingerprint to detect when products need regeneration
   const csvFingerprintRef = useRef<string>('');
@@ -67,11 +72,13 @@ export default function Editor() {
   });
 
   // Auto-select first company if Super Admin hasn't selected one yet (only for new pricelists)
+  // Skip auto-select if URL param already set the company
   useEffect(() => {
-    if (user?.role === 'superAdmin' && !pricelistId && !selectedCompanyId && companies && companies.length > 0) {
+    if (user?.role === 'superAdmin' && !pricelistId && !selectedCompanyId && !urlCompanyId && companies && companies.length > 0) {
+      console.log('[Auto-select] No company selected, auto-selecting first company:', companies[0].name);
       setSelectedCompanyId(companies[0].id);
     }
-  }, [user, pricelistId, selectedCompanyId, companies]);
+  }, [user, pricelistId, selectedCompanyId, urlCompanyId, companies]);
 
   // Determine which company to use for defaults
   const companyIdForDefaults = user?.role === 'superAdmin' 
@@ -195,12 +202,12 @@ export default function Editor() {
   }, [companyIdForDefaults, pricelistId]);
 
   // Effect to apply company defaults for new pricelists
-  // Re-runs when company selection changes (via companyIdForDefaults dependency)
+  // IMPORTANT: Only runs when companyDefaults actually changes (after query fetches new data)
+  // DO NOT add companyIdForDefaults to deps - that would cause this to run with stale data
   useEffect(() => {
     console.log('[Apply Defaults] ===== DEFAULTS EFFECT =====');
     console.log('[Apply Defaults] defaultsAppliedRef:', defaultsAppliedRef.current);
     console.log('[Apply Defaults] pricelistId:', pricelistId);
-    console.log('[Apply Defaults] companyIdForDefaults:', companyIdForDefaults);
     console.log('[Apply Defaults] companyDefaults:', companyDefaults);
     
     // Skip if editing existing pricelist
@@ -225,17 +232,13 @@ export default function Editor() {
         setTemplate(companyDefaults.defaultTemplate);
       }
       
-      // Apply default branding if any meaningful values exist (colors, company name, etc.)
+      // Apply default branding - always apply when defaults exist (even if some fields empty)
+      // This ensures we get the company's saved colors, not stale values
       if (companyDefaults.defaultBranding) {
-        const b = companyDefaults.defaultBranding;
-        const hasMeaningfulBranding = b.companyName || b.headerBackgroundColor || b.headerTextColor || b.logoUrl;
-        console.log('[Apply Defaults] Branding check:', { companyName: b.companyName, bgColor: b.headerBackgroundColor, textColor: b.headerTextColor, hasMeaningful: hasMeaningfulBranding });
-        if (hasMeaningfulBranding) {
-          console.log('[Apply Defaults] Setting branding:', companyDefaults.defaultBranding);
-          setCompanyBranding(companyDefaults.defaultBranding);
-        } else {
-          console.log('[Apply Defaults] No meaningful branding to apply');
-        }
+        console.log('[Apply Defaults] Setting branding:', companyDefaults.defaultBranding);
+        setCompanyBranding(companyDefaults.defaultBranding);
+      } else {
+        console.log('[Apply Defaults] No branding in defaults');
       }
       
       // Apply default sales agents
@@ -258,7 +261,7 @@ export default function Editor() {
     } else {
       console.log('[Apply Defaults] No companyDefaults available yet');
     }
-  }, [companyDefaults, pricelistId, companyIdForDefaults]);
+  }, [companyDefaults, pricelistId]);
 
   // Effect to handle company defaults error
   useEffect(() => {
