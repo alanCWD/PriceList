@@ -541,8 +541,11 @@ export function getDisplayName(sortKey: string): string {
  * productOrder stores SKUs (not product IDs) because SKUs are stable across CSV uploads.
  * This allows manual ordering to persist when a new CSV is uploaded.
  * 
+ * LEGACY SUPPORT: Some older entries store "product-X" IDs instead of SKUs.
+ * The function handles both formats for backward compatibility.
+ * 
  * @param products - Array of products to process
- * @param brandRegistry - Brand registry data with productOrder field (contains SKUs)
+ * @param brandRegistry - Brand registry data with productOrder field (contains SKUs or legacy IDs)
  * @returns Products with manualSortIndex injected (undefined if no manual order set)
  */
 export interface ProductWithSortIndex {
@@ -557,7 +560,7 @@ export interface ProductWithSortIndex {
 
 export interface BrandWithOrder {
   brandName: string;
-  productOrder?: string[] | null; // Array of SKUs in desired order
+  productOrder?: string[] | null; // Array of SKUs (or legacy product-* IDs) in desired order
   [key: string]: any;
 }
 
@@ -565,7 +568,7 @@ export function injectManualSortIndex(
   products: any[],
   brandRegistry: BrandWithOrder[]
 ): ProductWithSortIndex[] {
-  // Create lookup map: brandName -> productOrder array (of SKUs)
+  // Create lookup map: brandName -> productOrder array
   const brandOrderMap = new Map<string, string[]>();
   
   brandRegistry.forEach(brand => {
@@ -574,34 +577,56 @@ export function injectManualSortIndex(
     }
   });
   
-  // Inject manualSortIndex onto each product based on SKU match
+  // Build a product ID to SKU lookup for legacy "product-*" format support
+  const productIdToSku = new Map<string, string>();
+  products.forEach(p => {
+    if (p.id && p.sku) {
+      productIdToSku.set(p.id, p.sku);
+    }
+  });
+  
+  // Inject manualSortIndex onto each product based on SKU or legacy ID match
   return products.map(product => {
     const brandName = product.collectionBrand;
     const sku = product.sku;
+    const productId = product.id;
     
-    // Skip if product has no brand or no SKU - can't apply manual ordering
-    if (!brandName || !sku) {
+    // Skip if product has no brand - can't apply manual ordering
+    if (!brandName) {
       return product;
     }
     
     // Check if this brand has a custom order defined
     if (brandOrderMap.has(brandName)) {
       const productOrder = brandOrderMap.get(brandName)!;
-      // Look up by SKU (stable across uploads) instead of product ID
-      const sortIndex = productOrder.indexOf(sku);
       
-      // Only set manualSortIndex if product SKU is found in the order array
-      if (sortIndex !== -1) {
-        return {
-          ...product,
-          manualSortIndex: sortIndex,
-        };
+      // PRIORITY 1: Try to match by SKU (preferred, stable across uploads)
+      if (sku) {
+        const skuIndex = productOrder.indexOf(sku);
+        if (skuIndex !== -1) {
+          return {
+            ...product,
+            manualSortIndex: skuIndex,
+          };
+        }
       }
-      // Product SKU not in order array (new product added after order was set)
+      
+      // PRIORITY 2: Try to match by legacy "product-*" ID format
+      if (productId) {
+        const legacyIndex = productOrder.indexOf(productId);
+        if (legacyIndex !== -1) {
+          return {
+            ...product,
+            manualSortIndex: legacyIndex,
+          };
+        }
+      }
+      
+      // Product not found in order array (new product added after order was set)
       // Falls through to return without manualSortIndex - will use automatic sorting
     }
     
-    // No manual order set for this product's brand, or product SKU not in order array
+    // No manual order set for this product's brand, or product not in order array
     return product;
   });
 }
