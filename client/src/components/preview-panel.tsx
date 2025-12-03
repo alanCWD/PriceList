@@ -39,7 +39,8 @@ export function PreviewPanel({
 
   // Fetch hidden SKUs from visibility table (authoritative source)
   // Pass companyId for Super Admin context
-  const { data: hiddenSkus } = useQuery<string[]>({
+  // CRITICAL: Must wait for this to load before allowing PDF/Excel export
+  const { data: hiddenSkus, isLoading: isLoadingVisibility } = useQuery<string[]>({
     queryKey: ['/api/visibility/hidden-skus', { companyId }],
     queryFn: async () => {
       const url = companyId 
@@ -454,27 +455,29 @@ export function PreviewPanel({
               variant="outline"
               data-testid="button-print"
               className="gap-2"
+              disabled={isLoadingVisibility}
             >
               <Printer className="w-4 h-4" />
-              Print
+              {isLoadingVisibility ? "Loading..." : "Print"}
             </Button>
             <Button
               onClick={handleDownloadSpreadsheet}
               variant="outline"
               data-testid="button-download-spreadsheet"
               className="gap-2"
-              disabled={isGeneratingSpreadsheet}
+              disabled={isGeneratingSpreadsheet || isLoadingVisibility}
             >
               <FileSpreadsheet className="w-4 h-4" />
-              {isGeneratingSpreadsheet ? "Generating..." : "Download Spreadsheet"}
+              {isLoadingVisibility ? "Loading..." : isGeneratingSpreadsheet ? "Generating..." : "Download Spreadsheet"}
             </Button>
             <Button
               onClick={handleDownloadPDF}
               data-testid="button-download-pdf"
               className="gap-2"
+              disabled={isLoadingVisibility}
             >
               <Download className="w-4 h-4" />
-              Download PDF
+              {isLoadingVisibility ? "Loading visibility..." : "Download PDF"}
             </Button>
           </div>
         </div>
