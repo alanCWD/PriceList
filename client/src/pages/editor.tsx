@@ -990,7 +990,7 @@ export default function Editor() {
               pricelistName={currentPricelistName}
               categoryFilter={categoryFilter}
               brandRegistry={brandRegistry}
-              companyId={loadedPricelist?.companyId}
+              companyId={companyIdForBrands}
             />
           </TabsContent>
         </Tabs>
