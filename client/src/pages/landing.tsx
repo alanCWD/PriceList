@@ -1,7 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { FileText, Upload, Settings, AlertCircle, LayoutDashboard, ChevronRight, Loader2, Building2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { FileText, Upload, Settings, AlertCircle, LayoutDashboard, ChevronRight, Loader2, Building2, Download, ChevronDown } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
@@ -9,6 +12,7 @@ import { useViewMode } from "@/contexts/ViewModeContext";
 import { useQuery } from "@tanstack/react-query";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { PreviewPanel } from "@/components/preview-panel";
+import { generatePDF } from "@/lib/pdf-generator";
 import type { Product, Pricelist, CompanyBranding, SalesAgent, Template, QRCodeConfig } from "@shared/schema";
 
 export default function Landing() {
@@ -16,6 +20,11 @@ export default function Landing() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { viewMode, impersonatedCompanyId } = useViewMode();
+  
+  // Brand selection state for downloads
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isBrandSelectorOpen, setIsBrandSelectorOpen] = useState(false);
 
   // Handle error parameter from URL
   useEffect(() => {
@@ -25,6 +34,12 @@ export default function Landing() {
       setError("Access denied. Your email domain is not authorized. Please contact your administrator.");
     }
   }, []);
+
+  // Reset brand selection when company context changes
+  useEffect(() => {
+    setSelectedBrands(new Set());
+    setIsBrandSelectorOpen(false);
+  }, [impersonatedCompanyId]);
 
   const handleLogin = () => {
     window.location.href = "/api/login";
@@ -164,6 +179,112 @@ export default function Landing() {
   // Get template from pricelist or company defaults
   const template = latestPricelist?.template || companyDefaults?.defaultTemplate || 'modern';
 
+  // Get sorted list of brands for selection (category order, then displayOrder, then alphabetical)
+  const sortedBrands = useMemo(() => {
+    if (!brandOrderingData) return [];
+    
+    const categoryOrder: Record<string, number> = {
+      'wine': 1,
+      'spirits': 2,
+      'cider': 3,
+      'nonAlc': 4,
+    };
+    
+    return [...brandOrderingData].sort((a, b) => {
+      // First by category order
+      const catOrderA = categoryOrder[a.category] || 999;
+      const catOrderB = categoryOrder[b.category] || 999;
+      if (catOrderA !== catOrderB) return catOrderA - catOrderB;
+      
+      // Then by displayOrder if set
+      if (a.displayOrder !== null && b.displayOrder !== null) {
+        return a.displayOrder - b.displayOrder;
+      }
+      if (a.displayOrder !== null) return -1;
+      if (b.displayOrder !== null) return 1;
+      
+      // Finally alphabetically
+      return a.brandName.localeCompare(b.brandName);
+    });
+  }, [brandOrderingData]);
+
+  // Toggle brand selection
+  const toggleBrand = (brandName: string) => {
+    setSelectedBrands(prev => {
+      const next = new Set(prev);
+      if (next.has(brandName)) {
+        next.delete(brandName);
+      } else {
+        next.add(brandName);
+      }
+      return next;
+    });
+  };
+
+  // Select/deselect all brands
+  const toggleAllBrands = (select: boolean) => {
+    if (select) {
+      setSelectedBrands(new Set(sortedBrands.map(b => b.brandName)));
+    } else {
+      setSelectedBrands(new Set());
+    }
+  };
+
+  // Download PDF for all brands
+  const handleDownloadAll = async () => {
+    if (!products.length || !brandOrderingData) return;
+    
+    setIsDownloading(true);
+    try {
+      await generatePDF({
+        products,
+        branding,
+        salesAgents: [],
+        template: template as Template,
+        pricelistName: latestPricelist?.name || 'Pricelist',
+        brandRegistry: brandOrderingData as any,
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // Download PDF for selected brands only
+  const handleDownloadSelected = async () => {
+    if (!products.length || !brandOrderingData || selectedBrands.size === 0) return;
+    
+    setIsDownloading(true);
+    try {
+      // Filter products to only include those from selected brands
+      const filteredProducts = products.filter(product => {
+        if (!product.sku) return false;
+        const brandName = skuToBrandMap.get(product.sku);
+        return brandName && selectedBrands.has(brandName);
+      });
+      
+      // Filter brand registry to only include selected brands
+      const filteredBrandRegistry = brandOrderingData.filter(brand => 
+        selectedBrands.has(brand.brandName)
+      );
+      
+      const brandNames = Array.from(selectedBrands).join(', ');
+      const fileName = selectedBrands.size === 1 
+        ? Array.from(selectedBrands)[0] 
+        : `${selectedBrands.size}_brands`;
+      
+      await generatePDF({
+        products: filteredProducts,
+        branding,
+        salesAgents: [],
+        template: template as Template,
+        pricelistName: `${latestPricelist?.name || 'Pricelist'} - ${fileName}`,
+        brandRegistry: filteredBrandRegistry as any,
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   // Show loading state while checking auth
   if (authLoading) {
     return (
@@ -273,19 +394,157 @@ export default function Landing() {
                 </div>
               </Card>
             ) : latestPricelist && products.length > 0 ? (
-              <Card className="overflow-hidden">
-                <div className="max-h-[600px] overflow-y-auto">
-                  <PreviewPanel
-                    products={products}
-                    branding={branding}
-                    salesAgents={[]}
-                    qrCodeConfig={undefined}
-                    template={template as Template}
-                    brandRegistry={brandOrderingData as any}
-                    companyId={pricelistCompanyId}
-                  />
-                </div>
-              </Card>
+              <div className="space-y-4">
+                {/* Download Section */}
+                <Card className="p-4">
+                  <div className="flex flex-col gap-4">
+                    {/* Download All Button */}
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div>
+                        <h3 className="font-semibold">Download Pricelist</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Download all brands or select specific brands below
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleDownloadAll}
+                        disabled={isDownloading}
+                        data-testid="button-download-all"
+                      >
+                        {isDownloading ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4 mr-2" />
+                        )}
+                        Download All Brands
+                      </Button>
+                    </div>
+
+                    {/* Brand Selector */}
+                    <Collapsible 
+                      open={isBrandSelectorOpen} 
+                      onOpenChange={setIsBrandSelectorOpen}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-between"
+                          data-testid="button-toggle-brand-selector"
+                        >
+                          <span>Select Specific Brands ({selectedBrands.size} selected)</span>
+                          <ChevronDown className={`w-4 h-4 transition-transform ${isBrandSelectorOpen ? 'rotate-180' : ''}`} />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-3">
+                        <div className="border rounded-lg p-4 space-y-4">
+                          {/* Select All / Clear All */}
+                          <div className="flex items-center justify-between gap-2 pb-3 border-b">
+                            <span className="text-sm font-medium">
+                              {sortedBrands.length} brands available
+                            </span>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => toggleAllBrands(true)}
+                                data-testid="button-select-all-brands"
+                              >
+                                Select All
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => toggleAllBrands(false)}
+                                data-testid="button-clear-all-brands"
+                              >
+                                Clear All
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Brand List by Category */}
+                          <div className="grid gap-4 max-h-[300px] overflow-y-auto">
+                            {['wine', 'spirits', 'cider', 'nonAlc'].map(category => {
+                              const categoryBrands = sortedBrands.filter(b => b.category === category);
+                              if (categoryBrands.length === 0) return null;
+                              
+                              const categoryLabel = {
+                                'wine': 'Wine',
+                                'spirits': 'Spirits',
+                                'cider': 'Cider',
+                                'nonAlc': 'Non-Alcoholic',
+                              }[category];
+                              
+                              return (
+                                <div key={category} className="space-y-2">
+                                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                                    {categoryLabel}
+                                  </h4>
+                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {categoryBrands.map(brand => (
+                                      <div 
+                                        key={brand.brandName}
+                                        className="flex items-center space-x-2"
+                                      >
+                                        <Checkbox
+                                          id={`brand-${brand.brandName}`}
+                                          checked={selectedBrands.has(brand.brandName)}
+                                          onCheckedChange={() => toggleBrand(brand.brandName)}
+                                          data-testid={`checkbox-brand-${brand.brandName.replace(/\s+/g, '-').toLowerCase()}`}
+                                        />
+                                        <Label 
+                                          htmlFor={`brand-${brand.brandName}`}
+                                          className="text-sm cursor-pointer"
+                                        >
+                                          {brand.brandName}
+                                        </Label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Download Selected Button */}
+                          {selectedBrands.size > 0 && (
+                            <div className="pt-3 border-t">
+                              <Button
+                                onClick={handleDownloadSelected}
+                                disabled={isDownloading}
+                                className="w-full"
+                                data-testid="button-download-selected"
+                              >
+                                {isDownloading ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Download className="w-4 h-4 mr-2" />
+                                )}
+                                Download {selectedBrands.size} Selected Brand{selectedBrands.size !== 1 ? 's' : ''}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                </Card>
+
+                {/* Pricelist Preview */}
+                <Card className="overflow-hidden">
+                  <div className="max-h-[600px] overflow-y-auto">
+                    <PreviewPanel
+                      products={products}
+                      branding={branding}
+                      salesAgents={[]}
+                      qrCodeConfig={undefined}
+                      template={template as Template}
+                      brandRegistry={brandOrderingData as any}
+                      companyId={pricelistCompanyId}
+                    />
+                  </div>
+                </Card>
+              </div>
             ) : latestPricelist && products.length === 0 ? (
               <Card className="p-12">
                 <div className="flex flex-col items-center justify-center gap-4 text-center">
