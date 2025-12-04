@@ -888,28 +888,28 @@ export default function ClientLanding() {
                     </SelectContent>
                   </Select>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <Button
                       size="lg"
                       onClick={handleDownloadBrandPDF}
                       disabled={isGeneratingPDF || !selectedBrand || isBrandOrderingLoading}
-                      className="flex-1"
+                      className="flex-1 min-w-0"
                       variant="outline"
                       data-testid="button-download-brand-pdf"
                     >
-                      <Download className="mr-2 h-5 w-5" />
-                      {isBrandOrderingLoading ? "Loading..." : isGeneratingPDF ? "Generating..." : "Download"}
+                      <Download className="mr-2 h-5 w-5 shrink-0" />
+                      <span className="truncate">{isBrandOrderingLoading ? "Loading..." : isGeneratingPDF ? "Generating..." : "Download"}</span>
                     </Button>
                     <Button
                       size="lg"
                       onClick={handlePrintBrand}
                       disabled={isGeneratingPDF || !selectedBrand}
-                      className="flex-1"
+                      className="flex-1 min-w-0"
                       variant="outline"
                       data-testid="button-print-brand"
                     >
-                      <Printer className="mr-2 h-5 w-5" />
-                      Print
+                      <Printer className="mr-2 h-5 w-5 shrink-0" />
+                      <span className="truncate">Print</span>
                     </Button>
                   </div>
                 </div>
