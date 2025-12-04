@@ -15,6 +15,7 @@ import { UserProfileMenu } from "@/components/user-profile-menu";
 import { PreviewPanel } from "@/components/preview-panel";
 import { generatePDF } from "@/lib/pdf-generator";
 import type { Product, Pricelist, CompanyBranding, SalesAgent, Template, QRCodeConfig } from "@shared/schema";
+import wineBackground from "@assets/StoriedWineskin_1764863781074.png";
 
 export default function Landing() {
   const [error, setError] = useState<string | null>(null);
@@ -353,47 +354,66 @@ export default function Landing() {
   const isPricelistDataLoading = pricelistLoading || brandOrderingLoading || hiddenSkusLoading;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
-      {/* Header */}
-      <header className="border-b bg-card/80 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground">Pricelist Generator</h1>
-              <p className="text-sm text-muted-foreground">Professional pricelists from CSV data</p>
-            </div>
-            {user ? (
-              <div className="flex items-center gap-3">
-                {isAdmin && (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setLocation('/dashboard')}
-                    data-testid="button-dashboard"
-                  >
-                    <LayoutDashboard className="w-4 h-4 mr-2" />
-                    Dashboard
-                  </Button>
-                )}
-                <Button 
-                  onClick={() => setLocation('/client')}
-                  data-testid="button-client-area"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Pricelist Editor
-                </Button>
-                <UserProfileMenu />
+    <div 
+      className="min-h-screen relative"
+      style={{
+        backgroundImage: `url(${wineBackground})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
+      {/* Dark overlay for text readability */}
+      <div className="absolute inset-0 bg-black/60" />
+      
+      {/* Content layer */}
+      <div className="relative z-10 min-h-screen">
+        {/* Header */}
+        <header className="border-b border-white/10 bg-black/30 backdrop-blur-sm sticky top-0 z-50">
+          <div className="max-w-6xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold text-white">Pricelist Generator</h1>
+                <p className="text-sm text-white/70">Professional pricelists from CSV data</p>
               </div>
-            ) : (
-              <Button onClick={handleLogin} data-testid="button-login">
-                Log In with Google
-              </Button>
-            )}
+              {user ? (
+                <div className="flex items-center gap-3">
+                  {isAdmin && (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setLocation('/dashboard')}
+                      className="border-white/30 text-white hover:bg-white/10 hover:text-white"
+                      data-testid="button-dashboard"
+                    >
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Dashboard
+                    </Button>
+                  )}
+                  <Button 
+                    onClick={() => setLocation('/client')}
+                    className="bg-white text-black hover:bg-white/90"
+                    data-testid="button-client-area"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Pricelist Editor
+                  </Button>
+                  <UserProfileMenu />
+                </div>
+              ) : (
+                <Button 
+                  onClick={handleLogin} 
+                  className="bg-white text-black hover:bg-white/90"
+                  data-testid="button-login"
+                >
+                  Log In with Google
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
+        {/* Main Content */}
+        <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Error Alert */}
         {error && (
           <Alert variant="destructive" className="mb-8" data-testid="alert-login-error">
@@ -637,19 +657,19 @@ export default function Landing() {
         {/* Hero Section - Only for unauthenticated users */}
         {!user && (
           <div className="text-center space-y-6 mb-16 pt-8">
-            <h2 className="text-4xl font-bold tracking-tight">
+            <h2 className="text-4xl font-bold tracking-tight text-white">
               Create Professional Pricelists
               <br />
-              <span className="text-primary">In Minutes</span>
+              <span className="text-amber-400">In Minutes</span>
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-white/80 max-w-2xl mx-auto">
               Transform your CSV data into beautiful, print-ready pricelists with customizable templates,
               company branding, and sales agent information.
             </p>
             <Button
               size="lg"
               onClick={handleLogin}
-              className="text-lg px-8"
+              className="text-lg px-8 bg-white text-black hover:bg-white/90"
               data-testid="button-hero-login"
             >
               Get Started
@@ -659,32 +679,32 @@ export default function Landing() {
 
         {/* Features Grid */}
         <div className={`grid md:grid-cols-3 gap-8 ${user ? 'mb-8' : 'mb-16'}`}>
-          <Card>
+          <Card className="bg-black/40 border-white/10 backdrop-blur-sm">
             <CardHeader>
-              <Upload className="w-12 h-12 mb-4 text-primary" />
-              <CardTitle>Upload CSV</CardTitle>
-              <CardDescription>
+              <Upload className="w-12 h-12 mb-4 text-amber-400" />
+              <CardTitle className="text-white">Upload CSV</CardTitle>
+              <CardDescription className="text-white/70">
                 Import your product data from CSV files. Auto-detect field mappings for quick setup.
               </CardDescription>
             </CardHeader>
           </Card>
 
-          <Card>
+          <Card className="bg-black/40 border-white/10 backdrop-blur-sm">
             <CardHeader>
-              <Settings className="w-12 h-12 mb-4 text-primary" />
-              <CardTitle>Configure</CardTitle>
-              <CardDescription>
-                Customize company branding, add sales agent contacts, and include QR codes.
+              <Settings className="w-12 h-12 mb-4 text-amber-400" />
+              <CardTitle className="text-white">Professional Output</CardTitle>
+              <CardDescription className="text-white/70">
+                Your company branding and formatting are automatically applied to every pricelist.
               </CardDescription>
             </CardHeader>
           </Card>
 
-          <Card>
+          <Card className="bg-black/40 border-white/10 backdrop-blur-sm">
             <CardHeader>
-              <FileText className="w-12 h-12 mb-4 text-primary" />
-              <CardTitle>Export PDF</CardTitle>
-              <CardDescription>
-                Generate professional, print-ready PDFs with your choice of Modern, Classic, or Minimal templates.
+              <FileText className="w-12 h-12 mb-4 text-amber-400" />
+              <CardTitle className="text-white">Export PDF</CardTitle>
+              <CardDescription className="text-white/70">
+                Generate professional, print-ready PDFs instantly with your latest product data.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -692,9 +712,9 @@ export default function Landing() {
 
         {/* CTA Section - Login only for unauthenticated users */}
         {!user && (
-          <div className="bg-card border rounded-lg p-12">
+          <div className="bg-black/50 border border-white/10 rounded-lg p-12 backdrop-blur-sm">
             <div className="max-w-md mx-auto">
-              <h3 className="text-2xl font-semibold mb-4 text-center">Ready to create your first pricelist?</h3>
+              <h3 className="text-2xl font-semibold mb-4 text-center text-white">Ready to create your first pricelist?</h3>
               
               {/* Email/Password Login Form */}
               <form onSubmit={handleEmailLogin} className="space-y-4 mb-6">
@@ -706,16 +726,16 @@ export default function Landing() {
                 )}
                 
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <Label htmlFor="login-email" className="text-white">Email</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
                     <Input
                       id="login-email"
                       type="email"
                       placeholder="you@example.com"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 bg-black/30 border-white/20 text-white placeholder:text-white/50"
                       required
                       data-testid="input-login-email"
                     />
@@ -723,16 +743,16 @@ export default function Landing() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
+                  <Label htmlFor="login-password" className="text-white">Password</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
                     <Input
                       id="login-password"
                       type="password"
                       placeholder="Enter your password"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 bg-black/30 border-white/20 text-white placeholder:text-white/50"
                       required
                       data-testid="input-login-password"
                     />
@@ -741,7 +761,7 @@ export default function Landing() {
                 
                 <Button 
                   type="submit" 
-                  className="w-full" 
+                  className="w-full bg-white text-black hover:bg-white/90" 
                   disabled={isLoggingIn}
                   data-testid="button-email-login"
                 >
@@ -759,10 +779,10 @@ export default function Landing() {
               {/* Divider */}
               <div className="relative mb-6">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
+                  <span className="w-full border-t border-white/20" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                  <span className="bg-black/50 px-2 text-white/60">Or continue with</span>
                 </div>
               </div>
               
@@ -771,7 +791,7 @@ export default function Landing() {
                 variant="outline" 
                 size="lg" 
                 onClick={handleLogin} 
-                className="w-full"
+                className="w-full border-white/30 text-white hover:bg-white/10 hover:text-white"
                 data-testid="button-cta-login"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -797,26 +817,27 @@ export default function Landing() {
             </div>
           </div>
         )}
-      </main>
+        </main>
 
-      {/* Footer */}
-      <footer className="border-t mt-8">
-        <div className="max-w-6xl mx-auto px-6 py-8 text-center text-sm text-muted-foreground">
-          <p>
-            © 2025{" "}
-            <a 
-              href="https://citywidedigital.ca/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="hover:text-foreground transition-colors underline"
-              data-testid="link-citywide-digital"
-            >
-              CityWide Digital
-            </a>
-            {" "}Pricelist Generator
-          </p>
-        </div>
-      </footer>
+        {/* Footer */}
+        <footer className="border-t border-white/10 mt-8">
+          <div className="max-w-6xl mx-auto px-6 py-8 text-center text-sm text-white/60">
+            <p>
+              © 2025{" "}
+              <a 
+                href="https://citywidedigital.ca/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-white transition-colors underline"
+                data-testid="link-citywide-digital"
+              >
+                CityWide Digital
+              </a>
+              {" "}Pricelist Generator
+            </p>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }
