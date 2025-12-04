@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,15 +15,31 @@ import NotFound from "@/pages/not-found";
 import { useQuery } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
 
+// Protected route component that redirects clients to /client
+function AdminRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user, isLoading, isClient } = useAuth();
+  
+  if (isLoading) {
+    return null; // Or a loading spinner
+  }
+  
+  // Redirect clients to /client page
+  if (user && isClient) {
+    return <Redirect to="/client" />;
+  }
+  
+  return <Component />;
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
-      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/dashboard">{() => <AdminRoute component={Dashboard} />}</Route>
       <Route path="/client" component={ClientLanding} />
-      <Route path="/editor" component={Editor} />
-      <Route path="/view" component={PricelistView} />
-      <Route path="/admin" component={AdminPage} />
+      <Route path="/editor">{() => <AdminRoute component={Editor} />}</Route>
+      <Route path="/view">{() => <AdminRoute component={PricelistView} />}</Route>
+      <Route path="/admin">{() => <AdminRoute component={AdminPage} />}</Route>
       <Route component={NotFound} />
     </Switch>
   );
