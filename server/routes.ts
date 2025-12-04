@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin, requireSuperAdmin, requireCompanyScopedAdmin } from "./replitAuth";
 import { z } from "zod";
+import bcrypt from "bcrypt";
 import { 
   insertPricelistSchema, 
   insertCompanyProfileSchema,
@@ -51,6 +52,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Email/password login endpoint
+  const loginSchema = z.object({
+    email: z.string().email("Valid email required"),
+    password: z.string().min(1, "Password required"),
+  });
+
+  app.post('/api/auth/login', async (req: any, res) => {
+    try {
+      // Validate request body
+      const validation = loginSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: "Invalid email or password" });
+      }
+
+      const { email, password } = validation.data;
+      const normalizedEmail = email.toLowerCase();
+
+      // Find user by email
+      const user = await storage.getUserByEmail(normalizedEmail);
+      if (!user) {
+        // Generic error to avoid revealing whether email exists
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      // Check if user has a password set
+      if (!user.password) {
+        return res.status(401).json({ error: "Password login not enabled for this account. Please use Google Sign-In." });
+      }
+
+      // Validate password
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      // Validate company still exists (if user has one)
+      if (user.companyId) {
+        const company = await storage.getCompanyById(user.companyId);
+        if (!company) {
+          return res.status(401).json({ error: "Your company account has been deleted. Please contact your administrator." });
+        }
+      }
+
+      // Create session with OIDC-like structure for compatibility
+      const sessionTtl = 7 * 24 * 60 * 60; // 1 week in seconds
+      const sessionUser = {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName,
+        },
+        access_token: null,
+        refresh_token: null,
+        expires_at: Math.floor(Date.now() / 1000) + sessionTtl,
+        isPasswordLogin: true,
+      };
+
+      // Log the user in using passport's req.login
+      req.login(sessionUser, (err: any) => {
+        if (err) {
+          console.error("Login session error:", err);
+          return res.status(500).json({ error: "Failed to create session" });
+        }
+        
+        // Return user info (without password)
+        const { password: _, ...safeUser } = user;
+        res.json({ 
+          success: true, 
+          user: safeUser 
+        });
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Login failed" });
     }
   });
 
