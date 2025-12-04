@@ -17,14 +17,24 @@ import type { User } from "@shared/schema";
 
 // Protected route component that redirects clients to /client
 function AdminRoute({ component: Component }: { component: React.ComponentType }) {
-  const { user, isLoading, isClient } = useAuth();
+  const { user, isLoading, isClient, isAdmin } = useAuth();
   
   if (isLoading) {
-    return null; // Or a loading spinner
+    return null; // Show nothing while loading auth state
   }
   
-  // Redirect clients to /client page
-  if (user && isClient) {
+  // Redirect unauthenticated users to landing page
+  if (!user) {
+    return <Redirect to="/" />;
+  }
+  
+  // Redirect clients to /client page - they cannot access admin routes
+  if (isClient) {
+    return <Redirect to="/client" />;
+  }
+  
+  // Only allow admins and super admins
+  if (!isAdmin) {
     return <Redirect to="/client" />;
   }
   

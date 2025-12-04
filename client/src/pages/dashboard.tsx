@@ -18,7 +18,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 export default function Dashboard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isClient, isAdmin } = useAuth();
+
+  // Failsafe: Redirect clients away - they should only access /client
+  useEffect(() => {
+    if (user && (isClient || !isAdmin)) {
+      setLocation('/client');
+    }
+  }, [user, isClient, isAdmin, setLocation]);
 
   // Force refresh pricelists on mount to prevent stale cache issues
   useEffect(() => {

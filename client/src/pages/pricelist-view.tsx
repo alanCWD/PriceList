@@ -1,16 +1,26 @@
 import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { FileText, Edit, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { PreviewPanel } from "@/components/preview-panel";
+import { useAuth } from "@/hooks/useAuth";
 import type { Pricelist, Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
 export default function PricelistView() {
   const [, setLocation] = useLocation();
+  const { user, isClient, isAdmin } = useAuth();
   const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const pricelistId = urlParams.get('id') ? parseInt(urlParams.get('id')!) : null;
+
+  // Failsafe: Redirect clients away - they should only access /client
+  useEffect(() => {
+    if (user && (isClient || !isAdmin)) {
+      setLocation('/client');
+    }
+  }, [user, isClient, isAdmin, setLocation]);
 
   // Load pricelist
   const { data: pricelist, isLoading, error } = useQuery<Pricelist>({

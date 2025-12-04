@@ -22,13 +22,20 @@ import { parseCollection, extractWineTypeFromProductName, lookupBrandBySKU, regi
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template, BrandRegistry } from "@shared/schema";
 
 export default function Editor() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const urlParams = new URLSearchParams(location.split('?')[1] || '');
   const pricelistId = urlParams.get('id') ? parseInt(urlParams.get('id')!) : null;
   // Support companyId URL param for Super Admins creating new pricelists
   const urlCompanyId = urlParams.get('companyId') ? parseInt(urlParams.get('companyId')!) : null;
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isClient, isAdmin } = useAuth();
+  
+  // Failsafe: Redirect clients away from editor - they should only access /client
+  useEffect(() => {
+    if (user && (isClient || !isAdmin)) {
+      setLocation('/client');
+    }
+  }, [user, isClient, isAdmin, setLocation]);
   const [csvData, setCSVData] = useState<any[]>([]);
   const [csvHeaders, setCSVHeaders] = useState<string[]>([]);
   const [fieldMapping, setFieldMapping] = useState<FieldMapping>({
