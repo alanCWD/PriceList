@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical, ArrowUpDown, Eye, EyeOff, AlertCircle, Link as LinkIcon } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical, ArrowUpDown, Eye, EyeOff, AlertCircle, Link as LinkIcon, Key } from "lucide-react";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { CSVUpload } from "@/components/csv-upload";
 import { ColorPicker } from "@/components/color-picker";
@@ -752,6 +753,8 @@ function UsersManager() {
   const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<"admin" | "client">("client");
   const [companyId, setCompanyId] = useState<number | null>(null);
+  const [settingPasswordForUser, setSettingPasswordForUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState("");
 
   const { data: users, isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
@@ -759,6 +762,26 @@ function UsersManager() {
 
   const { data: companies, isLoading: companiesLoading } = useQuery<Company[]>({
     queryKey: ["/api/companies"],
+  });
+
+  const setPasswordMutation = useMutation({
+    mutationFn: async ({ userId, password }: { userId: string; password: string }) => {
+      const res = await apiRequest("POST", `/api/users/${userId}/password`, { password });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Password set successfully" });
+      setSettingPasswordForUser(null);
+      setNewPassword("");
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to set password", 
+        variant: "destructive" 
+      });
+    },
   });
 
   const createMutation = useMutation({
@@ -1128,7 +1151,7 @@ function UsersManager() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardFooter className="flex gap-2">
+                <CardFooter className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -1137,6 +1160,15 @@ function UsersManager() {
                   >
                     <Edit className="w-4 h-4 mr-2" />
                     Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSettingPasswordForUser(user)}
+                    data-testid={`button-set-password-${user.id}`}
+                  >
+                    <Key className="w-4 h-4 mr-2" />
+                    Set Password
                   </Button>
                   <Button
                     variant="outline"
@@ -1154,6 +1186,70 @@ function UsersManager() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!settingPasswordForUser} onOpenChange={(open) => {
+        if (!open) {
+          setSettingPasswordForUser(null);
+          setNewPassword("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Password</DialogTitle>
+            <DialogDescription>
+              Set a password for {settingPasswordForUser?.firstName} {settingPasswordForUser?.lastName} ({settingPasswordForUser?.email})
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                data-testid="input-new-password"
+                placeholder="Enter new password (min 8 characters)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setSettingPasswordForUser(null);
+                setNewPassword("");
+              }}
+              data-testid="button-cancel-password"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (settingPasswordForUser && newPassword.length >= 8) {
+                  setPasswordMutation.mutate({ 
+                    userId: settingPasswordForUser.id, 
+                    password: newPassword 
+                  });
+                } else if (newPassword.length < 8) {
+                  toast({
+                    title: "Validation error",
+                    description: "Password must be at least 8 characters",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              disabled={setPasswordMutation.isPending || newPassword.length < 8}
+              data-testid="button-save-password"
+            >
+              {setPasswordMutation.isPending && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
+              Set Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
