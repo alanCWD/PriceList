@@ -1,0 +1,269 @@
+Pricelist Generator
+Professional pricelists from CSV data
+
+Pricelist Editor
+
+SW
+Current Pricelist
+Storied Wines & Spirits Pricelist - 3 December 2025 • 178 products
+
+View Full Pricelist
+Download Pricelist
+Download all brands or select specific brands below
+
+Download All Brands
+
+Select Specific Brands (0 selected)
+Preview & Export
+Download as PDF, spreadsheet (with status tracking), or print directly
+
+Print
+Download Spreadsheet
+Download PDF
+Storied Wines & Spirits
+Storied Wines & Spirits
+Representing Sustainable, Quality BC Producers
+
+1 Mill Road
+SKU	Product	Format	Price	Notes
+668638	1 Mill Road 2024 Grenache	12 x 750 ml	33.99	
+365142	1 Mill Road 2024 Grenache Rosé	12 x 750 ml	29.99	
+Anthony Buchanan Wines
+SKU	Product	Format	Price	Notes
+304086	Anthony Buchanan 2024 Petit Sirah - PNWS	12 x 750 ml	25.33	NEW RELEASE
+304092	Anthony Buchanan 2024 Mourvèdre - PNWS	12 x 750 ml	25.33	NEW RELEASE
+304103	Anthony Buchanan 2024 Rosé - PNWS	12 x 750 ml	18.99	NEW RELEASE
+98960	Anthony Buchanan 2022 SNAFU	12 x 750 ml	23.90	
+Cannon Estate Winery
+SKU	Product	Format	Price	Notes
+305932	Cannon Estate Enivré 2022	12 x 750 ml	19.19	
+544125	Cannon Estate Wick Loose Cannon Frizzante Rosé	12 x 750 ml	14.63	
+305918	Cannon Estate Wick Eager Beaver Rosé 2022	12 x 750 ml	13.85	
+305935	Cannon Estate Jouissance 2022	12 x 750 ml	19.21	
+305929	Cannon Estate Bonhomous White 2021	12 x 750 ml	16.89	
+305926	Cannon Estate Wick Mover/Shaker White	12 x 750 ml	13.85	
+305923	Cannon Estate Wick Zoom Zoom 2022	12 x 750 ml	13.85	
+305944	Cannon Estate Pondéré White 2022	12 x 750 ml	16.89	
+305907	Cannon Estate Rêverie Rose 2022	12 x 750 ml	16.89	
+305910	Cannon Estate Wick Highflier Rosé 2022	12 x 750 ml	13.85	
+444720	Cannon Estate Sedulous Red 2021	12 x 750 ml	23.05	
+444735	Cannon Estate Fervour Red 2021	12 x 750 ml	23.05	
+305970	Cannon Estate Wick Whizz Kid Red	12 x 750 ml	14.63	
+444732	Cannon Estate Wick Doer 2021	12 x 750 ml	16.89	
+444723	Cannon Estate Wick Bootstrapper 2021	12 x 750 ml	18.44	
+305976	Cannon Estate Fleur Bleue 2022	12 x 750 ml	23.05	
+444676	Cannon Estate Ardour Red 2021	12 x 750 ml	24.60	
+Cobble Hill Winery
+SKU	Product	Format	Price	Notes
+273882	Cobble Hill Winery 2022 "Storming the Castel" Port-Style	12 x 375 ml	16.66	
+314375	Cobble Hill Winery 2023 Kismet White Blend	12 x 750 ml	23.31	
+314407	Cobble Hill Winery 2023 Zweigelt	12 x 750 ml	19.98	
+314372	Cobble Hill Winery 2024 Pinot Gris "Rouge"	12 x 750 ml	19.98	
+Emandare Vineyard
+SKU	Product	Format	Price	Notes
+266797	Emandare 2022 'Traditional Method' Blanc De Blancs	12 x 750 ml	31.60	
+422910	Emandare 2024 PS	12 x 750 ml	19.00	NEW RELEASE
+699504	Emandare 2023 Estate Rosé	12 x 750 ml	20.50	
+571570	Emandare 2023 Estate Pinot Noir	12 x 750 ml	50.00	
+780833	Emandare 2023 Estate Maréchal Foch	12 x 750 ml	26.00	NEW ARRIVAL
+Lock & Worth Winery
+SKU	Product	Format	Price	Notes
+169527	Lock & Worth 2021 Sémillon "Knorr Vineyard" Kelowna	12 x 750 ml	19.00	
+158116	Lock & Worth 2020 Sémillon Losthorn Vineyard	12 x 750 ml	15.00	
+Marichel Winery
+SKU	Product	Format	Price	Notes
+365973	Marichel 2023 Marichel Estate Viognier	12 x 750 ml	18.97	
+746339	Marichel 2022 Marichel Syrah Rosé	12 x 750 ml	17.00	
+428326	Marichel 2020 Marichel Estate Syrah	12 x 750 ml	26.69	
+609669	Marichel 2023 Marichel Lone Wolf Syrah	12 x 750 ml	18.97	
+Modest Wines
+SKU	Product	Format	Price	Notes
+061419	Modest Wines "By Jove" 2021	12 x 750 ml	19.99	
+369763	Modest Wines Natural Gas	12 x 750 ml	19.99	
+111524	Modest Wines No. 4 Orange	12 x 750 ml	19.99	
+Mt. Boucherie Estate Winery
+SKU	Product	Format	Price	Notes
+78182	Mt. Boucherie Original Vines 2022 Chardonnay	12 x 750 ml	24.99	
+78191	Mt. Boucherie Original Vines 2022 Sémillon	12 x 750 ml	19.99	
+78223	Mt. Boucherie Original Vines Cabernet Sauvignon 2021	12 x 750 ml	29.99	
+78218	Mt. Boucherie Original Vines PTG 2021	12 x 750 ml	24.99	
+64527	Mt. Boucherie Reserve Chardonnay 2023	12 x 750 ml	21.99	
+130708	Mt. Boucherie Reserve G.S.M. 2022	12 x 750 ml	29.99	NEW ARRIVAL
+261192	Mt. Boucherie Reserve Malbec 2022	12 x 750 ml	29.99	
+111529	Mt. Boucherie Reserve Petit Verdot. 2022	12 x 750 ml	29.99	NEW ARRIVAL
+66076	Mt. Boucherie Reserve Syrah 2022	12 x 750 ml	29.99	
+632893	Mt. Boucherie Summit (Meritage) 2019	12 x 750 ml	39.99	
+723759	Mt. Boucherie White Label 2022 Merlot	12 x 750 ml	17.99	
+64428	Mt. Boucherie White Label 2023 Blaufränkisch 2023	12 x 750 ml	19.99	
+602078	Mt. Boucherie White Label 2023 Riesling	12 x 750 ml	16.99	
+624437	Mt. Boucherie White Label 2024 Pinot Noir	12 x 750 ml	19.99	LTO -$2
+326640	Mt. Boucherie White Label Cabernet Merlot	12 x 750 ml	19.99	
+Nagging Doubt Winery
+SKU	Product	Format	Price	Notes
+678210	Nagging Doubt 2024 Viognier "Sidestep"	12 x 750 ml	20.23	NEW ARRIVAL
+678213	Nagging Doubt 2024 Chardonnay "Sidestep"	12 x 750 ml	20.23	NEW ARRIVAL
+448256	Nagging Doubt 2022 Cabernet Sauvignon	12 x 750 ml	24.90	
+242707	Nagging Doubt 2022 Bright Idea Sparkling	12 x 750 ml	18.67	
+588483	Nagging Doubt 2022 Pinot Noir	12 x 750 ml	23.02	
+61066	Nagging Doubt 2022 Malbec	12 x 750 ml	24.90	
+414938	Nagging Doubt 2021 The Pull	12 x 750 ml	25.90	
+128246	Nagging Doubt 2021 The Leap	12 x 750 ml	22.02	
+257253	Nagging Doubt 2022 Merlot	12 x 750 ml	19.46	
+Nichol Vineyard
+SKU	Product	Format	Price	Notes
+20187	Nichol Vineyard 2022 Syrah "Old Vines"	12 x 750 ml	40.00	COLLECTABLE
+29196	Nichol Vineyard 2022 Village Cabernet Franc	12 x 750 ml	22.00	
+29146	Nichol Vineyard 2022 Pinot Noir 550M	12 x 750 ml	25.00	
+226277	Nichol Vineyard 2022 Pinot Noir Whole Cluster - 280M	12 x 750 ml	26.00	
+261014	Nichol Vineyard 2022 Syrah "The Village"	12 x 750 ml	21.00	
+Rust Wines
+SKU	Product	Format	Price	Notes
+134026	Rust Wines 2020 Solus - Golden Mile Bench	12 x 750 ml	45.00	
+150439	Rust Wines 2022 Cabernet Franc - Okanagan Falls	12 x 750 ml	19.99	
+150461	Rust Wines 2022 Gamay - Similkameen Valley	12 x 750 ml	19.99	
+298673	Rust Wines 2022 Pinot Noir - West Kelowna	12 x 750 ml	29.99	
+177058	Rust Wines 2022 Syrah - Golden Mile Bench	12 x 750 ml	29.99	
+298723	Rust Wines 2022 Zinfandel - Golden Mile Bench	12 x 750 ml	29.99	
+395723	Rust Wines 2023 Chardonnay - Okanagan Falls	12 x 750 ml	24.99	
+164933	Rust Wines 2023 Riesling - Okanagan Falls	12 x 750 ml	16.99	
+Sea Star Vineyards
+SKU	Product	Format	Price	Notes
+392022	Sea Star NV Bulla Maris	12 x 750 ml	23.60	TEMPORARY PRICE REDUCTION
+428811	Sea Star 2024 Intertidal Rose	12 x 750 ml	20.32	NEW ARRIVAL
+582551	Sea Star 2024 Stella Maris	12 x 750 ml	18.82	
+420329	Sea Star Coriolis NV	12 x 750 ml	17.99	
+62462	Sea Star 2024 Ortega	12 x 750 ml	20.32	
+42515	Sea Star 2024 Blanc de Noir	12 x 750 ml	20.32	
+445018	Sea Star 2023 Luna Maris	12 x 750 ml	27.73	TEMPORARY PRICE REDUCTION
+291644	Sea Star 2022 Chardonnay	12 x 750 ml	25.20	TEMPORARY PRICE REDUCTION
+Synchromesh
+SKU	Product	Format	Price	Notes
+419476	Synchromesh 2022 Storm Haven Boulders Block Riesling	12 x 750 ml	24.00	
+820894	Synchromesh 2022 Storm Haven Blue Label Gibson Block 3 Riesling	12 x 750 ml	24.00	
+419471	Synchromesh 2022 Storm Haven Blue Label Gold Digger Riesling	12 x 750 ml	24.00	COLLECTABLE
+58047	Synchromesh 2022 Storm Haven Cabernet Franc	12 x 750 ml	24.00	COLLECTABLE
+239103	Synchromesh 2022 Tertre Rouge Story Orchard Farms	12 x 750 ml	23.00	LIMITED
+Unsworth Vineyards
+SKU	Product	Format	Price	Notes
+309810	Unsworth Cuvée de l'Île 2019	12 x 750 ml	39.88	
+148952	Unsworth 2022 Pinot Noir "Saison Vineyard"	12 x 750 ml	54.99	NEW (By Allocation) 93 pts Gis
+49092	Unsworth N/V Ovation Fortified "Port Style"	12 x 500 ml	21.98	
+116693	Unsworth Charme de l’île Rosé	12 x 750 ml	22.96	
+20402	Unsworth 2024 Pinot Gris - Keg	1 x 20 litre	487.21	
+76623	Unsworth 2022 Auxerrois "Wild Island"	12 x 750 ml	25.99	
+103107	Unsworth 2024 Rosé	12 x 750 ml	19.97	
+303586	Unsworth 2022 Pinot Noir "Cowichan Valley"	12 x 750 ml	29.99	
+43257	Unsworth 2023 Symphony "Island Red Blend"	12 x 750 ml	25.99	
+130928	Unsworth 2021 Symphony - Island Red Blend - Keg	1 x 20 litre	569.01	
+20134	Unsworth Vineyards 2023 Rosé Keg	1 x 20 litre	488.99	
+20415	Unsworth Vineyards 2022 Pinot Noir Keg	1 x 20 litre	695.75	
+671289	Unsworth Charme de l'île	12 x 750 ml	22.96	
+49089	Unsworth 2024 Allegro "Island White Blend"	12 x 750 ml	18.99	
+036082	Unsworth 2023 Allegro "Island White Blend" Keg	1 x 20 litre	431.74	
+Macaloney's Island Distillery
+SKU	Product	Format	Price	Notes
+365279	Macaloney's The Peat Project: Moscatel	6 x 700 ml	79.41	
+269030	Macaloney's Island Drams Collection Tasting Pack	5 x 50 ml	35.15	
+673192	Macaloney's Killeigh	6 x 700 ml	73.86	
+318191	Macaloney's The Peat Project: Ex-Bourbon Cask, Islay Peat	6 x 700 ml	78.87	
+339156	Macaloney's Siol Dugall	6 x 700 ml	78.11	
+414006	Macaloney's An Loy	6 x 700 ml	73.86	
+355837	Macaloney's Kildara	6 x 700 ml	78.11	
+313227	Macaloney's Cath Nah Aven	6 x 700 ml	73.86	
+354352	Macaloney's Na Braiche	6 X 700 ml	61.29	
+309805	Macaloney's An Aba	6 x 700 ml	78.87	
+Odd Society Spirits
+SKU	Product	Format	Price	Notes
+355566	Odd Society Solera Barrel Gin	12 x 375 ml	23.32	
+512820	Odd Society Scottish Peat & Smoke Whisky 375 ml	12 x 375 ml	26.57	
+204043	Odd Society Commodore Single Malt Whisky 750 ml	6 x 750 ml	51.65	
+8177	Odd Society Mongrel Unaged Rye Spirit 750 ml	6 x 750 ml	29.80	
+594531	Odd Society Crème de Cassis 375 ml	12 x 375 ml	17.75	
+953414	Odd Society Mia Amata Amaro 375 ml	12 x 375 ml	16.56	
+743054	Odd Society Wallflower Gin 375 ml	12 x 375 ml	17.93	
+618850	Odd Society Wallflower Oaken Gin 375 ml	12 x 375 ml	21.17	
+90826	Odd Society Commodore Single Malt Whisky 375 ml	12 x 375 ml	26.27	
+90685	Odd Society Prospector Rye Whisky 375 ml	12 x 375 ml	24.26	
+201275	Odd Society Prospector Rye Whisky 750 ml	6 x 750 ml	46.05	
+202075	Odd Society Crème de Cassis 750 ml	12 x 750 ml	30.70	
+406579	Odd Society Wallflower Gin 750 ml	6 x 750 ml	33.91	
+419782	Odd Society Wallflower Gin 200 ml	24 x 200 ml	10.13	
+52934	Odd Society Elderflower Liqueur 375 ml	12 x 375 ml	18.07	
+417345	Odd Society Salal Gin 375 ml	12 x 375 ml	22.74	
+318975	Odd Society Wallflower Strawberry Gin 375 ml	12 x 375 ml	22.04	
+406093	Odd Society Prospector Bar Rye Whisky 750 ml	6 x 750 ml	39.94	
+330059	Odd Society Wallflower Strawberry Gin 750 ml	12 x 750 ml	39.73	
+Wayward Distillery
+SKU	Product	Format	Price	Notes
+658784	Wayward Distillery Depth Charge Nocino	12 x 375 ml	26.27	NEW RELEASE
+67595	Wayward Distillery Unruly Gin 750ml	6 x 750 ml	55.96	
+531049	Wayward Distillery Raspberry Gin Liqueur 375ml	12 x 375 ml	22.92	
+531082	Wayward Distillery Raspberry Gin Liqueur 750ml	12 x 750 ml	35.82	
+393507	Wayward Distillery Krupnik - Spiced Honey Liqueur 375ml	12 x 375 ml	25.57	
+45843	Wayward Distillery Krupnik - Spiced Honey Liqueur 750ml	12 x 750 ml	39.68	
+992339	Wayward Distillery Drunken Hive Rum 375ml	12 x 375 ml	40.25	
+501414	Wayward Distillery Drunken Hive Rum 750ml	12 x 750 ml	74.20	
+421961	Wayward Distillery Bee Champion Craft Gin 750ml	12 x 750 ml	27.90	
+857151	Wayward Distillery Unruly Vodka 750ml	6 x 750 ml	55.96	
+Salt Spring Wild Cider House
+SKU	Product	Format	Price	Notes
+326556	Salt Spring Wild Pineapple Guava - 355 ml	1 x 355 ml	4.55	
+326544	Salt Spring Wild Traditional Dry - 355 ml	1 x 355 ml	4.55	
+326559	Salt Spring Wild Blackberry Yuzu - 355 ml	1 x 355 ml	4.55	
+510222	Salt Spring Wild Traditional Dry	12 x 750 ml	13.50	
+202008	Salt Spring Wild Traditional Dry-Keg	1 x 20 litre	180.00	
+202039	Salt Spring Wild Elderberry/Flower - Keg	1 x 20 litre	180.00	
+015212	Salt Spring Wild Saskatoon Berry - Keg	1 x 20 litre	200.00	
+202005	Salt Spring Wild Bitter Orange Rosemary - Keg	1 x 20 litre	180.00	
+326564	Salt Spring Wild Blackberry Yuzu- Keg	1 x 20 litre	180.00	Back Dec 3rd
+547828	Salt Spring Wild Traditional Semi-Dry	12 x 750 ml	13.50	
+539908	Salt Spring Wild Elderberry/Flower	12 x 750 ml	13.50	
+400671	Salt Spring Wild Hopped Apricot	12 x 750 ml	13.50	
+196235	Salt Spring Wild Bitter Orange Rosemary	12 x 750 ml	13.50	
+131315	Salt Spring Wild Farmhouse Scrumpy	12 x 750 ml	13.50	
+253308	Salt Spring Wild Red Grapefruit	12 x 750 ml	13.50	
+474616	Salt Spring Wild Wild Pear and Quince	12 x 750 ml	16.00	
+77263	Salt Spring Wild Plum Cider	12 x 750 ml	14.50	
+194486	Salt Spring Wild Champagnoise Style Pet Nat	12 x 750 ml	15.00	
+14376	Salt Spring Wild Saskatoon Berry	12 x 750 ml	14.50	
+Edna's Cocktails
+SKU	Product	Format	Price	Notes
+08-COL-4PK	Edna's "Collins" Non-Alcoholic Cocktail		11.80	
+10-MEZ-4PK	Edna's "Mezcalita" Non-Alcoholic Cocktail		11.80	
+02-MOJ-4PK	Edna's "Mojito" Non-Alcoholic Cocktail		11.80	
+06-MUL-4PK	Edna's "Mule" Non-Alcoholic Cocktail		11.80	
+04-PAL-4PK	Edna's "Paloma" Non-Alcoholic Cocktail		11.80	
+Ones+ Non-Alc BC Wine
+SKU	Product	Format	Price	Notes
+628340840027	Ones Sparkling White 200 ml	24 x 200 ml	5.50	
+628340840010	Ones Sparkling Rosé 200 ml	24 x 200 ml	5.50	
+628340840041	Ones Sparkling Red 200 ml	24 x 200 ml	5.50	
+628942690044	Ones Sparkling White 750 ml	12 x 750 ml	17.50	
+626990424055	Ones Sparkling Rosé 750 ml	12 x 750 ml	17.50	
+626990424062	Ones Sparkling Red 750 ml	12 x 750 ml	17.50	
+628942689987	Ones Cabernet Sauvignon Red 750 ml	12 x 750 ml	21.99	
+Page:
+Storied Wines & Spirits Pricelist - 4 December 2025
+178
+
+Total Products
+
+21
+
+Brands
+
+0
+
+Sales Agents
+
+No
+
+QR Code
+
+Upload CSV
+Import your product data from CSV files. Auto-detect field mappings for quick setup.
+Configure
+Customize company branding, add sales agent contacts, and include QR codes.
+Export PDF
+Generate professional, print-ready PDFs with your choice of Modern, Classic, or Minimal templates.
+© 2025 CityWide Digital Pricelist Generator
