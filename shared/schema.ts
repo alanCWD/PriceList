@@ -165,6 +165,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  password: varchar("password", { length: 255 }), // Hashed password for email/password login (optional, null for OAuth-only users)
   
   // Company association
   companyId: integer("company_id").references(() => companies.id, { onDelete: 'set null' }),
