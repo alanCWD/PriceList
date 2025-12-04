@@ -243,9 +243,40 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/callback", (req, res, next) => {
     ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/?error=unauthorized",
+    passport.authenticate(`replitauth:${req.hostname}`, async (err: any, user: any, info: any) => {
+      if (err) {
+        console.error("[Auth] Callback error:", err);
+        return res.redirect("/?error=unauthorized");
+      }
+      if (!user) {
+        console.log("[Auth] Callback: No user returned");
+        return res.redirect("/?error=unauthorized");
+      }
+      
+      // Log in the user
+      req.login(user, async (loginErr) => {
+        if (loginErr) {
+          console.error("[Auth] Login error:", loginErr);
+          return res.redirect("/?error=unauthorized");
+        }
+        
+        // Check user's role in database to determine redirect
+        try {
+          const userId = user.claims?.sub;
+          if (userId) {
+            const dbUser = await storage.getUser(userId);
+            if (dbUser?.role === "client") {
+              console.log(`[Auth] Client login redirect: ${dbUser.email} -> /client`);
+              return res.redirect("/client");
+            }
+          }
+        } catch (error) {
+          console.error("[Auth] Error checking user role:", error);
+        }
+        
+        // Default redirect for admins/super admins
+        return res.redirect("/");
+      });
     })(req, res, next);
   });
 
