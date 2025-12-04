@@ -548,10 +548,34 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
 
   // Render products by brand (sorted using brand registry ordering)
   const brandOrderingData = toBrandOrderingEntries(config.brandRegistry);
+  
+  // Constants for page break calculations
+  const brandHeaderHeight = 24; // Height of brand header bar
+  const brandHeaderGap = 6; // Gap after brand header
+  const tableHeaderHeight = 20; // Approximate height of table header row
+  const minProductRowHeight = 15; // Minimum height for one product row
+  const footerBufferSpace = 35; // Buffer space above footer area
+  const simpleHeaderHeight = 30; // Height of simplified header on subsequent pages
+  
+  // Minimum space needed: brand bar + gap + table header + one product row + footer buffer
+  const minBrandSectionSpace = brandHeaderHeight + brandHeaderGap + tableHeaderHeight + minProductRowHeight + footerBufferSpace;
+  
+  // Calculate where the footer area begins (content must end before this)
+  const footerStartY = pageHeight - margin - footerHeight;
+  
   sortBrandGroups(Object.entries(groupedProducts), brandOrderingData)
     .forEach(([groupBrandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 20;
+    }
+
+    // Check if there's enough space for brand header + at least one product row
+    // If not, add a new page before drawing the brand header
+    const availableSpace = footerStartY - yPosition;
+    if (availableSpace < minBrandSectionSpace) {
+      doc.addPage();
+      // Reset yPosition for new page (after simplified header)
+      yPosition = simpleHeaderHeight + 20;
     }
 
     // Brand header - use same color as main header
@@ -827,10 +851,33 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
 
   // Sort using brand registry ordering
   const brandOrderingData2 = toBrandOrderingEntries(config.brandRegistry);
+  
+  // Constants for page break calculations (Classic template)
+  const brandHeaderHeight = 25; // Height of brand text + underline
+  const tableHeaderHeight = 22; // Approximate height of table header row
+  const minProductRowHeight = 16; // Minimum height for one product row
+  const footerBufferSpace = 40; // Buffer space above footer area
+  const simpleHeaderHeight = 35; // Height of simplified header on subsequent pages
+  
+  // Minimum space needed: brand bar + table header + one product row + footer buffer
+  const minBrandSectionSpace = brandHeaderHeight + tableHeaderHeight + minProductRowHeight + footerBufferSpace;
+  
+  // Calculate where the footer area begins (content must end before this)
+  const footerStartY = pageHeight - margin - footerHeight;
+  
   sortBrandGroups(Object.entries(groupedProducts), brandOrderingData2)
     .forEach(([groupBrandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 25;
+    }
+
+    // Check if there's enough space for brand header + at least one product row
+    // If not, add a new page before drawing the brand header
+    const availableSpace = footerStartY - yPosition;
+    if (availableSpace < minBrandSectionSpace) {
+      doc.addPage();
+      // Reset yPosition for new page (after simplified header)
+      yPosition = simpleHeaderHeight + 20;
     }
 
     doc.setFont("times", "bold");
@@ -1217,10 +1264,34 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
 
   // Render products by brand (sorted using brand registry ordering)
   const brandOrderingData3 = toBrandOrderingEntries(config.brandRegistry);
+  
+  // Constants for page break calculations (Minimal template - uses smaller spacing)
+  const brandHeaderHeightMin = 18; // Height of brand header bar (minimal)
+  const brandHeaderGapMin = 4; // Gap after brand header
+  const tableHeaderHeightMin = 10; // Approximate height of table header row (smaller fonts)
+  const minProductRowHeightMin = 8; // Minimum height for one product row (compact)
+  const footerBufferSpaceMin = 30; // Buffer space above footer area
+  const simpleHeaderHeightMin = 25; // Height of simplified header on subsequent pages
+  
+  // Minimum space needed: brand bar + gap + table header + one product row + footer buffer
+  const minBrandSectionSpaceMin = brandHeaderHeightMin + brandHeaderGapMin + tableHeaderHeightMin + minProductRowHeightMin + footerBufferSpaceMin;
+  
+  // Calculate where the footer area begins (content must end before this)
+  const footerStartYMin = pageHeight - margin - footerHeight;
+  
   sortBrandGroups(Object.entries(groupedProducts), brandOrderingData3)
     .forEach(([groupBrandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 12; // Minimal spacing between categories
+    }
+
+    // Check if there's enough space for brand header + at least one product row
+    // If not, add a new page before drawing the brand header
+    const availableSpace = footerStartYMin - yPosition;
+    if (availableSpace < minBrandSectionSpaceMin) {
+      doc.addPage();
+      // Reset yPosition for new page (after simplified header)
+      yPosition = simpleHeaderHeightMin + 15;
     }
 
     // Brand header - matches header background colour with grey text
