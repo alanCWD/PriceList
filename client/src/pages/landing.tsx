@@ -49,6 +49,13 @@ export default function Landing() {
     setIsBrandSelectorOpen(false);
   }, [impersonatedCompanyId]);
 
+  // Auto-redirect clients to /client page
+  useEffect(() => {
+    if (!authLoading && user?.role === 'client') {
+      setLocation('/client');
+    }
+  }, [user, authLoading, setLocation]);
+
   const handleLogin = () => {
     window.location.href = "/api/login";
   };
@@ -76,8 +83,13 @@ export default function Landing() {
       // Invalidate user query to refresh auth state
       await queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       
-      // Reload to refresh the entire app state
-      window.location.reload();
+      // Redirect based on user role
+      if (data.user?.role === 'client') {
+        window.location.href = '/client';
+      } else {
+        // Reload to refresh the entire app state for admins
+        window.location.reload();
+      }
     } catch (err) {
       setLoginError('Login failed. Please try again.');
     } finally {
