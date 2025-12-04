@@ -539,6 +539,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Set password for a user (Super Admin only)
+  const setPasswordSchema = z.object({
+    password: z.string().min(8, "Password must be at least 8 characters"),
+  });
+
+  app.post("/api/users/:id/password", requireSuperAdmin, async (req, res) => {
+    try {
+      const id = req.params.id;
+
+      const validation = setPasswordSchema.safeParse(req.body);
+      if (!validation.success) {
+        const errorMessage = fromZodError(validation.error).message;
+        return res.status(400).json({ error: errorMessage });
+      }
+
+      const { password } = validation.data;
+
+      // Verify user exists
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Update user's password
+      await storage.updateUserPassword(id, hashedPassword);
+
+      res.json({ success: true, message: "Password set successfully" });
+    } catch (error) {
+      console.error("Error setting user password:", error);
+      res.status(500).json({ error: "Failed to set password" });
+    }
+  });
+
   // Get latest pricelist for user's company (authenticated)
   app.get("/api/pricelists/latest", isAuthenticated, async (req: any, res) => {
     try {
