@@ -470,8 +470,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
       
-      // Get effective company ID (supports Super Admin impersonation)
-      const effectiveCompanyId = getEffectiveCompanyId(req, user);
+      // Determine effective company ID
+      // Priority: query param > header impersonation > user's company
+      let effectiveCompanyId: number | null = null;
+      
+      if (req.query.companyId) {
+        const parsed = parseInt(req.query.companyId as string, 10);
+        if (!isNaN(parsed)) {
+          effectiveCompanyId = parsed;
+        }
+      } else {
+        effectiveCompanyId = getEffectiveCompanyId(req, user);
+      }
       
       if (!effectiveCompanyId) {
         return res.status(404).json({ error: "Company not specified" });
