@@ -15,6 +15,23 @@ import NotFound from "@/pages/not-found";
 import { useQuery } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
 
+// Route guard for Landing page - redirects clients to /client
+function LandingRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user, isLoading, isClient } = useAuth();
+  
+  if (isLoading) {
+    return null; // Show nothing while loading auth state
+  }
+  
+  // Redirect authenticated clients to /client page immediately
+  if (user && isClient) {
+    return <Redirect to="/client" />;
+  }
+  
+  // Show landing page for unauthenticated users or admins
+  return <Component />;
+}
+
 // Protected route component that redirects clients to /client
 function AdminRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, isLoading, isClient, isAdmin } = useAuth();
@@ -44,7 +61,7 @@ function AdminRoute({ component: Component }: { component: React.ComponentType }
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Landing} />
+      <Route path="/">{() => <LandingRoute component={Landing} />}</Route>
       <Route path="/dashboard">{() => <AdminRoute component={Dashboard} />}</Route>
       <Route path="/client" component={ClientLanding} />
       <Route path="/editor">{() => <AdminRoute component={Editor} />}</Route>
