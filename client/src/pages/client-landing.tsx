@@ -657,19 +657,20 @@ export default function ClientLanding() {
         return;
       }
       
+      // Detect mobile device
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
       // Import jsPDF and generate PDF
       const jsPDF = (await import('jspdf')).default;
       const autoTable = (await import('jspdf-autotable')).default;
       
       // Create a temporary PDF document and generate it
-      // We'll use the same logic as generatePDF but output to blob instead of saving
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "pt",
         format: "letter",
       });
       
-      // For simplicity, we'll use a basic table layout for printing
       // Add title
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
@@ -692,23 +693,32 @@ export default function ClientLanding() {
         headStyles: { fillColor: [66, 66, 66] },
       });
       
-      // Open PDF in new window and trigger print dialog
-      const pdfBlob = doc.output('blob');
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      const printWindow = window.open(pdfUrl, '_blank');
-      
-      if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.print();
-          // Clean up the URL after a delay to ensure print dialog has opened
-          setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
-        };
-      } else {
+      if (isMobile) {
+        // On mobile, download the PDF - user can print from their PDF viewer
+        const sanitizedBrand = selectedBrand.replace(/[^a-zA-Z0-9]/g, '_');
+        doc.save(`${sanitizedBrand}_pricelist.pdf`);
         toast({
-          title: "Print blocked",
-          description: "Please allow pop-ups to print pricelists",
-          variant: "destructive",
+          title: "PDF Downloaded",
+          description: "Open the PDF and use Share > Print to print",
         });
+      } else {
+        // On desktop, open PDF in new window and trigger print dialog
+        const pdfBlob = doc.output('blob');
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        const printWindow = window.open(pdfUrl, '_blank');
+        
+        if (printWindow) {
+          printWindow.onload = () => {
+            printWindow.print();
+            setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
+          };
+        } else {
+          toast({
+            title: "Print blocked",
+            description: "Please allow pop-ups to print pricelists",
+            variant: "destructive",
+          });
+        }
       }
     } catch (error: any) {
       console.error("PDF generation error:", error);
