@@ -2302,7 +2302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Restore hidden SKUs
       if (importData.hiddenSkus && Array.isArray(importData.hiddenSkus)) {
         for (const sku of importData.hiddenSkus) {
-          await storage.setProductVisibility(targetCompanyId, sku, false);
+          await storage.upsertVisibility(targetCompanyId, sku, true);
           hiddenSkusRestored++;
         }
         console.log(`[Brand Import] Restored ${hiddenSkusRestored} hidden SKUs`);

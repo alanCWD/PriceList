@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical, ArrowUpDown, Eye, EyeOff, AlertCircle, Link as LinkIcon, Key } from "lucide-react";
+import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Download, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical, ArrowUpDown, Eye, EyeOff, AlertCircle, Link as LinkIcon, Key } from "lucide-react";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { CSVUpload } from "@/components/csv-upload";
 import { ColorPicker } from "@/components/color-picker";
@@ -2702,6 +2702,103 @@ function BrandRegistryManager() {
     setEditingProductType("");
   };
 
+  // State for import functionality
+  const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Export Brand Registry handler
+  const handleExportRegistry = async () => {
+    try {
+      setIsExporting(true);
+      const url = isSuperAdmin && selectedCompanyId
+        ? `/api/brands/export?companyId=${selectedCompanyId}`
+        : "/api/brands/export";
+      
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) {
+        throw new Error("Failed to export brand registry");
+      }
+      
+      const data = await res.json();
+      
+      // Create downloadable file
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `brand-registry-${data.company?.name || "backup"}-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+      
+      toast({ 
+        title: "Export successful", 
+        description: `Exported ${data.brands.length} brands and ${data.hiddenSkus.length} hidden SKUs` 
+      });
+    } catch (error: any) {
+      toast({ 
+        title: "Export failed", 
+        description: error.message || "Failed to export brand registry", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Import Brand Registry handler
+  const handleImportRegistry = async (file: File) => {
+    try {
+      setIsImporting(true);
+      
+      const text = await file.text();
+      const importData = JSON.parse(text);
+      
+      // Validate the imported data structure
+      if (!importData.brands || !Array.isArray(importData.brands)) {
+        throw new Error("Invalid import file format: missing brands array");
+      }
+      
+      const payload = isSuperAdmin && selectedCompanyId
+        ? { data: importData, companyId: selectedCompanyId }
+        : { data: importData };
+      
+      const res = await apiRequest("POST", "/api/brands/import", payload);
+      const result = await res.json();
+      
+      // Invalidate all brand-related queries
+      queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/unassigned"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/sku-mappings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visibility/hidden-skus"] });
+      
+      toast({ 
+        title: "Import successful!", 
+        description: `Created ${result.brandsCreated} new brands, updated ${result.brandsUpdated} existing brands, restored ${result.hiddenSkusRestored} hidden SKUs` 
+      });
+    } catch (error: any) {
+      toast({ 
+        title: "Import failed", 
+        description: error.message || "Failed to import brand registry", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // File input change handler
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleImportRegistry(file);
+      // Reset file input so the same file can be selected again
+      event.target.value = "";
+    }
+  };
+
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, productId: string) => {
     setDraggedProductId(productId);
@@ -2902,7 +2999,42 @@ function BrandRegistryManager() {
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Button 
+                onClick={handleExportRegistry} 
+                variant="outline"
+                disabled={isExporting || !brands || brands.length === 0}
+                data-testid="button-export-registry"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                Export
+              </Button>
+              <Button 
+                variant="outline"
+                disabled={isImporting}
+                data-testid="button-import-registry"
+                asChild
+              >
+                <label className="cursor-pointer">
+                  {isImporting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4 mr-2" />
+                  )}
+                  Import
+                  <input 
+                    type="file" 
+                    accept=".json"
+                    onChange={handleFileChange}
+                    className="sr-only"
+                    data-testid="input-import-file"
+                  />
+                </label>
+              </Button>
               <Button 
                 onClick={() => regenerateSortKeysMutation.mutate()} 
                 variant="outline"
