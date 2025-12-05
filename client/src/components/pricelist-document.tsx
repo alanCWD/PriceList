@@ -27,7 +27,7 @@ export function PricelistDocument({
   branding,
   salesAgents,
   qrCodeConfig,
-  template = "modern",
+  template = "pricelist",
   brandOrdering,
 }: PricelistDocumentProps) {
   // Format date as "Day Month Year" (e.g., "15 January 2025")
@@ -41,7 +41,8 @@ export function PricelistDocument({
   // even if caller bypasses PreviewPanel sorting
   const sortedGroupedProducts = sortBrandGroups([...groupedProducts], brandOrdering);
 
-  if (template === "classic") {
+  // "catalogue" template uses the ClassicTemplate (with product images)
+  if (template === "catalogue") {
     return <ClassicTemplate 
       products={products}
       groupedProducts={sortedGroupedProducts}
@@ -52,7 +53,8 @@ export function PricelistDocument({
     />;
   }
 
-  if (template === "minimal") {
+  // "pricelist" template uses the MinimalTemplate (simple and elegant)
+  if (template === "pricelist") {
     return <MinimalTemplate 
       products={products}
       groupedProducts={sortedGroupedProducts}

@@ -58,7 +58,7 @@ export default function Editor() {
   const [currentPricelistId, setCurrentPricelistId] = useState<number | null>(null);
   const [currentPricelistName, setCurrentPricelistName] = useState<string>("");
   const [currentPricelistDescription, setCurrentPricelistDescription] = useState<string>("");
-  const [template, setTemplate] = useState<Template>("modern");
+  const [template, setTemplate] = useState<Template>("pricelist");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null); // null = ALL categories
   // Initialize from URL param if present, otherwise null (will auto-select for super admins)
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(urlCompanyId);

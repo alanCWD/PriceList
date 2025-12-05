@@ -227,11 +227,13 @@ function getBrandKey(product: any, brandRegistry?: any[]): string | null {
 }
 
 export async function generatePDF(config: PDFConfig): Promise<void> {
-  const { products, branding, salesAgents, qrCodeConfig, template = "modern", pricelistName, brandName } = config;
+  const { products, branding, salesAgents, qrCodeConfig, template = "pricelist", pricelistName, brandName } = config;
   
-  if (template === "classic") {
+  // "catalogue" template uses the generateClassicPDF function (with product images)
+  // "pricelist" template uses the generateMinimalPDF function (simple and elegant)
+  if (template === "catalogue") {
     return await generateClassicPDF(config);
-  } else if (template === "minimal") {
+  } else if (template === "pricelist") {
     return await generateMinimalPDF(config);
   }
   

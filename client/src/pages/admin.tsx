@@ -171,7 +171,7 @@ function CompaniesManager() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
-  const [defaultTemplate, setDefaultTemplate] = useState<Template>("modern");
+  const [defaultTemplate, setDefaultTemplate] = useState<Template>("pricelist");
   const [defaultFieldMapping, setDefaultFieldMapping] = useState<FieldMapping>({
     product: "",
     sku: "",
@@ -235,7 +235,7 @@ function CompaniesManager() {
     setEditingId(null);
     setName("");
     setDomain("");
-    setDefaultTemplate("modern");
+    setDefaultTemplate("pricelist");
     setDefaultFieldMapping({
       product: "",
       sku: "",
@@ -425,9 +425,8 @@ function CompaniesManager() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="modern">Modern</SelectItem>
-                <SelectItem value="classic">Classic</SelectItem>
-                <SelectItem value="minimal">Minimal</SelectItem>
+                <SelectItem value="pricelist">Pricelist</SelectItem>
+                <SelectItem value="catalogue">Catalogue</SelectItem>
               </SelectContent>
             </Select>
           </div>
