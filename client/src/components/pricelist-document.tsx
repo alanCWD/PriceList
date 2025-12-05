@@ -475,19 +475,22 @@ function ClassicTemplate({
             >
               <thead>
                 <tr className="bg-gray-200 border-b border-gray-400">
-                  <th style={{ width: '12%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
+                  <th style={{ width: '8%', padding: '6px 8px', fontSize: '12px', fontWeight: 600, textAlign: 'center', border: '1px solid #9ca3af' }}>
+                    Image
+                  </th>
+                  <th style={{ width: '10%', padding: '6px 8px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     SKU
                   </th>
-                  <th style={{ width: '40%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
+                  <th style={{ width: '36%', padding: '6px 8px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     Product
                   </th>
-                  <th style={{ width: '15%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
+                  <th style={{ width: '14%', padding: '6px 8px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     Format
                   </th>
-                  <th style={{ width: '10%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'right', border: '1px solid #9ca3af' }}>
+                  <th style={{ width: '10%', padding: '6px 8px', fontSize: '12px', fontWeight: 600, textAlign: 'right', border: '1px solid #9ca3af' }}>
                     Price
                   </th>
-                  <th style={{ width: '18%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
+                  <th style={{ width: '17%', padding: '6px 8px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     Notes
                   </th>
                 </tr>
@@ -498,19 +501,44 @@ function ClassicTemplate({
                     key={product.id}
                     data-testid={`product-row-${product.id}`}
                   >
-                    <td style={{ padding: '10px 12px', fontSize: '12px', border: '1px solid #9ca3af' }}>
+                    <td style={{ padding: '4px', fontSize: '12px', border: '1px solid #9ca3af', textAlign: 'center', verticalAlign: 'middle' }}>
+                      {product.productImageUrl ? (
+                        <img 
+                          src={product.productImageUrl} 
+                          alt={product.product}
+                          style={{ width: '40px', height: '40px', objectFit: 'contain', display: 'inline-block' }}
+                          data-testid={`product-image-${product.id}`}
+                        />
+                      ) : (
+                        <div 
+                          style={{ 
+                            width: '40px', 
+                            height: '40px', 
+                            backgroundColor: '#f3f4f6', 
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#9ca3af',
+                            fontSize: '8px'
+                          }}
+                        >
+                          No img
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '6px 8px', fontSize: '12px', border: '1px solid #9ca3af', verticalAlign: 'middle' }}>
                       {product.sku}
                     </td>
-                    <td style={{ padding: '10px 12px', fontSize: '12px', border: '1px solid #9ca3af' }}>
+                    <td style={{ padding: '6px 8px', fontSize: '12px', border: '1px solid #9ca3af', verticalAlign: 'middle' }}>
                       {product.product}
                     </td>
-                    <td style={{ padding: '10px 12px', fontSize: '12px', border: '1px solid #9ca3af' }}>
+                    <td style={{ padding: '6px 8px', fontSize: '12px', border: '1px solid #9ca3af', verticalAlign: 'middle' }}>
                       {product.format}
                     </td>
-                    <td style={{ padding: '10px 12px', fontSize: '12px', textAlign: 'right', border: '1px solid #9ca3af' }}>
+                    <td style={{ padding: '6px 8px', fontSize: '12px', textAlign: 'right', border: '1px solid #9ca3af', verticalAlign: 'middle' }}>
                       {formatPrice(product.price)}
                     </td>
-                    <td style={{ padding: '10px 12px', fontSize: '12px', border: '1px solid #9ca3af' }}>
+                    <td style={{ padding: '6px 8px', fontSize: '12px', border: '1px solid #9ca3af', verticalAlign: 'middle' }}>
                       {product.notes}
                     </td>
                   </tr>

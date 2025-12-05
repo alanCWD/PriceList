@@ -734,6 +734,33 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     year: "numeric",
   });
   const displayName = pricelistName || "Pricelist";
+  
+  // Pre-load product images as base64 for PDF embedding
+  const imageCache = new Map<string, string>();
+  const imageSize = 35; // Size of thumbnail in PDF (points)
+  
+  // Collect all unique image URLs
+  const imageUrls = new Set<string>();
+  products.forEach(p => {
+    if (p.productImageUrl) imageUrls.add(p.productImageUrl);
+  });
+  
+  // Fetch and cache images in parallel
+  await Promise.all(Array.from(imageUrls).map(async (url) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      imageCache.set(url, base64);
+    } catch (error) {
+      console.warn(`Failed to load product image: ${url}`, error);
+    }
+  }));
 
   doc.setFont("times", "bold");
   doc.setFontSize(30);
@@ -854,10 +881,10 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
   // Sort using brand registry ordering
   const brandOrderingData2 = toBrandOrderingEntries(config.brandRegistry);
   
-  // Constants for page break calculations (Classic template)
+  // Constants for page break calculations (Catalogue template with images)
   const brandHeaderHeight = 25; // Height of brand text + underline
   const tableHeaderHeight = 22; // Approximate height of table header row
-  const minProductRowHeight = 16; // Minimum height for one product row
+  const minProductRowHeight = imageSize + 10; // Row height includes image + padding
   const footerBufferSpace = 40; // Buffer space above footer area
   const simpleHeaderHeight = 35; // Height of simplified header on subsequent pages
   
@@ -892,17 +919,22 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     doc.line(margin, yPosition, pageWidth - margin, yPosition);
     yPosition += 15;
 
+    // Table data with empty string for image column (images drawn via didDrawCell)
     const tableData = categoryProducts.map(product => [
+      "", // Image placeholder - will be drawn in didDrawCell
       product.sku,
       product.product,
       product.format,
       formatPrice(product.price),
       product.notes || "",
     ]);
+    
+    // Store products for image lookup in didDrawCell
+    const productsForTable = categoryProducts;
 
     autoTable(doc, {
       startY: yPosition,
-      head: [["SKU", "Product", "Format", "Price", "Notes"]],
+      head: [["", "SKU", "Product", "Format", "Price", "Notes"]],
       body: tableData,
       theme: "grid",
       headStyles: {
@@ -917,15 +949,39 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
         fontSize: 10,
         textColor: [30, 30, 30],
         font: "times",
+        minCellHeight: imageSize + 8, // Ensure rows are tall enough for images
       },
       columnStyles: {
-        0: { cellWidth: 70 },
-        1: { cellWidth: 200 },
-        2: { cellWidth: 100 },
-        3: { cellWidth: 70, halign: "right" },
-        4: { cellWidth: 100 },
+        0: { cellWidth: 45, halign: "center" }, // Image column
+        1: { cellWidth: 55 },  // SKU
+        2: { cellWidth: 175 }, // Product
+        3: { cellWidth: 80 },  // Format
+        4: { cellWidth: 55, halign: "right" }, // Price
+        5: { cellWidth: 100 }, // Notes
       },
       margin: { left: margin, right: margin, bottom: margin + footerHeight },
+      didDrawCell: (data) => {
+        // Draw product images in first column of body rows
+        if (data.section === 'body' && data.column.index === 0) {
+          const product = productsForTable[data.row.index];
+          if (product?.productImageUrl && imageCache.has(product.productImageUrl)) {
+            const imgData = imageCache.get(product.productImageUrl)!;
+            const imgFormat = getImageFormat(imgData);
+            
+            // Center image in cell
+            const cellCenterX = data.cell.x + (data.cell.width / 2);
+            const cellCenterY = data.cell.y + (data.cell.height / 2);
+            const imgX = cellCenterX - (imageSize / 2);
+            const imgY = cellCenterY - (imageSize / 2);
+            
+            try {
+              doc.addImage(imgData, imgFormat, imgX, imgY, imageSize, imageSize);
+            } catch (error) {
+              console.warn('Failed to add product image to PDF:', error);
+            }
+          }
+        }
+      },
       didDrawPage: (data) => {
         // Footer on every page
         const footerY = pageHeight - margin - 20;
