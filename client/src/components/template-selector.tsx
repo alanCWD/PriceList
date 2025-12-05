@@ -11,16 +11,22 @@ interface TemplateSelectorProps {
 
 const templates = [
   {
-    id: "pricelist" as Template,
-    name: "Pricelist",
-    description: "Simple and elegant design with clean lines and maximum whitespace",
-    features: ["Clean lines", "Generous spacing", "Light color palette"],
+    id: "modern" as Template,
+    name: "Modern",
+    description: "Clean design with bold category headers and professional typography",
+    features: ["Dark category headers", "Tabular numbers", "Zebra striping"],
   },
   {
-    id: "catalogue" as Template,
-    name: "Catalogue",
-    description: "Rich layout with product images and detailed formatting",
-    features: ["Product images", "Full table borders", "Compact spacing"],
+    id: "classic" as Template,
+    name: "Classic",
+    description: "Traditional layout with bordered tables and serif typography",
+    features: ["Elegant serif fonts", "Full table borders", "Compact spacing"],
+  },
+  {
+    id: "minimal" as Template,
+    name: "Minimal",
+    description: "Simplified design with maximum whitespace and subtle accents",
+    features: ["Clean lines", "Generous spacing", "Light color palette"],
   },
 ];
 

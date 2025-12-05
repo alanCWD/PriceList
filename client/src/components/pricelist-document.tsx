@@ -27,7 +27,7 @@ export function PricelistDocument({
   branding,
   salesAgents,
   qrCodeConfig,
-  template = "pricelist",
+  template = "modern",
   brandOrdering,
 }: PricelistDocumentProps) {
   // Format date as "Day Month Year" (e.g., "15 January 2025")
@@ -41,8 +41,7 @@ export function PricelistDocument({
   // even if caller bypasses PreviewPanel sorting
   const sortedGroupedProducts = sortBrandGroups([...groupedProducts], brandOrdering);
 
-  // "catalogue" template uses the ClassicTemplate (with product images)
-  if (template === "catalogue") {
+  if (template === "classic") {
     return <ClassicTemplate 
       products={products}
       groupedProducts={sortedGroupedProducts}
@@ -53,8 +52,7 @@ export function PricelistDocument({
     />;
   }
 
-  // "pricelist" template uses the MinimalTemplate (simple and elegant)
-  if (template === "pricelist") {
+  if (template === "minimal") {
     return <MinimalTemplate 
       products={products}
       groupedProducts={sortedGroupedProducts}
@@ -382,75 +380,71 @@ function ClassicTemplate({
   qrCodeConfig,
   currentDate,
 }: TemplateProps) {
-  // Use branding colors from color picker (same as Pricelist template)
-  const headerBgColor = branding.headerBackgroundColor || '#f8f9fa';
-  const headerTextColor = branding.headerTextColor || '#1a1a1a';
-
   return (
     <div className="pricelist-document font-serif" id="pricelist-document" style={{ fontFamily: 'Georgia, serif' }}>
-      <header className="px-12 border-b-2 border-gray-900" style={{ backgroundColor: headerBgColor }}>
+      <header className="px-12 py-3 border-b border-gray-400" style={{ backgroundColor: '#CCC79A' }}>
         <div className="flex gap-6">
-          {/* Logo - Far Left, no vertical padding */}
+          {/* Logo - Far Left */}
           {branding.logoUrl && (
             <div className="flex-shrink-0">
               <img
                 src={branding.logoUrl}
                 alt={branding.companyName}
-                className="w-auto object-contain block"
+                className="w-auto object-contain"
                 data-testid="img-header-logo"
-                style={{ maxHeight: '120px' }}
+                style={{ height: '128px' }}
               />
             </div>
           )}
           
-          {/* Content Area - slightly taller for better spacing */}
-          <div className="flex-1 flex flex-col justify-between py-2" style={{ minHeight: '145px' }}>
-            {/* Title and Tagline - Top with tight spacing */}
-            <div className="flex flex-col">
+          {/* Content Area */}
+          <div className="flex-1 flex flex-col justify-between" style={{ minHeight: '128px' }}>
+            {/* Title and Tagline - Top */}
+            <div>
               <h1 
-                className="font-semibold leading-tight tracking-tight"
+                className="font-bold"
                 data-testid="text-company-name"
-                style={{ fontSize: '22px', fontWeight: 600, lineHeight: 1.2, color: headerTextColor }}
+                style={{ fontSize: '24px', fontWeight: 700, color: '#2d5016' }}
               >
                 {branding.companyName}
               </h1>
               {branding.tagline && (
                 <p 
-                  className="italic"
+                  className="italic mt-1"
                   data-testid="text-tagline"
-                  style={{ fontSize: '11px', fontStyle: 'italic', lineHeight: 1.3, color: headerTextColor, marginTop: '1px' }}
+                  style={{ fontSize: '14px', fontStyle: 'italic', marginTop: '4px', color: '#2d5016' }}
                 >
                   {branding.tagline}
                 </p>
               )}
             </div>
             
-            {/* Sales Agents - Bottom Right with visible spacing above */}
+            {/* Sales Agents - Bottom Right */}
             {salesAgents.length > 0 && (
               <div className="flex gap-6 justify-end">
                 {salesAgents.map((agent, index) => (
                   <div key={index} className="text-right min-w-0" data-testid={`agent-header-${index}`}>
                     {agent.region && (
                       <p 
-                        className="font-semibold uppercase tracking-wide"
-                        style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '0.025em', color: headerTextColor, opacity: 0.8 }}
+                        className="font-semibold uppercase"
+                        style={{ fontSize: '10px', fontWeight: 600, color: '#2d5016' }}
                       >
                         {agent.region}
                       </p>
                     )}
                     <p 
                       className="font-medium" 
-                      style={{ fontSize: '11px', fontWeight: 500, color: headerTextColor }}
+                      style={{ fontSize: '12px', fontWeight: 500, color: '#2d5016' }}
                     >
                       {agent.name}
                     </p>
                     <p 
-                      style={{ fontSize: '9px', color: headerTextColor, opacity: 0.8 }}
+                      style={{ fontSize: '10px', color: '#2d5016' }}
                     >
                       {agent.email}
                     </p>
                     <p 
-                      style={{ fontSize: '9px', color: headerTextColor, opacity: 0.8 }}
+                      style={{ fontSize: '10px', color: '#2d5016' }}
                     >
                       {agent.phone}
                     </p>
@@ -462,131 +456,36 @@ function ClassicTemplate({
         </div>
       </header>
 
-      {/* Products by Brand */}
       <main className="px-12 py-8" style={{ paddingTop: '32px', paddingBottom: '32px' }}>
         {groupedProducts.map(([brandName, categoryProducts], categoryIndex) => (
-          <div 
-            key={brandName} 
-            className={categoryIndex > 0 ? "mt-12" : ""}
-            style={{ marginTop: categoryIndex > 0 ? '48px' : '0' }}
-          >
-            {/* Brand Header - Matches Pricelist style with branding colors */}
-            <div 
-              className="px-6 py-3 mb-4" 
-              style={{ 
-                backgroundColor: headerBgColor,
-                padding: '12px 24px',
-                marginBottom: '16px'
-              }}
+          <div key={brandName} className={categoryIndex > 0 ? "mt-10" : ""} style={{ marginTop: categoryIndex > 0 ? '40px' : '0' }}>
+            <h2 
+              className="text-xl font-bold text-gray-900 mb-3 pb-2 border-b-2 border-gray-400"
+              data-testid={`category-${categoryIndex}`}
+              style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px', paddingBottom: '8px', borderBottom: '2px solid #9ca3af' }}
             >
-              <h2 
-                className="text-base font-semibold" 
-                data-testid={`category-${categoryIndex}`}
-                style={{ fontSize: '16px', fontWeight: 600, color: headerTextColor }}
-              >
-                {brandName}
-              </h2>
-            </div>
+              {brandName}
+            </h2>
 
-            {/* Products Table - No grid lines, alternating rows */}
             <table 
-              className="w-full border-collapse" 
-              style={{ 
-                width: '100%', 
-                borderCollapse: 'collapse',
-                fontVariantNumeric: 'tabular-nums'
-              }}
+              className="w-full border border-gray-400"
+              style={{ width: '100%', border: '1px solid #9ca3af', borderCollapse: 'collapse', fontVariantNumeric: 'tabular-nums' }}
             >
               <thead>
-                <tr className="bg-gray-100 border-b border-gray-300">
-                  <th 
-                    className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide text-gray-700"
-                    style={{ 
-                      width: '8%', 
-                      padding: '12px 8px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      textAlign: 'center',
-                      letterSpacing: '0.05em',
-                      backgroundColor: '#f3f4f6',
-                      borderBottom: '1px solid #d1d5db'
-                    }}
-                  >
-                    Image
-                  </th>
-                  <th 
-                    className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide text-gray-700"
-                    style={{ 
-                      width: '10%', 
-                      padding: '12px 16px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      textAlign: 'left',
-                      letterSpacing: '0.05em',
-                      backgroundColor: '#f3f4f6',
-                      borderBottom: '1px solid #d1d5db'
-                    }}
-                  >
+                <tr className="bg-gray-200 border-b border-gray-400">
+                  <th style={{ width: '12%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     SKU
                   </th>
-                  <th 
-                    className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide text-gray-700"
-                    style={{ 
-                      width: '36%', 
-                      padding: '12px 16px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      textAlign: 'left',
-                      letterSpacing: '0.05em',
-                      backgroundColor: '#f3f4f6',
-                      borderBottom: '1px solid #d1d5db'
-                    }}
-                  >
+                  <th style={{ width: '40%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     Product
                   </th>
-                  <th 
-                    className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide text-gray-700"
-                    style={{ 
-                      width: '14%', 
-                      padding: '12px 16px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      textAlign: 'left',
-                      letterSpacing: '0.05em',
-                      backgroundColor: '#f3f4f6',
-                      borderBottom: '1px solid #d1d5db'
-                    }}
-                  >
+                  <th style={{ width: '15%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     Format
                   </th>
-                  <th 
-                    className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide text-gray-700"
-                    style={{ 
-                      width: '10%', 
-                      padding: '12px 16px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      textAlign: 'right',
-                      letterSpacing: '0.05em',
-                      backgroundColor: '#f3f4f6',
-                      borderBottom: '1px solid #d1d5db'
-                    }}
-                  >
+                  <th style={{ width: '10%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'right', border: '1px solid #9ca3af' }}>
                     Price
                   </th>
-                  <th 
-                    className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide text-gray-700"
-                    style={{ 
-                      width: '17%', 
-                      padding: '12px 16px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      textAlign: 'left',
-                      letterSpacing: '0.05em',
-                      backgroundColor: '#f3f4f6',
-                      borderBottom: '1px solid #d1d5db'
-                    }}
-                  >
+                  <th style={{ width: '18%', padding: '10px 12px', fontSize: '12px', fontWeight: 600, textAlign: 'left', border: '1px solid #9ca3af' }}>
                     Notes
                   </th>
                 </tr>
@@ -596,114 +495,21 @@ function ClassicTemplate({
                   <tr 
                     key={product.id}
                     data-testid={`product-row-${product.id}`}
-                    style={{
-                      backgroundColor: productIndex % 2 === 0 ? '#ffffff' : '#f9fafb',
-                      borderBottom: '1px solid #e5e7eb'
-                    }}
                   >
-                    <td 
-                      className="px-2 py-3 text-center align-middle"
-                      style={{ 
-                        padding: '8px',
-                        verticalAlign: 'middle',
-                        textAlign: 'center'
-                      }}
-                    >
-                      {product.productImageUrl ? (
-                        <img 
-                          src={product.productImageUrl} 
-                          alt={product.product}
-                          style={{ width: '40px', height: '40px', objectFit: 'contain', display: 'inline-block' }}
-                          data-testid={`product-image-${product.id}`}
-                        />
-                      ) : (
-                        <div 
-                          style={{ 
-                            width: '40px', 
-                            height: '40px', 
-                            backgroundColor: '#f3f4f6', 
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#9ca3af',
-                            fontSize: '8px'
-                          }}
-                        >
-                          No img
-                        </div>
-                      )}
-                    </td>
-                    <td 
-                      className="px-4 py-3 text-sm text-gray-700 align-top"
-                      style={{ 
-                        padding: '12px 16px',
-                        fontSize: '14px',
-                        color: '#374151',
-                        verticalAlign: 'top',
-                        fontVariantNumeric: 'tabular-nums'
-                      }}
-                    >
+                    <td style={{ padding: '10px 12px', fontSize: '12px', border: '1px solid #9ca3af' }}>
                       {product.sku}
                     </td>
-                    <td 
-                      className="px-4 py-3 text-sm text-gray-900 font-medium align-top"
-                      style={{ 
-                        padding: '12px 16px',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        color: '#111827',
-                        verticalAlign: 'top'
-                      }}
-                    >
-                      <div>{product.product}</div>
-                      {product.description && (
-                        <div 
-                          style={{ 
-                            fontStyle: 'italic', 
-                            fontSize: '12px', 
-                            color: '#6b7280',
-                            marginTop: '4px',
-                            fontWeight: 400
-                          }}
-                          dangerouslySetInnerHTML={{ __html: product.description }}
-                        />
-                      )}
+                    <td style={{ padding: '10px 12px', fontSize: '12px', border: '1px solid #9ca3af' }}>
+                      {product.product}
                     </td>
-                    <td 
-                      className="px-4 py-3 text-sm text-gray-700 align-top"
-                      style={{ 
-                        padding: '12px 16px',
-                        fontSize: '14px',
-                        color: '#374151',
-                        verticalAlign: 'top'
-                      }}
-                    >
+                    <td style={{ padding: '10px 12px', fontSize: '12px', border: '1px solid #9ca3af' }}>
                       {product.format}
                     </td>
-                    <td 
-                      className="px-4 py-3 text-sm text-gray-900 font-medium align-top"
-                      style={{ 
-                        padding: '12px 16px',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        color: '#111827',
-                        verticalAlign: 'top',
-                        fontVariantNumeric: 'tabular-nums',
-                        textAlign: 'right'
-                      }}
-                    >
+                    <td style={{ padding: '10px 12px', fontSize: '12px', textAlign: 'right', border: '1px solid #9ca3af' }}>
                       {formatPrice(product.price)}
                     </td>
-                    <td 
-                      className="px-4 py-3 text-xs text-gray-600 align-top"
-                      style={{ 
-                        padding: '12px 16px',
-                        fontSize: '12px',
-                        color: '#4b5563',
-                        verticalAlign: 'top'
-                      }}
-                    >
-                      {product.notes || ""}
+                    <td style={{ padding: '10px 12px', fontSize: '12px', border: '1px solid #9ca3af' }}>
+                      {product.notes}
                     </td>
                   </tr>
                 ))}

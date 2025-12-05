@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Upload, FileText, Download, Printer, RefreshCw, Building2, Palette } from "lucide-react";
+import { Upload, FileText, Download, Printer, RefreshCw, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,7 +23,6 @@ export default function ClientLanding() {
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState<string>("");
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   
   // For super admins, load list of companies
   const { data: companies } = useQuery<Array<{ id: number; name: string }>>({
@@ -163,20 +162,6 @@ export default function ClientLanding() {
     return Array.from(brandSet).sort((a, b) => a.localeCompare(b));
   }, [latestPricelist?.products, skuToBrandMap, hiddenSkusSet]);
 
-  // Initialize selected template from pricelist or company defaults
-  useEffect(() => {
-    if (selectedTemplate === null) {
-      if (latestPricelist?.template) {
-        setSelectedTemplate(latestPricelist.template as Template);
-      } else if (companyDefaults?.defaultTemplate) {
-        setSelectedTemplate(companyDefaults.defaultTemplate);
-      }
-    }
-  }, [latestPricelist?.template, companyDefaults?.defaultTemplate, selectedTemplate]);
-
-  // Get the effective template to use for PDF generation
-  const effectiveTemplate = selectedTemplate || latestPricelist?.template as Template || companyDefaults?.defaultTemplate || 'modern';
-
   // Update pricelist mutation
   const updateMutation = useMutation({
     mutationFn: async (data: { products: Product[] }) => {
@@ -290,8 +275,7 @@ export default function ClientLanding() {
             format: headers.find((h) => /format|size|volume/i.test(h)) || "",
             price: headers.find((h) => /price|cost|amount/i.test(h)) || "",
             category: headers.find((h) => /category|type|brand/i.test(h)) || "",
-            description: headers.find((h) => h.toLowerCase() === "description") || "",
-            notes: headers.find((h) => /note|comment/i.test(h)) || "",
+            notes: headers.find((h) => /note|description|comment/i.test(h)) || "",
             productImageUrl: headers.find((h) => /image|photo|picture|url/i.test(h)) || "",
           };
         }
@@ -334,7 +318,6 @@ export default function ClientLanding() {
             format: stripHtml(fieldMapping.format ? row[fieldMapping.format] || "" : ""),
             price: stripHtml(fieldMapping.price ? row[fieldMapping.price] || "" : ""),
             category: stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : ""),
-            description: fieldMapping.description ? row[fieldMapping.description] || "" : "",
             notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
             productImageUrl: imageUrl,
             isHidden, // Preserve hidden state from visibility table or existing pricelist
@@ -415,7 +398,7 @@ export default function ClientLanding() {
         branding: latestPricelist.branding as CompanyBranding,
         salesAgents: latestPricelist.salesAgents as SalesAgent[],
         qrCodeConfig: latestPricelist.qrCode as QRCodeConfig | undefined,
-        template: effectiveTemplate,
+        template: latestPricelist.template as Template,
         pricelistName: latestPricelist.name,
         brandRegistry: brandOrderingData as any || [], // Pass brand ordering for manual product ordering (only brandName + productOrder needed)
       });
@@ -628,7 +611,7 @@ export default function ClientLanding() {
         branding: latestPricelist.branding as CompanyBranding,
         salesAgents: latestPricelist.salesAgents as SalesAgent[],
         qrCodeConfig: latestPricelist.qrCode as QRCodeConfig | undefined,
-        template: effectiveTemplate,
+        template: latestPricelist.template as Template,
         pricelistName: `${latestPricelist.name} - ${selectedBrand}`,
         brandName: selectedBrand,
         brandRegistry: brandOrderingData as any || [],
@@ -877,30 +860,6 @@ export default function ClientLanding() {
               <p className="text-xs text-muted-foreground">
                 {visibleProducts.length} products · Last updated {new Date(latestPricelist.updatedAt).toLocaleDateString()}
               </p>
-            </div>
-
-            {/* Template Selection */}
-            <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground flex items-center justify-center gap-2">
-                <Palette className="w-4 h-4" />
-                Template Style
-              </Label>
-              <Select 
-                value={effectiveTemplate} 
-                onValueChange={(value) => setSelectedTemplate(value as Template)}
-              >
-                <SelectTrigger className="w-full" data-testid="select-template">
-                  <SelectValue placeholder="Select template" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pricelist" data-testid="select-item-pricelist">
-                    Pricelist - Simple and elegant
-                  </SelectItem>
-                  <SelectItem value="catalogue" data-testid="select-item-catalogue">
-                    Catalogue - With product images
-                  </SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <Button

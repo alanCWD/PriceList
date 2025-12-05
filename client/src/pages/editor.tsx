@@ -44,7 +44,6 @@ export default function Editor() {
     format: "",
     price: "",
     category: "",
-    description: "",
     notes: "",
     productImageUrl: "",
   });
@@ -59,7 +58,7 @@ export default function Editor() {
   const [currentPricelistId, setCurrentPricelistId] = useState<number | null>(null);
   const [currentPricelistName, setCurrentPricelistName] = useState<string>("");
   const [currentPricelistDescription, setCurrentPricelistDescription] = useState<string>("");
-  const [template, setTemplate] = useState<Template>("pricelist");
+  const [template, setTemplate] = useState<Template>("modern");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null); // null = ALL categories
   // Initialize from URL param if present, otherwise null (will auto-select for super admins)
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(urlCompanyId);
@@ -519,12 +518,10 @@ export default function Editor() {
       const isHidden = existingProduct?.isHidden ?? false;
       
       // Strip HTML tags from all text fields (Wix exports include HTML markup)
-      // Keep description as-is (may contain HTML) for potential rich display
       return {
         id: `product-${index}`,
         category,
         notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
-        description: fieldMapping.description ? row[fieldMapping.description] || "" : "",
         product: productName,
         sku,
         format: stripHtml(format),
@@ -540,7 +537,7 @@ export default function Editor() {
     });
 
     setProducts(mappedProducts);
-    console.log('[Auto-generate products] Generated', mappedProducts.length, 'products with descriptions');
+    console.log('[Auto-generate products] Generated', mappedProducts.length, 'products');
     if (hasSKUMappings && unassignedCount > 0) {
       console.log('[Auto-generate products] Unassigned products (SKU not in registry):', unassignedCount);
     }
@@ -571,7 +568,6 @@ export default function Editor() {
         format: companyDefaults.defaultFieldMapping.format || "",
         price: companyDefaults.defaultFieldMapping.price || "",
         category: companyDefaults.defaultFieldMapping.category || "",
-        description: companyDefaults.defaultFieldMapping.description || "",
         notes: companyDefaults.defaultFieldMapping.notes || "",
         productImageUrl: companyDefaults.defaultFieldMapping.productImageUrl || "",
       };
@@ -585,7 +581,6 @@ export default function Editor() {
         format: (loadedPricelist.fieldMapping as any).format || "",
         price: (loadedPricelist.fieldMapping as any).price || "",
         category: (loadedPricelist.fieldMapping as any).category || "",
-        description: (loadedPricelist.fieldMapping as any).description || "",
         notes: (loadedPricelist.fieldMapping as any).notes || "",
         productImageUrl: (loadedPricelist.fieldMapping as any).productImageUrl || "",
       };
@@ -611,7 +606,6 @@ export default function Editor() {
         }) || "",
         price: headers.find(h => h.toLowerCase().includes("price")) || "",
         category: headers.find(h => h.toLowerCase().includes("category") || h.toLowerCase().includes("producer") || h.toLowerCase().includes("winery")) || "",
-        description: headers.find(h => h.toLowerCase() === "description") || "",
         notes: headers.find(h => h.toLowerCase().includes("note")) || "",
         productImageUrl: headers.find(h => {
           const lower = h.toLowerCase();
@@ -760,12 +754,10 @@ export default function Editor() {
       const isHidden = existingProduct?.isHidden ?? false;
       
       // Strip HTML tags from all text fields (Wix exports include HTML markup)
-      // Keep description as-is (may contain HTML) for potential rich display
       return {
         id: `product-${index}`,
         category,
         notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
-        description: fieldMapping.description ? row[fieldMapping.description] || "" : "",
         product: productName,
         sku,
         format: stripHtml(format),

@@ -8,7 +8,6 @@ export const productSchema = z.object({
   id: z.string(),
   category: z.string(), // Producer/winery name or category
   notes: z.string().optional(), // Notes/Order column
-  description: z.string().optional(), // Product description (can contain HTML)
   product: z.string(), // Product name/description
   sku: z.string(),
   format: z.string(), // Package format (e.g., "12 x 750 ml")
@@ -64,7 +63,6 @@ export type QRCodeConfig = z.infer<typeof qrCodeConfigSchema>;
 export const fieldMappingSchema = z.object({
   category: z.string().optional(), // CSV column name for category
   notes: z.string().optional(),
-  description: z.string().optional(), // CSV column name for product description
   product: z.string(),
   sku: z.string(),
   format: z.string(),
@@ -75,11 +73,11 @@ export const fieldMappingSchema = z.object({
 export type FieldMapping = z.infer<typeof fieldMappingSchema>;
 
 // Template types and configuration
-export const templateSchema = z.enum(["pricelist", "catalogue"]);
+export const templateSchema = z.enum(["modern", "classic", "minimal"]);
 export type Template = z.infer<typeof templateSchema>;
 
 export const templateConfigSchema = z.object({
-  template: templateSchema.default("pricelist"),
+  template: templateSchema.default("modern"),
 });
 
 export type TemplateConfig = z.infer<typeof templateConfigSchema>;
@@ -91,7 +89,7 @@ export const pricelistConfigSchema = z.object({
   qrCode: qrCodeConfigSchema.optional(),
   products: z.array(productSchema).default([]),
   dateUpdated: z.string().optional(),
-  template: templateSchema.default("pricelist"),
+  template: templateSchema.default("modern"),
 });
 
 export type PricelistConfig = z.infer<typeof pricelistConfigSchema>;
@@ -130,7 +128,7 @@ export const companies = pgTable("companies", {
   domain: varchar("domain", { length: 255 }).notNull().unique(), // Email domain (e.g., "example.com")
   
   // Default configuration for this company
-  defaultTemplate: varchar("default_template", { length: 50 }).notNull().default("pricelist").$type<Template>(),
+  defaultTemplate: varchar("default_template", { length: 50 }).notNull().default("modern").$type<Template>(),
   defaultFieldMapping: jsonb("default_field_mapping").$type<FieldMapping>(),
   defaultBranding: jsonb("default_branding").$type<CompanyBranding>(),
   defaultSalesAgents: jsonb("default_sales_agents").$type<SalesAgent[]>().default([]),
@@ -219,7 +217,7 @@ export const pricelists = pgTable("pricelists", {
   qrCode: jsonb("qr_code").$type<QRCodeConfig>(),
   products: jsonb("products").notNull().$type<Product[]>(),
   fieldMapping: jsonb("field_mapping").$type<FieldMapping>(),
-  template: varchar("template", { length: 50 }).notNull().default("pricelist").$type<Template>(),
+  template: varchar("template", { length: 50 }).notNull().default("modern").$type<Template>(),
   categoryFilter: varchar("category_filter", { length: 255 }), // null = ALL categories, otherwise filter to specific category
   
   // Metadata
@@ -238,7 +236,7 @@ export const insertPricelistSchema = z.object({
   qrCode: qrCodeConfigSchema.optional(),
   products: z.array(productSchema).default([]),
   fieldMapping: fieldMappingSchema.optional(),
-  template: templateSchema.default("pricelist"),
+  template: templateSchema.default("modern"),
   categoryFilter: z.string().nullable().optional(), // null = ALL categories, otherwise filter to specific category
 });
 

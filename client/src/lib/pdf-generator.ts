@@ -227,13 +227,11 @@ function getBrandKey(product: any, brandRegistry?: any[]): string | null {
 }
 
 export async function generatePDF(config: PDFConfig): Promise<void> {
-  const { products, branding, salesAgents, qrCodeConfig, template = "pricelist", pricelistName, brandName } = config;
+  const { products, branding, salesAgents, qrCodeConfig, template = "modern", pricelistName, brandName } = config;
   
-  // "catalogue" template uses the generateClassicPDF function (with product images)
-  // "pricelist" template uses the generateMinimalPDF function (simple and elegant)
-  if (template === "catalogue") {
+  if (template === "classic") {
     return await generateClassicPDF(config);
-  } else if (template === "pricelist") {
+  } else if (template === "minimal") {
     return await generateMinimalPDF(config);
   }
   
@@ -734,192 +732,33 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     year: "numeric",
   });
   const displayName = pricelistName || "Pricelist";
-  
-  // Pre-load product images as base64 for PDF embedding
-  const imageCache = new Map<string, string>();
-  const imageSize = 35; // Size of thumbnail in PDF (points)
-  
-  // Collect all unique image URLs
-  const imageUrls = new Set<string>();
-  products.forEach(p => {
-    if (p.productImageUrl) imageUrls.add(p.productImageUrl);
-  });
-  
-  // Fetch and cache images in parallel
-  await Promise.all(Array.from(imageUrls).map(async (url) => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      imageCache.set(url, base64);
-    } catch (error) {
-      console.warn(`Failed to load product image: ${url}`, error);
-    }
-  }));
 
-  // Extract colors from branding (matching Pricelist template)
-  const hexToRgb = (hex: string) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-    } : null;
-  };
-  
-  const textColor = branding.headerTextColor 
-    ? (hexToRgb(branding.headerTextColor) || { r: 30, g: 30, b: 30 })
-    : { r: 30, g: 30, b: 30 };
-  
-  const bgColor = branding.headerBackgroundColor 
-    ? hexToRgb(branding.headerBackgroundColor)
-    : null;
+  doc.setFont("times", "bold");
+  doc.setFontSize(30);
+  doc.setTextColor(30, 30, 30);
+  const titleWidth = doc.getTextWidth(branding.companyName);
+  doc.text(branding.companyName, (pageWidth - titleWidth) / 2, yPosition);
+  yPosition += 25;
 
-  // Process logo if present
-  let logoBase64 = null;
-  let logoFormat = "PNG";
-  let logoWidth = 0;
-  let logoHeight = 0;
-  
-  if (branding.logoUrl) {
-    try {
-      const response = await fetch(branding.logoUrl);
-      const blob = await response.blob();
-      logoBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      logoFormat = getImageFormat(logoBase64);
-      
-      const img = new Image();
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = logoBase64!;
-      });
-      
-      const aspectRatio = img.width / img.height;
-      logoHeight = 50; // Compact height for header
-      logoWidth = logoHeight * aspectRatio;
-      
-      // Scale down logo width if it exceeds gutter
-      const maxLogoGutterWidth = 160;
-      if (logoWidth > maxLogoGutterWidth) {
-        logoWidth = maxLogoGutterWidth;
-        logoHeight = logoWidth / aspectRatio;
-      }
-    } catch (error) {
-      console.error('Failed to load logo:', error);
-    }
+  if (branding.tagline) {
+    doc.setFont("times", "italic");
+    doc.setFontSize(16);
+    doc.setTextColor(70, 70, 70);
+    const taglineWidth = doc.getTextWidth(branding.tagline);
+    doc.text(branding.tagline, (pageWidth - taglineWidth) / 2, yPosition);
+    yPosition += 20;
   }
 
-  // Compact header height
-  const minHeaderHeight = 55;
-  const headerHeight = logoBase64 ? Math.max(logoHeight + 10, minHeaderHeight) : minHeaderHeight;
+  doc.setFont("times", "normal");
+  doc.setFontSize(12);
+  const dateWidth = doc.getTextWidth(dayMonthDate);
+  doc.text(dayMonthDate, (pageWidth - dateWidth) / 2, yPosition);
+  yPosition += 20;
 
-  // Function to draw header (matching Pricelist template style)
-  const drawHeader = () => {
-    // Draw header background
-    if (bgColor) {
-      doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
-      doc.rect(0, 0, pageWidth, headerHeight, "F");
-    }
-
-    const headerPadding = 10;
-    const lineHeight = 9;
-    
-    // Logo on left if present
-    if (logoBase64) {
-      try {
-        const logoY = (headerHeight - logoHeight) / 2;
-        doc.addImage(logoBase64, logoFormat, headerPadding, logoY, logoWidth, logoHeight);
-      } catch (error) {
-        console.error('Failed to add logo to PDF:', error);
-      }
-    }
-
-    // Calculate agent block height
-    let maxAgentLines = 0;
-    if (salesAgents.length > 0) {
-      salesAgents.forEach(agent => {
-        let lineCount = 0;
-        if (agent.region) lineCount++;
-        lineCount += 3; // name, email, phone
-        maxAgentLines = Math.max(maxAgentLines, lineCount);
-      });
-    }
-    
-    // Position title/tagline
-    const logoGutter = 160;
-    const leftOffset = 36;
-    const titleX = logoBase64 ? (headerPadding + logoGutter - leftOffset) : headerPadding;
-    
-    // Vertically center the title/tagline block within header
-    const titleFontSize = 18;
-    const taglineFontSize = 10;
-    const lineSpacing = 3;
-    
-    const titleHeightCalc = titleFontSize * 0.8;
-    const taglineHeightCalc = branding.tagline ? taglineFontSize * 0.8 : 0;
-    const blockHeight = titleHeightCalc + (branding.tagline ? lineSpacing + taglineHeightCalc : 0);
-    
-    const topPadding = (headerHeight - blockHeight) / 2;
-    const titleBaseline = topPadding + titleHeightCalc;
-    const taglineBaseline = titleBaseline + lineSpacing + taglineHeightCalc;
-    
-    doc.setFontSize(titleFontSize);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.text(branding.companyName, titleX, titleBaseline, { align: "left" });
-
-    if (branding.tagline) {
-      doc.setFontSize(taglineFontSize);
-      doc.setFont("helvetica", "italic");
-      doc.setTextColor(textColor.r, textColor.g, textColor.b);
-      doc.text(branding.tagline, titleX, taglineBaseline, { align: "left" });
-    }
-
-    // Sales agents at bottom-right
-    if (salesAgents.length > 0) {
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(textColor.r, textColor.g, textColor.b);
-      
-      const agentRightX = pageWidth - headerPadding;
-      let agentSpacing = 25;
-      
-      let cumulativeOffset = 0;
-      salesAgents.slice().reverse().forEach((agent) => {
-        const lines = [];
-        if (agent.region) lines.push(agent.region);
-        lines.push(agent.name, agent.email, agent.phone);
-        
-        const agentWidth = Math.max(...lines.map(line => doc.getTextWidth(line)));
-        
-        let agentY = headerHeight - headerPadding - (lines.length - 1) * lineHeight;
-        
-        const agentX = agentRightX - cumulativeOffset;
-        
-        lines.forEach(line => {
-          doc.text(line, agentX, agentY, { align: "right" });
-          agentY += lineHeight;
-        });
-        
-        cumulativeOffset += agentWidth + agentSpacing;
-      });
-    }
-  };
-
-  // Draw header on first page
-  drawHeader();
-  yPosition = headerHeight + 20;
+  doc.setDrawColor(156, 163, 175);
+  doc.setLineWidth(1);
+  doc.line(margin, yPosition, pageWidth - margin, yPosition);
+  yPosition += 30;
 
   // Inject manual sort index from brand registry FIRST (before filtering)
   const productsWithSortIndex = config.brandRegistry && config.brandRegistry.length > 0
@@ -1013,10 +852,10 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
   // Sort using brand registry ordering
   const brandOrderingData2 = toBrandOrderingEntries(config.brandRegistry);
   
-  // Constants for page break calculations (Catalogue template with images)
+  // Constants for page break calculations (Classic template)
   const brandHeaderHeight = 25; // Height of brand text + underline
   const tableHeaderHeight = 22; // Approximate height of table header row
-  const minProductRowHeight = imageSize + 10; // Row height includes image + padding
+  const minProductRowHeight = 16; // Minimum height for one product row
   const footerBufferSpace = 40; // Buffer space above footer area
   const simpleHeaderHeight = 35; // Height of simplified header on subsequent pages
   
@@ -1029,7 +868,7 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
   sortBrandGroups(Object.entries(groupedProducts), brandOrderingData2)
     .forEach(([groupBrandName, categoryProducts], index) => {
     if (index > 0) {
-      yPosition += 20;
+      yPosition += 25;
     }
 
     // Check if there's enough space for brand header + at least one product row
@@ -1041,150 +880,67 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
       yPosition = simpleHeaderHeight + 20;
     }
 
-    // Brand header - matches Pricelist style with branding colors
-    if (bgColor) {
-      doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
-    } else {
-      doc.setFillColor(248, 249, 250); // Default light grey if no header colour
-    }
-    doc.rect(margin, yPosition, pageWidth - margin * 2, 20, "F");
-    doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text(groupBrandName, margin + 10, yPosition + 14);
-    yPosition += 26;
+    doc.setFont("times", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(30, 30, 30);
+    doc.text(groupBrandName, margin, yPosition);
+    yPosition += 5;
+    doc.setDrawColor(156, 163, 175);
+    doc.setLineWidth(2);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 15;
 
-    // Table data with empty string for image column (images drawn via didDrawCell)
-    // Include description for rendering under product name
-    const tableData = categoryProducts.map(product => {
-      // Format product text with description if available
-      const productText = product.product;
-      const descriptionText = product.description ? product.description.replace(/<[^>]*>/g, '') : ''; // Strip HTML for PDF
-      
-      return [
-        "", // Image placeholder - will be drawn in didDrawCell
-        product.sku,
-        { content: productText, description: descriptionText }, // Custom object for product + description
-        product.format,
-        formatPrice(product.price),
-        product.notes || "",
-      ];
-    });
-    
-    // Store products for image lookup in didDrawCell
-    const productsForTable = categoryProducts;
+    const tableData = categoryProducts.map(product => [
+      product.sku,
+      product.product,
+      product.format,
+      formatPrice(product.price),
+      product.notes || "",
+    ]);
 
     autoTable(doc, {
       startY: yPosition,
-      head: [["", "SKU", "Product", "Format", "Price", "Notes"]],
-      body: tableData.map(row => [
-        row[0],
-        row[1],
-        typeof row[2] === 'object' ? (row[2] as any).content : row[2],
-        row[3],
-        row[4],
-        row[5]
-      ]),
-      theme: "plain", // Remove grid lines
+      head: [["SKU", "Product", "Format", "Price", "Notes"]],
+      body: tableData,
+      theme: "grid",
       headStyles: {
-        fillColor: [243, 244, 246], // Light gray background
-        textColor: [55, 65, 81],
-        fontSize: 9,
+        fillColor: [229, 231, 235],
+        textColor: [30, 30, 30],
+        fontSize: 10,
         fontStyle: "bold",
         halign: "left",
-        font: "helvetica",
-        cellPadding: 6,
+        font: "times",
       },
       bodyStyles: {
-        fontSize: 9,
+        fontSize: 10,
         textColor: [30, 30, 30],
-        font: "helvetica",
-        minCellHeight: imageSize + 12, // Ensure rows are tall enough for images + description
-        cellPadding: 6,
-      },
-      alternateRowStyles: {
-        fillColor: [249, 250, 251], // Light shading for alternate rows
+        font: "times",
       },
       columnStyles: {
-        0: { cellWidth: 45, halign: "center" }, // Image column
-        1: { cellWidth: 55 },  // SKU
-        2: { cellWidth: 175 }, // Product
-        3: { cellWidth: 80 },  // Format
-        4: { cellWidth: 55, halign: "right" }, // Price
-        5: { cellWidth: 100 }, // Notes
+        0: { cellWidth: 70 },
+        1: { cellWidth: 200 },
+        2: { cellWidth: 100 },
+        3: { cellWidth: 70, halign: "right" },
+        4: { cellWidth: 100 },
       },
       margin: { left: margin, right: margin, bottom: margin + footerHeight },
-      didDrawCell: (data) => {
-        // Draw product images in first column of body rows
-        if (data.section === 'body' && data.column.index === 0) {
-          const product = productsForTable[data.row.index];
-          if (product?.productImageUrl && imageCache.has(product.productImageUrl)) {
-            const imgData = imageCache.get(product.productImageUrl)!;
-            const imgFormat = getImageFormat(imgData);
-            
-            // Center image in cell
-            const cellCenterX = data.cell.x + (data.cell.width / 2);
-            const cellCenterY = data.cell.y + (data.cell.height / 2);
-            const imgX = cellCenterX - (imageSize / 2);
-            const imgY = cellCenterY - (imageSize / 2);
-            
-            try {
-              doc.addImage(imgData, imgFormat, imgX, imgY, imageSize, imageSize);
-            } catch (error) {
-              console.warn('Failed to add product image to PDF:', error);
-            }
-          }
-        }
-        
-        // Draw description text in italics under product name
-        if (data.section === 'body' && data.column.index === 2) {
-          const product = productsForTable[data.row.index];
-          if (product?.description) {
-            const descText = product.description.replace(/<[^>]*>/g, '').trim(); // Strip HTML
-            if (descText) {
-              doc.setFont("helvetica", "italic");
-              doc.setFontSize(8);
-              doc.setTextColor(107, 114, 128); // Gray color for description
-              
-              // Position description below the product name
-              const descX = data.cell.x + 6;
-              const descY = data.cell.y + 20; // Below the product name
-              const maxWidth = data.cell.width - 12;
-              
-              // Wrap text if too long
-              const lines = doc.splitTextToSize(descText, maxWidth);
-              doc.text(lines.slice(0, 2), descX, descY); // Limit to 2 lines
-              
-              // Reset font for next cell
-              doc.setFont("helvetica", "normal");
-              doc.setFontSize(9);
-              doc.setTextColor(30, 30, 30);
-            }
-          }
-        }
-      },
       didDrawPage: (data) => {
-        // Draw header on first page only
-        const currentPageNum = (doc as any).getCurrentPageInfo().pageNumber;
-        if (currentPageNum === 1) {
-          drawHeader();
-        }
-        
         // Footer on every page
-        const footerY = pageHeight - margin - 15;
+        const footerY = pageHeight - margin - 20;
         
         // Thin separator line
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.3);
-        doc.line(margin, footerY - 8, pageWidth - margin, footerY - 8);
+        doc.setDrawColor(156, 163, 175);
+        doc.setLineWidth(0.5);
+        doc.line(margin, footerY - 10, pageWidth - margin, footerY - 10);
         
         // Footer text - include brand name for single-brand downloads
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setFont("times", "normal");
         doc.setTextColor(100, 100, 100);
         
         const pageNum = (doc as any).getCurrentPageInfo().pageNumber;
-        const footerText = formatFooterText(pageNum, branding.companyName, dayMonthDate, brandName, 30);
+        // Classic template uses spaces instead of "|" separators
+        const footerText = formatFooterText(pageNum, branding.companyName, dayMonthDate, brandName, 30).replace(/\|/g, '   ');
         doc.text(footerText, margin, footerY);
       },
     });

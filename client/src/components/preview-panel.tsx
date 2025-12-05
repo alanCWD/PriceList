@@ -28,7 +28,7 @@ export function PreviewPanel({
   branding,
   salesAgents,
   qrCodeConfig,
-  template = "pricelist",
+  template = "modern",
   pricelistName,
   categoryFilter,
   brandRegistry,

@@ -40,7 +40,6 @@ export function FieldMappingPanel({
 
   const optionalFields = [
     { key: "category" as keyof FieldMapping, label: "Category/Producer", required: false },
-    { key: "description" as keyof FieldMapping, label: "Description", required: false },
     { key: "notes" as keyof FieldMapping, label: "Notes/Order Info", required: false },
     { key: "productImageUrl" as keyof FieldMapping, label: "Product Image", required: false },
   ];

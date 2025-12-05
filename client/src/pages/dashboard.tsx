@@ -107,10 +107,12 @@ export default function Dashboard() {
 
   const getTemplateColor = (template: string) => {
     switch (template) {
-      case "pricelist":
-        return "bg-slate-500/10 text-slate-700 dark:text-slate-400";
-      case "catalogue":
+      case "modern":
+        return "bg-blue-500/10 text-blue-700 dark:text-blue-400";
+      case "classic":
         return "bg-amber-500/10 text-amber-700 dark:text-amber-400";
+      case "minimal":
+        return "bg-slate-500/10 text-slate-700 dark:text-slate-400";
       default:
         return "bg-gray-500/10 text-gray-700 dark:text-gray-400";
     }

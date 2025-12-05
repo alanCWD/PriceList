@@ -169,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Return sensible defaults so they can access admin UI to create first company
       if (!effectiveCompanyId && user.role === "superAdmin") {
         return res.json({
-          defaultTemplate: "pricelist",
+          defaultTemplate: "modern",
           defaultFieldMapping: {
             product: "",
             sku: "",
@@ -233,7 +233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Include companyId so client can verify data provenance when switching companies
       res.json({
         companyId: effectiveCompanyId,
-        defaultTemplate: company.defaultTemplate || "pricelist",
+        defaultTemplate: company.defaultTemplate || "modern",
         defaultFieldMapping: normalizedFieldMapping,
         defaultBranding: normalizedBranding,
         defaultSalesAgents: company.defaultSalesAgents || [],
