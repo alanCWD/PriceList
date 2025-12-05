@@ -2155,6 +2155,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // Brand Registry Export/Import Endpoints
+  // ========================================
+
+  // Export Brand Registry - returns all brand data and hidden SKUs as JSON
+  app.get("/api/brands/export", isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Super Admins can export for any company via companyId query param
+      let targetCompanyId: number | null = null;
+      if (user.role === "superAdmin" && req.query.companyId) {
+        targetCompanyId = parseInt(req.query.companyId as string);
+        if (isNaN(targetCompanyId)) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+      } else {
+        targetCompanyId = getEffectiveCompanyId(req, user);
+      }
+
+      if (!targetCompanyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      // Fetch all brands for the company
+      const brands = await storage.getBrandsByCompanyId(targetCompanyId);
+      
+      // Fetch hidden SKUs
+      const hiddenSkus = await storage.getHiddenSkusByCompanyId(targetCompanyId);
+
+      // Get company info for the export
+      const company = await storage.getCompanyById(targetCompanyId);
+
+      // Build export data structure
+      const exportData = {
+        version: "1.0",
+        exportedAt: new Date().toISOString(),
+        company: {
+          id: targetCompanyId,
+          name: company?.name || "Unknown",
+        },
+        brands: brands.map(brand => ({
+          brandName: brand.brandName,
+          category: brand.category,
+          type: brand.type,
+          displayOrder: brand.displayOrder,
+          skus: brand.skus || [],
+          productOrder: brand.productOrder || [],
+        })),
+        hiddenSkus: hiddenSkus,
+      };
+
+      // Set headers for file download
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="brand-registry-${company?.name || targetCompanyId}-${new Date().toISOString().split('T')[0]}.json"`);
+      
+      res.json(exportData);
+    } catch (error) {
+      console.error("Error exporting brand registry:", error);
+      res.status(500).json({ error: "Failed to export brand registry" });
+    }
+  });
+
+  // Import Brand Registry - restores brand data and hidden SKUs from JSON
+  app.post("/api/brands/import", isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Super Admins can import for any company via companyId in request body
+      let targetCompanyId: number;
+      if (user.role === "superAdmin" && req.body.companyId) {
+        targetCompanyId = parseInt(req.body.companyId);
+        if (isNaN(targetCompanyId)) {
+          return res.status(400).json({ error: "Invalid company ID" });
+        }
+      } else {
+        const effectiveCompanyId = getEffectiveCompanyId(req, user);
+        if (!effectiveCompanyId) {
+          return res.status(400).json({ error: "No company associated with user" });
+        }
+        targetCompanyId = effectiveCompanyId;
+      }
+
+      const importData = req.body.data;
+      
+      if (!importData || !importData.brands) {
+        return res.status(400).json({ error: "Invalid import data format" });
+      }
+
+      console.log(`[Brand Import] Starting import for company ${targetCompanyId}`);
+      console.log(`[Brand Import] Importing ${importData.brands.length} brands and ${importData.hiddenSkus?.length || 0} hidden SKUs`);
+
+      // Track results
+      let brandsCreated = 0;
+      let brandsUpdated = 0;
+      let hiddenSkusRestored = 0;
+
+      // Process each brand in the import
+      for (const brandData of importData.brands) {
+        if (!brandData.brandName || !brandData.category) {
+          console.log(`[Brand Import] Skipping invalid brand:`, brandData);
+          continue;
+        }
+
+        // Check if brand already exists
+        const existingBrand = await storage.getBrandByName(targetCompanyId, brandData.brandName);
+        
+        if (existingBrand) {
+          // Update existing brand
+          await storage.updateBrand(existingBrand.id, {
+            category: brandData.category,
+            type: brandData.type || null,
+            displayOrder: brandData.displayOrder || null,
+            skus: brandData.skus || [],
+            productOrder: brandData.productOrder || [],
+          });
+          brandsUpdated++;
+          console.log(`[Brand Import] Updated brand: ${brandData.brandName}`);
+        } else {
+          // Create new brand
+          await storage.createBrand({
+            companyId: targetCompanyId,
+            brandName: brandData.brandName,
+            category: brandData.category,
+            type: brandData.type,
+            displayOrder: brandData.displayOrder,
+            skus: brandData.skus || [],
+            productOrder: brandData.productOrder || [],
+          });
+          brandsCreated++;
+          console.log(`[Brand Import] Created brand: ${brandData.brandName}`);
+        }
+      }
+
+      // Restore hidden SKUs
+      if (importData.hiddenSkus && Array.isArray(importData.hiddenSkus)) {
+        for (const sku of importData.hiddenSkus) {
+          await storage.setProductVisibility(targetCompanyId, sku, false);
+          hiddenSkusRestored++;
+        }
+        console.log(`[Brand Import] Restored ${hiddenSkusRestored} hidden SKUs`);
+      }
+
+      res.json({
+        success: true,
+        brandsCreated,
+        brandsUpdated,
+        hiddenSkusRestored,
+        totalBrandsInImport: importData.brands.length,
+      });
+    } catch (error) {
+      console.error("Error importing brand registry:", error);
+      res.status(500).json({ error: "Failed to import brand registry" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
