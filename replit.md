@@ -64,7 +64,10 @@ The system features a robust, database-centric security model where all authoriz
   - **Brand Sorting Logic**: Brands are sorted in three levels: (1) by category order (Wine → Spirits → Cider → Non-Alc), (2) by `displayOrder` if set, (3) alphabetically by brand name. This ensures consistent ordering across preview and PDF output.
   - **Cache-Busting Headers**: The ordering endpoint uses `no-cache` headers to prevent HTTP caching issues that could serve stale product ordering data.
 - **Intelligent Collection Parsing & Standardization**: Parses Wix CSV "collection" fields to extract brand names and product categories, handling Canadian wine industry categorization (Cider → Wine → Spirits → Non-Alc). It includes automatic standardization, wine type and region recognition, and a "Review" tab for manual overrides. Product names are prioritized for wine type normalization to ensure correct sorting.
-- **Template System**: Three professional, print-optimized templates (Modern, Classic, Minimal) that apply branding colors and group products by brand, sorted by wine type within each brand or by manual ordering if configured.
+- **Template System**: Two professional, print-optimized templates:
+  - **Pricelist**: Simple and elegant design with clean lines, generous spacing, and light color palette. Best for straightforward product listings.
+  - **Catalogue**: Rich layout with product images, full table borders, and compact spacing. Ideal for detailed product showcases.
+  Templates apply branding colors and group products by brand, sorted by wine type within each brand or by manual ordering if configured.
 - **Database Persistence**: Full CRUD operations for pricelists with company isolation.
 - **Pricelist Viewing Workflow**: Users can view and download saved pricelists directly from the database without re-uploading CSVs via dedicated view pages.
 - **User Profile Menu & View Switching**: A user profile menu allows Super Admins to toggle between "admin" and "client" views, with preferences persisting in local storage.
