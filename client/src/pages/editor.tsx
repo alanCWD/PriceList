@@ -44,6 +44,7 @@ export default function Editor() {
     format: "",
     price: "",
     category: "",
+    ribbon: "",
     notes: "",
     productImageUrl: "",
   });
@@ -521,6 +522,7 @@ export default function Editor() {
       return {
         id: `product-${index}`,
         category,
+        ribbon: stripHtml(fieldMapping.ribbon ? row[fieldMapping.ribbon] || "" : ""),
         notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
         product: productName,
         sku,
@@ -568,6 +570,7 @@ export default function Editor() {
         format: companyDefaults.defaultFieldMapping.format || "",
         price: companyDefaults.defaultFieldMapping.price || "",
         category: companyDefaults.defaultFieldMapping.category || "",
+        ribbon: (companyDefaults.defaultFieldMapping as any).ribbon || "",
         notes: companyDefaults.defaultFieldMapping.notes || "",
         productImageUrl: companyDefaults.defaultFieldMapping.productImageUrl || "",
       };
@@ -581,6 +584,7 @@ export default function Editor() {
         format: (loadedPricelist.fieldMapping as any).format || "",
         price: (loadedPricelist.fieldMapping as any).price || "",
         category: (loadedPricelist.fieldMapping as any).category || "",
+        ribbon: (loadedPricelist.fieldMapping as any).ribbon || "",
         notes: (loadedPricelist.fieldMapping as any).notes || "",
         productImageUrl: (loadedPricelist.fieldMapping as any).productImageUrl || "",
       };
@@ -606,7 +610,12 @@ export default function Editor() {
         }) || "",
         price: headers.find(h => h.toLowerCase().includes("price")) || "",
         category: headers.find(h => h.toLowerCase().includes("category") || h.toLowerCase().includes("producer") || h.toLowerCase().includes("winery")) || "",
-        notes: headers.find(h => h.toLowerCase().includes("note")) || "",
+        ribbon: headers.find(h => h.toLowerCase() === "ribbon") || "",
+        notes: headers.find(h => {
+          const lower = h.toLowerCase();
+          // Match columns that are specifically 'notes' or contain 'notes' but not 'ribbon'
+          return lower === "notes" || (lower.includes("note") && !lower.includes("ribbon"));
+        }) || "",
         productImageUrl: headers.find(h => {
           const lower = h.toLowerCase();
           return lower.includes("productimage") || lower === "productimageurl";
@@ -757,6 +766,7 @@ export default function Editor() {
       return {
         id: `product-${index}`,
         category,
+        ribbon: stripHtml(fieldMapping.ribbon ? row[fieldMapping.ribbon] || "" : ""),
         notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
         product: productName,
         sku,

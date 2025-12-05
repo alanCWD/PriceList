@@ -7,7 +7,8 @@ import { createInsertSchema } from "drizzle-zod";
 export const productSchema = z.object({
   id: z.string(),
   category: z.string(), // Producer/winery name or category
-  notes: z.string().optional(), // Notes/Order column
+  ribbon: z.string().optional(), // Ribbon/badge text (e.g., "NEW RELEASE")
+  notes: z.string().optional(), // Additional notes from CSV
   product: z.string(), // Product name/description
   sku: z.string(),
   format: z.string(), // Package format (e.g., "12 x 750 ml")
@@ -62,7 +63,8 @@ export type QRCodeConfig = z.infer<typeof qrCodeConfigSchema>;
 // Field mapping for CSV import
 export const fieldMappingSchema = z.object({
   category: z.string().optional(), // CSV column name for category
-  notes: z.string().optional(),
+  ribbon: z.string().optional(), // CSV column name for ribbon/badge text
+  notes: z.string().optional(), // CSV column name for additional notes
   product: z.string(),
   sku: z.string(),
   format: z.string(),
