@@ -891,14 +891,11 @@ export default function ClientLanding() {
                   <SelectValue placeholder="Select template" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="modern" data-testid="select-item-modern">
-                    Modern - Clean lines with accent colors
+                  <SelectItem value="pricelist" data-testid="select-item-pricelist">
+                    Pricelist - Simple and elegant
                   </SelectItem>
-                  <SelectItem value="classic" data-testid="select-item-classic">
-                    Classic - Traditional serif typography
-                  </SelectItem>
-                  <SelectItem value="minimal" data-testid="select-item-minimal">
-                    Minimal - Simple and elegant
+                  <SelectItem value="catalogue" data-testid="select-item-catalogue">
+                    Catalogue - With product images
                   </SelectItem>
                 </SelectContent>
               </Select>
