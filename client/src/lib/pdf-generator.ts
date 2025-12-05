@@ -1312,19 +1312,25 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
 
     const currentCategoryProducts = [...categoryProducts];
 
-    // Products table with compressed spacing - column order: SKU, Product, Format, Price, Notes
+    // Products table with compressed spacing - column order: SKU, Product, Format, Price, Ribbon+Notes
+    // Concatenate ribbon and notes values with space separator for minimal template
     const tableData = currentCategoryProducts.map(product => {
+      const ribbon = product.ribbon || "";
+      const notes = product.notes || "";
+      // Combine ribbon and notes with space separator, trim any excess whitespace
+      const combinedNotes = [ribbon, notes].filter(Boolean).join(" ").trim();
+      
       return [
         product.sku,
         product.product,
         product.format,
         formatPrice(product.price),
-        product.notes || ""
+        combinedNotes
       ];
     });
 
-    // Build header row
-    const headRow = ["SKU", "Product", "Format", "Price", "Notes"];
+    // Build header row - use blank header for combined Ribbon+Notes column
+    const headRow = ["SKU", "Product", "Format", "Price", ""];
 
     autoTable(doc, {
       startY: yPosition,
@@ -1337,27 +1343,27 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         fontSize: 6.5, // Ultra-small header font (1/4 reduction)
         fontStyle: "bold",
         halign: "left",
-        cellPadding: 1, // Reduced padding for tighter spacing
-        minCellHeight: 6, // Minimal header row height
+        cellPadding: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 }, // Minimum padding
+        minCellHeight: 5, // Minimal header row height
       },
       bodyStyles: {
         fontSize: 6.5, // Ultra-small body font (1/4 reduction)
         textColor: [30, 30, 30],
-        minCellHeight: 6, // Ultra-compact rows
-        cellPadding: 1, // Reduced padding for tighter spacing
+        minCellHeight: 5, // Ultra-compact rows
+        cellPadding: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 }, // Minimum padding
       },
       alternateRowStyles: {
         fillColor: [242, 242, 242], // Stronger zebra striping for better visibility
       },
       columnStyles: {
-        // Column order: SKU, Product, Format, Price, Notes
+        // Column order: SKU, Product, Format, Price, Ribbon+Notes
         // Available width: 612pt - 80pt margins = 532pt
-        // Without images: 70 + 242 + 70 + 50 + 100 = 532pt
-        0: { cellWidth: 70 },      // SKU
-        1: { cellWidth: 242 },     // Product (increased to use full width)
-        2: { cellWidth: 70 },      // Format
-        3: { cellWidth: 50, halign: "right" },  // Price - right-aligned
-        4: { cellWidth: 100 },     // Notes (increased slightly)
+        // Optimized widths with minimum spacing: 60 + 260 + 65 + 45 + 102 = 532pt
+        0: { cellWidth: 60 },      // SKU (slightly reduced)
+        1: { cellWidth: 260 },     // Product (more space for names)
+        2: { cellWidth: 65 },      // Format
+        3: { cellWidth: 45, halign: "right" },  // Price - right-aligned (compact)
+        4: { cellWidth: 102 },     // Ribbon+Notes (combined column)
       },
       margin: { left: margin, right: margin, top: 35, bottom: margin + footerHeight },
       didDrawPage: (data) => {
