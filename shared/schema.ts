@@ -8,6 +8,7 @@ export const productSchema = z.object({
   id: z.string(),
   category: z.string(), // Producer/winery name or category
   notes: z.string().optional(), // Notes/Order column
+  description: z.string().optional(), // Product description (can contain HTML)
   product: z.string(), // Product name/description
   sku: z.string(),
   format: z.string(), // Package format (e.g., "12 x 750 ml")
@@ -63,6 +64,7 @@ export type QRCodeConfig = z.infer<typeof qrCodeConfigSchema>;
 export const fieldMappingSchema = z.object({
   category: z.string().optional(), // CSV column name for category
   notes: z.string().optional(),
+  description: z.string().optional(), // CSV column name for product description
   product: z.string(),
   sku: z.string(),
   format: z.string(),
