@@ -428,9 +428,9 @@ export default function Landing() {
           <div className="mb-12">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold">Current Pricelist</h2>
+                <h2 className="text-2xl font-bold text-white">Current Pricelist</h2>
                 {latestPricelist && !isPricelistDataLoading && (
-                  <p className="text-muted-foreground">
+                  <p className="text-white/70">
                     {latestPricelist.name} • {products.length} products
                   </p>
                 )}
