@@ -290,7 +290,8 @@ export default function ClientLanding() {
             format: headers.find((h) => /format|size|volume/i.test(h)) || "",
             price: headers.find((h) => /price|cost|amount/i.test(h)) || "",
             category: headers.find((h) => /category|type|brand/i.test(h)) || "",
-            notes: headers.find((h) => /note|description|comment/i.test(h)) || "",
+            description: headers.find((h) => h.toLowerCase() === "description") || "",
+            notes: headers.find((h) => /note|comment/i.test(h)) || "",
             productImageUrl: headers.find((h) => /image|photo|picture|url/i.test(h)) || "",
           };
         }
@@ -333,6 +334,7 @@ export default function ClientLanding() {
             format: stripHtml(fieldMapping.format ? row[fieldMapping.format] || "" : ""),
             price: stripHtml(fieldMapping.price ? row[fieldMapping.price] || "" : ""),
             category: stripHtml(fieldMapping.category ? row[fieldMapping.category] || "" : ""),
+            description: fieldMapping.description ? row[fieldMapping.description] || "" : "",
             notes: stripHtml(fieldMapping.notes ? row[fieldMapping.notes] || "" : ""),
             productImageUrl: imageUrl,
             isHidden, // Preserve hidden state from visibility table or existing pricelist
