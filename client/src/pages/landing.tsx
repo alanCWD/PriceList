@@ -459,23 +459,13 @@ export default function Landing() {
         {/* Current Pricelist Section - Only for authenticated users */}
         {user && (
           <div className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-white">Current Pricelist</h2>
-                {latestPricelist && !isPricelistDataLoading && (
-                  <p className="text-white/70">
-                    {latestPricelist.name} • {products.length} products
-                  </p>
-                )}
-              </div>
-              <Button 
-                variant="outline" 
-                onClick={() => setLocation('/client')}
-                data-testid="button-view-full-pricelist"
-              >
-                View Full Pricelist
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </Button>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-white">Current Pricelist</h2>
+              {latestPricelist && !isPricelistDataLoading && (
+                <p className="text-white/70">
+                  {latestPricelist.name} • {products.length} products
+                </p>
+              )}
             </div>
 
             {/* Super Admin without company selected */}
