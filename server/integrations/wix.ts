@@ -195,18 +195,12 @@ export class WixIntegrationService {
     return allProducts;
   }
 
-  mapWixProductToProduct(wixProduct: WixProduct, index: number): Product {
-    const additionalInfo = wixProduct.additionalInfoSections || [];
-    const notesSection = additionalInfo.find(
-      (s) => s.title.toLowerCase().includes("note") || 
-             s.title.toLowerCase() === "additionalinfodescription2"
-    );
-
-    const collectionNames = wixProduct.collections?.map((c) => c.name) || [];
-    const collectionRaw = collectionNames.join(", ");
-
+  private parseCollectionInfo(collectionNames: string[]): { 
+    collectionCategory?: "cider" | "wine" | "spirits" | "nonAlc";
+    collectionBrand?: string;
+    collectionType?: string;
+  } {
     let collectionCategory: "cider" | "wine" | "spirits" | "nonAlc" | undefined;
-    let collectionBrand: string | undefined;
     let collectionType: string | undefined;
 
     for (const name of collectionNames) {
@@ -223,29 +217,73 @@ export class WixIntegrationService {
       else if (lower.includes("non-alc") || lower.includes("non alc") || lower.includes("nonalc")) collectionCategory = "nonAlc";
     }
 
-    collectionBrand = wixProduct.brand || collectionNames[0];
+    return { collectionCategory, collectionType, collectionBrand: collectionNames[0] };
+  }
 
-    return {
-      id: wixProduct.id || `wix-${index}`,
-      category: collectionBrand || "Uncategorized",
+  mapWixProductToProducts(wixProduct: WixProduct, baseIndex: number): Product[] {
+    const additionalInfo = wixProduct.additionalInfoSections || [];
+    const notesSection = additionalInfo.find(
+      (s) => s.title.toLowerCase().includes("note") || 
+             s.title.toLowerCase() === "additionalinfodescription2"
+    );
+
+    const collectionNames = wixProduct.collections?.map((c) => c.name) || [];
+    const collectionRaw = collectionNames.join(", ");
+    const { collectionCategory, collectionType, collectionBrand } = this.parseCollectionInfo(collectionNames);
+    const brand = wixProduct.brand || collectionBrand;
+
+    const baseProduct = {
+      category: brand || "Uncategorized",
       ribbon: wixProduct.ribbon || undefined,
       notes: notesSection?.description || undefined,
       product: wixProduct.name,
-      sku: wixProduct.sku || wixProduct.id,
-      format: "1 x 750 ml",
-      price: wixProduct.price?.formatted?.price || wixProduct.price?.price?.toString() || "0",
       productImageUrl: wixProduct.media?.mainMedia?.image?.url,
       isHidden: !wixProduct.visible,
       collectionRaw,
       collectionCategory,
       collectionType,
-      collectionBrand,
+      collectionBrand: brand,
     };
+
+    const products: Product[] = [];
+    const variants = wixProduct.variants || [];
+
+    if (variants.length > 0) {
+      variants.forEach((variant, variantIndex) => {
+        products.push({
+          ...baseProduct,
+          id: `${wixProduct.id}-${variant.id}`,
+          sku: variant.sku || `${wixProduct.sku}-${variantIndex}`,
+          format: "1 x 750 ml",
+          price: variant.variant?.priceData?.formatted?.price || 
+                 variant.variant?.priceData?.price?.toString() || 
+                 wixProduct.price?.formatted?.price || 
+                 wixProduct.price?.price?.toString() || "0",
+        });
+      });
+    } else {
+      products.push({
+        ...baseProduct,
+        id: wixProduct.id || `wix-${baseIndex}`,
+        sku: wixProduct.sku || wixProduct.id,
+        format: "1 x 750 ml",
+        price: wixProduct.price?.formatted?.price || wixProduct.price?.price?.toString() || "0",
+      });
+    }
+
+    return products;
   }
 
   async syncProducts(accessToken: string): Promise<Product[]> {
     const wixProducts = await this.fetchAllProducts(accessToken);
-    return wixProducts.map((p, i) => this.mapWixProductToProduct(p, i));
+    const allProducts: Product[] = [];
+    
+    wixProducts.forEach((product, index) => {
+      const mapped = this.mapWixProductToProducts(product, index);
+      allProducts.push(...mapped);
+    });
+    
+    return allProducts;
   }
 }
 

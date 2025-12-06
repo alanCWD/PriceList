@@ -12,7 +12,7 @@ This project is a professional web application designed to generate stylish, pri
 - Typography and spacing must be exceptional
 
 ### Key Requirements
-- Support Wix CSV exports (extensible to other platforms)
+- Support Wix CSV exports and direct Wix API integration
 - Maximum 2 sales agents in footer
 - Optional QR code in footer
 - Category-based product grouping
@@ -68,6 +68,12 @@ The system features a robust, database-centric security model where all authoriz
 - **Database Persistence**: Full CRUD operations for pricelists with company isolation.
 - **Pricelist Viewing Workflow**: Users can view and download saved pricelists directly from the database without re-uploading CSVs via dedicated view pages.
 - **User Profile Menu & View Switching**: A user profile menu allows Super Admins to toggle between "admin" and "client" views, with preferences persisting in local storage.
+- **Wix Integration**: Direct eCommerce platform integration with Wix stores via OAuth2.
+  - **OAuth2 Flow**: Admin connects Wix store in Brand Registry settings → OAuth authorization → Tokens stored encrypted in database
+  - **Product Sync**: Users can "Sync from Wix" in the editor alongside CSV upload to import products directly from connected Wix store
+  - **Variant Handling**: Wix products with variants are flattened into separate Product entries, each with their own SKU and price
+  - **Database Schema**: `company_integrations` table stores encrypted credentials, refresh tokens, and sync metadata per company
+  - **Extensible Design**: Provider interface abstraction allows adding WooCommerce, Shopify, and other platforms
 
 ## External Dependencies
 
