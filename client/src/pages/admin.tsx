@@ -2191,6 +2191,12 @@ function BrandRegistryManager() {
   const [editingProductType, setEditingProductType] = useState<string>("");
   const [draggedProductId, setDraggedProductId] = useState<string | null>(null);
   const [draggedOverProductId, setDraggedOverProductId] = useState<string | null>(null);
+  
+  // Wix integration state
+  const [wixAppId, setWixAppId] = useState("");
+  const [wixInstallToken, setWixInstallToken] = useState("");
+  const [isConnectingWix, setIsConnectingWix] = useState(false);
+  const [isSyncingWix, setIsSyncingWix] = useState(false);
 
   // Debug logging
   console.log('[BrandRegistry] Render state:', { 
@@ -2349,6 +2355,34 @@ function BrandRegistryManager() {
     },
     enabled: isSuperAdmin ? !!selectedCompanyId : true,
   });
+  
+  // Fetch Wix integration status
+  interface WixIntegration {
+    id: number;
+    companyId: number;
+    provider: string;
+    status: string;
+    lastSyncAt?: string;
+    lastSyncStatus?: string;
+    lastSyncError?: string;
+    lastSyncProductCount?: number;
+  }
+  const { data: integrations, refetch: refetchIntegrations } = useQuery<WixIntegration[]>({
+    queryKey: isSuperAdmin 
+      ? ["/api/integrations", { companyId: selectedCompanyId }] 
+      : ["/api/integrations"],
+    queryFn: async () => {
+      const url = isSuperAdmin && selectedCompanyId
+        ? `/api/integrations?companyId=${selectedCompanyId}`
+        : "/api/integrations";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch integrations");
+      return res.json();
+    },
+    enabled: isSuperAdmin ? !!selectedCompanyId : true,
+  });
+  
+  const wixIntegration = integrations?.find(i => i.provider === "wix");
   
   // State for assigning products to brands (from unassigned section)
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
@@ -2796,6 +2830,98 @@ function BrandRegistryManager() {
       handleImportRegistry(file);
       // Reset file input so the same file can be selected again
       event.target.value = "";
+    }
+  };
+
+  // Wix integration handlers
+  const handleConnectWix = async () => {
+    if (!wixAppId || !wixInstallToken) {
+      toast({
+        title: "Missing information",
+        description: "Please enter your Wix App ID and Install Token",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsConnectingWix(true);
+    try {
+      const payload = isSuperAdmin && selectedCompanyId
+        ? { appId: wixAppId, installToken: wixInstallToken, companyId: selectedCompanyId }
+        : { appId: wixAppId, installToken: wixInstallToken };
+
+      const res = await apiRequest("POST", "/api/integrations/wix/connect", payload);
+      const data = await res.json();
+
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error("No authorization URL received");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Connection failed",
+        description: error.message || "Failed to connect to Wix",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnectingWix(false);
+    }
+  };
+
+  const handleSyncWix = async () => {
+    setIsSyncingWix(true);
+    try {
+      const payload = isSuperAdmin && selectedCompanyId
+        ? { companyId: selectedCompanyId }
+        : {};
+
+      const res = await apiRequest("POST", "/api/integrations/wix/sync", payload);
+      const data = await res.json();
+
+      if (data.success) {
+        toast({
+          title: "Sync successful!",
+          description: `Synced ${data.productCount} products from Wix`,
+        });
+        
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ["/api/integrations"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/brands/unassigned"] });
+      } else {
+        throw new Error(data.error || "Sync failed");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Sync failed",
+        description: error.message || "Failed to sync products from Wix",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncingWix(false);
+      refetchIntegrations();
+    }
+  };
+
+  const handleDisconnectWix = async () => {
+    try {
+      const url = isSuperAdmin && selectedCompanyId
+        ? `/api/integrations/wix?companyId=${selectedCompanyId}`
+        : "/api/integrations/wix";
+      
+      await apiRequest("DELETE", url);
+      
+      toast({ title: "Wix disconnected successfully" });
+      refetchIntegrations();
+      setWixAppId("");
+      setWixInstallToken("");
+    } catch (error: any) {
+      toast({
+        title: "Disconnect failed",
+        description: error.message || "Failed to disconnect Wix",
+        variant: "destructive",
+      });
     }
   };
 
@@ -3490,6 +3616,116 @@ function BrandRegistryManager() {
           </CardContent>
         </Card>
       )}
+
+      {/* Wix Integration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <LinkIcon className="w-5 h-5" />
+            Wix Integration
+          </CardTitle>
+          <CardDescription>
+            Connect to Wix to sync products directly from your store
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {wixIntegration?.status === "connected" ? (
+            <div className="space-y-4">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="flex items-center gap-2">
+                  <span className="text-green-600 font-medium">Connected to Wix</span>
+                  {wixIntegration.lastSyncAt && (
+                    <span className="text-muted-foreground text-sm">
+                      - Last synced: {new Date(wixIntegration.lastSyncAt).toLocaleString()}
+                    </span>
+                  )}
+                  {wixIntegration.lastSyncProductCount !== undefined && (
+                    <span className="text-muted-foreground text-sm">
+                      ({wixIntegration.lastSyncProductCount} products)
+                    </span>
+                  )}
+                </AlertDescription>
+              </Alert>
+              
+              {wixIntegration.lastSyncStatus === "error" && wixIntegration.lastSyncError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{wixIntegration.lastSyncError}</AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="flex flex-col gap-3 md:flex-row md:gap-2">
+                <Button
+                  onClick={handleSyncWix}
+                  disabled={isSyncingWix}
+                  data-testid="button-sync-wix"
+                  className="w-full md:w-auto"
+                >
+                  {isSyncingWix ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  Sync Products from Wix
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDisconnectWix}
+                  data-testid="button-disconnect-wix"
+                  className="w-full md:w-auto"
+                >
+                  Disconnect
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                To connect your Wix store, you'll need your App ID and Install Token from the Wix Developer Center.
+              </p>
+              
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="wix-app-id">Wix App ID</Label>
+                  <Input
+                    id="wix-app-id"
+                    value={wixAppId}
+                    onChange={(e) => setWixAppId(e.target.value)}
+                    placeholder="Enter your Wix App ID"
+                    data-testid="input-wix-app-id"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wix-install-token">Install Token</Label>
+                  <Input
+                    id="wix-install-token"
+                    value={wixInstallToken}
+                    onChange={(e) => setWixInstallToken(e.target.value)}
+                    placeholder="Enter your Install Token"
+                    type="password"
+                    data-testid="input-wix-install-token"
+                  />
+                </div>
+              </div>
+              
+              <Button
+                onClick={handleConnectWix}
+                disabled={isConnectingWix || !wixAppId || !wixInstallToken}
+                data-testid="button-connect-wix"
+                className="w-full md:w-auto"
+              >
+                {isConnectingWix ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Key className="w-4 h-4 mr-2" />
+                )}
+                Connect to Wix
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Brand Registry Settings - positioned at bottom */}
       <Card>
