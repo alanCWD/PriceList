@@ -232,6 +232,34 @@ export default function Landing() {
     return companyDefaults?.defaultBranding || { companyName: 'Company' };
   }, [latestPricelist, companyDefaults]);
 
+  // Get sales agents from pricelist
+  const salesAgents: SalesAgent[] = useMemo(() => {
+    if (latestPricelist?.salesAgents) {
+      try {
+        return typeof latestPricelist.salesAgents === 'string'
+          ? JSON.parse(latestPricelist.salesAgents)
+          : latestPricelist.salesAgents;
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }, [latestPricelist]);
+
+  // Get QR code config from pricelist
+  const qrCodeConfig: QRCodeConfig | undefined = useMemo(() => {
+    if (latestPricelist?.qrCode) {
+      try {
+        return typeof latestPricelist.qrCode === 'string'
+          ? JSON.parse(latestPricelist.qrCode)
+          : latestPricelist.qrCode;
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  }, [latestPricelist]);
+
   // Get template from pricelist or company defaults
   const template = latestPricelist?.template || companyDefaults?.defaultTemplate || 'modern';
 
@@ -295,7 +323,8 @@ export default function Landing() {
       await generatePDF({
         products,
         branding,
-        salesAgents: [],
+        salesAgents,
+        qrCodeConfig,
         template: template as Template,
         pricelistName: latestPricelist?.name || 'Pricelist',
         brandRegistry: brandOrderingData as any,
@@ -331,7 +360,8 @@ export default function Landing() {
       await generatePDF({
         products: filteredProducts,
         branding,
-        salesAgents: [],
+        salesAgents,
+        qrCodeConfig,
         template: template as Template,
         pricelistName: `${latestPricelist?.name || 'Pricelist'} - ${fileName}`,
         brandRegistry: filteredBrandRegistry as any,
@@ -611,8 +641,8 @@ export default function Landing() {
                     <PreviewPanel
                       products={products}
                       branding={branding}
-                      salesAgents={[]}
-                      qrCodeConfig={undefined}
+                      salesAgents={salesAgents}
+                      qrCodeConfig={qrCodeConfig}
                       template={template as Template}
                       brandRegistry={brandOrderingData as any}
                       companyId={pricelistCompanyId}
