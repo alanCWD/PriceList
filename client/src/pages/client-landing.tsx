@@ -35,6 +35,7 @@ export default function ClientLanding() {
   // The company selector is displayed in the header for Super Admins to choose
 
   // Fetch latest pricelist (includes impersonatedCompanyId in queryKey to refetch when company changes)
+  // Use short staleTime to ensure fresh data on each visit
   const { data: latestPricelist, isLoading, error } = useQuery<Pricelist>({
     queryKey: ['/api/pricelists/latest', { impersonatedCompanyId }],
     queryFn: async () => {
@@ -46,6 +47,8 @@ export default function ClientLanding() {
       return response.json();
     },
     enabled: impersonatedCompanyId !== null || user?.role !== 'superAdmin',
+    staleTime: 0, // Always consider data stale to ensure fresh fetch
+    refetchOnMount: true, // Refetch when component mounts
   });
 
   // Fetch company defaults for field mapping (includes impersonatedCompanyId in queryKey to refetch when company changes)

@@ -105,6 +105,7 @@ export default function Landing() {
   const canFetchCompanyData = !!user && (!isSuperAdmin || impersonatedCompanyId !== null);
 
   // Fetch latest pricelist for authenticated users (only when company is determined)
+  // Use short staleTime to ensure fresh data on each visit
   const { data: latestPricelist, isLoading: pricelistLoading } = useQuery<Pricelist>({
     queryKey: ['/api/pricelists/latest', { impersonatedCompanyId }],
     queryFn: async () => {
@@ -116,6 +117,8 @@ export default function Landing() {
       return response.json();
     },
     enabled: canFetchCompanyData,
+    staleTime: 0, // Always consider data stale to ensure fresh fetch
+    refetchOnMount: true, // Refetch when component mounts
   });
 
   // Fetch company defaults for branding
