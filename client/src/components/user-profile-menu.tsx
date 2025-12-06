@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { User, Settings, LogOut, Eye, LayoutDashboard, FileEdit } from "lucide-react";
+import { User, Settings, LogOut, Eye, LayoutDashboard, FileEdit, Home } from "lucide-react";
 
 export function UserProfileMenu() {
   const { user, isAdmin, isSuperAdmin } = useAuth();
@@ -26,6 +26,10 @@ export function UserProfileMenu() {
     queryClient.clear();
     // Redirect to logout endpoint
     window.location.href = "/api/logout";
+  };
+
+  const handleHomeClick = () => {
+    setLocation("/");
   };
 
   const handleAdminClick = () => {
@@ -103,6 +107,14 @@ export function UserProfileMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        
+        <DropdownMenuItem 
+          onClick={handleHomeClick}
+          data-testid="menu-item-home"
+        >
+          <Home className="mr-2 h-4 w-4" />
+          <span>Pricelist Generator</span>
+        </DropdownMenuItem>
         
         {isSuperAdmin && (
           <>
