@@ -23,6 +23,11 @@ import {
   productVisibility,
   type ProductVisibility,
   type InsertProductVisibility,
+  companyIntegrations,
+  type CompanyIntegration,
+  type InsertCompanyIntegration,
+  type UpdateCompanyIntegration,
+  type IntegrationProvider,
 } from "@shared/schema";
 import { eq, desc, and, asc, sql } from "drizzle-orm";
 
@@ -81,6 +86,14 @@ export interface IStorage {
   getVisibilityBySku(companyId: number, sku: string): Promise<ProductVisibility | undefined>;
   upsertVisibility(companyId: number, sku: string, isHidden: boolean): Promise<ProductVisibility>;
   getHiddenSkusByCompanyId(companyId: number): Promise<string[]>;
+  
+  // Company Integration operations
+  getIntegrationsByCompanyId(companyId: number): Promise<CompanyIntegration[]>;
+  getIntegrationByProvider(companyId: number, provider: IntegrationProvider): Promise<CompanyIntegration | undefined>;
+  getIntegrationById(id: number): Promise<CompanyIntegration | undefined>;
+  createIntegration(integration: InsertCompanyIntegration): Promise<CompanyIntegration>;
+  updateIntegration(id: number, updates: UpdateCompanyIntegration): Promise<CompanyIntegration | undefined>;
+  deleteIntegration(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -522,6 +535,63 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return results.map(r => r.sku);
+  }
+  
+  // Company Integration operations
+  async getIntegrationsByCompanyId(companyId: number): Promise<CompanyIntegration[]> {
+    return await db
+      .select()
+      .from(companyIntegrations)
+      .where(eq(companyIntegrations.companyId, companyId))
+      .orderBy(asc(companyIntegrations.provider));
+  }
+  
+  async getIntegrationByProvider(companyId: number, provider: IntegrationProvider): Promise<CompanyIntegration | undefined> {
+    const results = await db
+      .select()
+      .from(companyIntegrations)
+      .where(
+        and(
+          eq(companyIntegrations.companyId, companyId),
+          eq(companyIntegrations.provider, provider)
+        )
+      )
+      .limit(1);
+    return results[0];
+  }
+  
+  async getIntegrationById(id: number): Promise<CompanyIntegration | undefined> {
+    const results = await db
+      .select()
+      .from(companyIntegrations)
+      .where(eq(companyIntegrations.id, id))
+      .limit(1);
+    return results[0];
+  }
+  
+  async createIntegration(integration: InsertCompanyIntegration): Promise<CompanyIntegration> {
+    const result = await db
+      .insert(companyIntegrations)
+      .values(integration)
+      .returning();
+    return result[0]!;
+  }
+  
+  async updateIntegration(id: number, updates: UpdateCompanyIntegration): Promise<CompanyIntegration | undefined> {
+    const result = await db
+      .update(companyIntegrations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(companyIntegrations.id, id))
+      .returning();
+    return result[0];
+  }
+  
+  async deleteIntegration(id: number): Promise<boolean> {
+    const result = await db
+      .delete(companyIntegrations)
+      .where(eq(companyIntegrations.id, id))
+      .returning();
+    return result.length > 0;
   }
 }
 

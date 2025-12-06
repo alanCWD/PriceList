@@ -1,0 +1,254 @@
+import type { Product, IntegrationProvider } from "@shared/schema";
+
+export interface WixConfig {
+  appId: string;
+  siteId?: string;
+}
+
+export interface WixTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+}
+
+interface WixProduct {
+  id: string;
+  name: string;
+  slug: string;
+  visible: boolean;
+  productType: string;
+  description: string;
+  sku: string;
+  weight: number;
+  ribbon?: string;
+  brand?: string;
+  price: {
+    currency: string;
+    price: number;
+    discountedPrice?: number;
+    formatted: {
+      price: string;
+      discountedPrice?: string;
+    };
+  };
+  media?: {
+    mainMedia?: {
+      image?: {
+        url: string;
+      };
+    };
+  };
+  additionalInfoSections?: Array<{
+    title: string;
+    description: string;
+  }>;
+  collections?: Array<{
+    id: string;
+    name: string;
+  }>;
+  variants?: Array<{
+    id: string;
+    sku: string;
+    variant: {
+      priceData: {
+        price: number;
+        formatted: {
+          price: string;
+        };
+      };
+    };
+  }>;
+  inventory?: {
+    status: string;
+    quantity: number;
+  };
+}
+
+interface WixProductsResponse {
+  products: WixProduct[];
+  metadata: {
+    count: number;
+    offset: number;
+    total: number;
+  };
+}
+
+const WIX_API_BASE = "https://www.wixapis.com";
+const WIX_OAUTH_URL = "https://www.wix.com/oauth/access";
+
+export class WixIntegrationService {
+  private appId: string;
+  private appSecret: string;
+
+  constructor(appId: string, appSecret: string) {
+    this.appId = appId;
+    this.appSecret = appSecret;
+  }
+
+  getAuthorizationUrl(redirectUrl: string, state: string, token: string): string {
+    const params = new URLSearchParams({
+      token,
+      appId: this.appId,
+      redirectUrl,
+      state,
+    });
+    return `https://www.wix.com/installer/install?${params.toString()}`;
+  }
+
+  async exchangeCodeForTokens(code: string): Promise<WixTokens> {
+    const response = await fetch(WIX_OAUTH_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        code,
+        client_id: this.appId,
+        client_secret: this.appSecret,
+        grant_type: "authorization_code",
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to exchange code for tokens: ${error}`);
+    }
+
+    const data = await response.json();
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    };
+  }
+
+  async refreshAccessToken(refreshToken: string): Promise<WixTokens> {
+    const response = await fetch(WIX_OAUTH_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        refresh_token: refreshToken,
+        client_id: this.appId,
+        client_secret: this.appSecret,
+        grant_type: "refresh_token",
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to refresh token: ${error}`);
+    }
+
+    const data = await response.json();
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token || refreshToken,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    };
+  }
+
+  async fetchProducts(accessToken: string, limit = 100, offset = 0): Promise<WixProductsResponse> {
+    const response = await fetch(`${WIX_API_BASE}/stores/v1/products/query`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        query: {
+          paging: {
+            limit,
+            offset,
+          },
+        },
+        includeVariants: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to fetch products: ${error}`);
+    }
+
+    return await response.json();
+  }
+
+  async fetchAllProducts(accessToken: string): Promise<WixProduct[]> {
+    const allProducts: WixProduct[] = [];
+    let offset = 0;
+    const limit = 100;
+    let hasMore = true;
+
+    while (hasMore) {
+      const response = await this.fetchProducts(accessToken, limit, offset);
+      allProducts.push(...response.products);
+
+      if (response.products.length < limit || allProducts.length >= response.metadata.total) {
+        hasMore = false;
+      } else {
+        offset += limit;
+      }
+    }
+
+    return allProducts;
+  }
+
+  mapWixProductToProduct(wixProduct: WixProduct, index: number): Product {
+    const additionalInfo = wixProduct.additionalInfoSections || [];
+    const notesSection = additionalInfo.find(
+      (s) => s.title.toLowerCase().includes("note") || 
+             s.title.toLowerCase() === "additionalinfodescription2"
+    );
+
+    const collectionNames = wixProduct.collections?.map((c) => c.name) || [];
+    const collectionRaw = collectionNames.join(", ");
+
+    let collectionCategory: "cider" | "wine" | "spirits" | "nonAlc" | undefined;
+    let collectionBrand: string | undefined;
+    let collectionType: string | undefined;
+
+    for (const name of collectionNames) {
+      const lower = name.toLowerCase();
+      if (lower.includes("cider")) collectionCategory = "cider";
+      else if (lower.includes("wine") || lower.includes("red") || lower.includes("white") || lower.includes("rosé") || lower.includes("sparkling")) {
+        collectionCategory = "wine";
+        if (lower.includes("red")) collectionType = "red";
+        else if (lower.includes("white")) collectionType = "white";
+        else if (lower.includes("rosé") || lower.includes("rose")) collectionType = "rosé";
+        else if (lower.includes("sparkling")) collectionType = "sparkling";
+      }
+      else if (lower.includes("spirit") || lower.includes("whisky") || lower.includes("vodka") || lower.includes("gin")) collectionCategory = "spirits";
+      else if (lower.includes("non-alc") || lower.includes("non alc") || lower.includes("nonalc")) collectionCategory = "nonAlc";
+    }
+
+    collectionBrand = wixProduct.brand || collectionNames[0];
+
+    return {
+      id: wixProduct.id || `wix-${index}`,
+      category: collectionBrand || "Uncategorized",
+      ribbon: wixProduct.ribbon || undefined,
+      notes: notesSection?.description || undefined,
+      product: wixProduct.name,
+      sku: wixProduct.sku || wixProduct.id,
+      format: "1 x 750 ml",
+      price: wixProduct.price?.formatted?.price || wixProduct.price?.price?.toString() || "0",
+      productImageUrl: wixProduct.media?.mainMedia?.image?.url,
+      isHidden: !wixProduct.visible,
+      collectionRaw,
+      collectionCategory,
+      collectionType,
+      collectionBrand,
+    };
+  }
+
+  async syncProducts(accessToken: string): Promise<Product[]> {
+    const wixProducts = await this.fetchAllProducts(accessToken);
+    return wixProducts.map((p, i) => this.mapWixProductToProduct(p, i));
+  }
+}
+
+export function createWixService(appId: string, appSecret: string): WixIntegrationService {
+  return new WixIntegrationService(appId, appSecret);
+}

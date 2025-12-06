@@ -397,3 +397,61 @@ export const insertProductVisibilitySchema = createInsertSchema(productVisibilit
 }).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertProductVisibility = z.infer<typeof insertProductVisibilitySchema>;
+
+// ===== COMPANY INTEGRATIONS TABLE =====
+
+// Supported eCommerce platform providers
+export const integrationProviderEnum = z.enum(['wix', 'woocommerce', 'shopify', 'squarespace', 'magento']);
+export type IntegrationProvider = z.infer<typeof integrationProviderEnum>;
+
+// Integration status
+export const integrationStatusEnum = z.enum(['disconnected', 'pending', 'connected', 'error']);
+export type IntegrationStatus = z.infer<typeof integrationStatusEnum>;
+
+// Company Integrations table - stores eCommerce platform connections per company
+export const companyIntegrations = pgTable("company_integrations", {
+  id: serial("id").primaryKey(),
+  
+  // Company association
+  companyId: integer("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  // Provider type
+  provider: varchar("provider", { length: 50 }).notNull().$type<IntegrationProvider>(),
+  
+  // Connection status
+  status: varchar("status", { length: 50 }).notNull().default("disconnected").$type<IntegrationStatus>(),
+  
+  // Provider-specific configuration (non-sensitive, e.g., site URL, app ID)
+  config: jsonb("config").$type<Record<string, string>>(),
+  
+  // Encrypted tokens (stored encrypted, decrypted in-memory only)
+  refreshToken: text("refresh_token"), // Long-lived refresh token (encrypted)
+  accessToken: text("access_token"), // Short-lived access token (encrypted, cached)
+  accessTokenExpiresAt: timestamp("access_token_expires_at"), // When access token expires
+  
+  // Sync metadata
+  lastSyncAt: timestamp("last_sync_at"),
+  lastSyncStatus: varchar("last_sync_status", { length: 50 }), // "success", "error", "partial"
+  lastSyncError: text("last_sync_error"), // Error message if sync failed
+  lastSyncProductCount: integer("last_sync_product_count"), // Number of products synced
+  
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  // One integration per provider per company
+  index("company_integrations_company_provider_idx").on(table.companyId, table.provider),
+]);
+
+export type CompanyIntegration = typeof companyIntegrations.$inferSelect;
+
+export const insertCompanyIntegrationSchema = createInsertSchema(companyIntegrations, {
+  provider: integrationProviderEnum,
+  status: integrationStatusEnum.optional(),
+  config: z.record(z.string(), z.string()).optional(),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type InsertCompanyIntegration = z.infer<typeof insertCompanyIntegrationSchema>;
+
+export const updateCompanyIntegrationSchema = insertCompanyIntegrationSchema.partial();
+export type UpdateCompanyIntegration = z.infer<typeof updateCompanyIntegrationSchema>;

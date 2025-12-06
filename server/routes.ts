@@ -2321,6 +2321,356 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== COMPANY INTEGRATIONS ROUTES =====
+
+  // Get all integrations for a company
+  app.get("/api/integrations", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      
+      // Get user's company or impersonated company (for super admins)
+      let companyId = user.companyId;
+      const requestedCompanyId = req.query.companyId ? parseInt(req.query.companyId as string) : null;
+      
+      // Super admins can view any company's integrations
+      const isSuperAdmin = await isUserSuperAdmin(user.email);
+      if (isSuperAdmin && requestedCompanyId) {
+        companyId = requestedCompanyId;
+      }
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "No company context" });
+      }
+      
+      const integrations = await storage.getIntegrationsByCompanyId(companyId);
+      
+      // Mask sensitive token data
+      const safeIntegrations = integrations.map(i => ({
+        ...i,
+        refreshToken: i.refreshToken ? "••••••••" : null,
+        accessToken: i.accessToken ? "••••••••" : null,
+      }));
+      
+      res.json(safeIntegrations);
+    } catch (error) {
+      console.error("Error fetching integrations:", error);
+      res.status(500).json({ error: "Failed to fetch integrations" });
+    }
+  });
+
+  // Get Wix OAuth authorization URL
+  app.post("/api/integrations/wix/connect", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { companyId: requestedCompanyId, appId, installToken } = req.body;
+      
+      // Get target company
+      let companyId = user.companyId;
+      const isSuperAdmin = await isUserSuperAdmin(user.email);
+      if (isSuperAdmin && requestedCompanyId) {
+        companyId = requestedCompanyId;
+      }
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "No company context" });
+      }
+      
+      if (!appId || !installToken) {
+        return res.status(400).json({ error: "Missing appId or installToken" });
+      }
+      
+      // Create or update integration record with pending status
+      let integration = await storage.getIntegrationByProvider(companyId, "wix");
+      
+      if (integration) {
+        await storage.updateIntegration(integration.id, {
+          status: "pending",
+          config: { appId },
+        });
+      } else {
+        integration = await storage.createIntegration({
+          companyId,
+          provider: "wix",
+          status: "pending",
+          config: { appId },
+        });
+      }
+      
+      // Generate state for CSRF protection
+      const state = `${companyId}:${Date.now()}`;
+      
+      // Build redirect URL for OAuth callback
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const redirectUrl = `${baseUrl}/api/integrations/wix/callback`;
+      
+      // Build Wix authorization URL
+      const authUrl = `https://www.wix.com/installer/install?token=${installToken}&appId=${appId}&redirectUrl=${encodeURIComponent(redirectUrl)}&state=${encodeURIComponent(state)}`;
+      
+      res.json({ authUrl, state });
+    } catch (error) {
+      console.error("Error initiating Wix connection:", error);
+      res.status(500).json({ error: "Failed to initiate Wix connection" });
+    }
+  });
+
+  // Wix OAuth callback - handles token exchange
+  app.get("/api/integrations/wix/callback", async (req, res) => {
+    try {
+      const { code, state } = req.query;
+      
+      if (!code || !state) {
+        return res.redirect("/?error=missing_params");
+      }
+      
+      // Parse state to get company ID
+      const [companyIdStr] = (state as string).split(":");
+      const companyId = parseInt(companyIdStr);
+      
+      if (!companyId) {
+        return res.redirect("/?error=invalid_state");
+      }
+      
+      // Get integration record to get appId
+      const integration = await storage.getIntegrationByProvider(companyId, "wix");
+      if (!integration || !integration.config?.appId) {
+        return res.redirect("/?error=no_integration");
+      }
+      
+      const appId = integration.config.appId;
+      const appSecret = process.env.WIX_APP_SECRET;
+      
+      if (!appSecret) {
+        console.error("WIX_APP_SECRET not configured");
+        return res.redirect("/?error=config_error");
+      }
+      
+      // Exchange code for tokens
+      const tokenResponse = await fetch("https://www.wix.com/oauth/access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          client_id: appId,
+          client_secret: appSecret,
+          grant_type: "authorization_code",
+        }),
+      });
+      
+      if (!tokenResponse.ok) {
+        const error = await tokenResponse.text();
+        console.error("Wix token exchange failed:", error);
+        return res.redirect("/?error=token_exchange_failed");
+      }
+      
+      const tokens = await tokenResponse.json();
+      
+      // Update integration with tokens
+      await storage.updateIntegration(integration.id, {
+        status: "connected",
+        refreshToken: tokens.refresh_token,
+        accessToken: tokens.access_token,
+        accessTokenExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      });
+      
+      // Redirect to admin page with success message
+      res.redirect("/admin?tab=brands&wix_connected=true");
+    } catch (error) {
+      console.error("Error in Wix callback:", error);
+      res.redirect("/?error=callback_failed");
+    }
+  });
+
+  // Sync products from Wix
+  app.post("/api/integrations/wix/sync", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { companyId: requestedCompanyId } = req.body;
+      
+      // Get target company
+      let companyId = user.companyId;
+      const isSuperAdmin = await isUserSuperAdmin(user.email);
+      if (isSuperAdmin && requestedCompanyId) {
+        companyId = requestedCompanyId;
+      }
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "No company context" });
+      }
+      
+      // Get integration
+      const integration = await storage.getIntegrationByProvider(companyId, "wix");
+      if (!integration || integration.status !== "connected") {
+        return res.status(400).json({ error: "Wix not connected" });
+      }
+      
+      if (!integration.refreshToken) {
+        return res.status(400).json({ error: "No refresh token" });
+      }
+      
+      const appId = integration.config?.appId;
+      const appSecret = process.env.WIX_APP_SECRET;
+      
+      if (!appId || !appSecret) {
+        return res.status(500).json({ error: "Wix configuration missing" });
+      }
+      
+      // Check if access token needs refresh
+      let accessToken = integration.accessToken;
+      const now = new Date();
+      
+      if (!accessToken || !integration.accessTokenExpiresAt || integration.accessTokenExpiresAt < now) {
+        // Refresh the access token
+        const refreshResponse = await fetch("https://www.wix.com/oauth/access", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            refresh_token: integration.refreshToken,
+            client_id: appId,
+            client_secret: appSecret,
+            grant_type: "refresh_token",
+          }),
+        });
+        
+        if (!refreshResponse.ok) {
+          const error = await refreshResponse.text();
+          console.error("Token refresh failed:", error);
+          
+          // Mark integration as error
+          await storage.updateIntegration(integration.id, {
+            status: "error",
+            lastSyncStatus: "error",
+            lastSyncError: "Token refresh failed - please reconnect",
+          });
+          
+          return res.status(401).json({ error: "Token refresh failed - please reconnect" });
+        }
+        
+        const tokens = await refreshResponse.json();
+        accessToken = tokens.access_token;
+        
+        // Update stored tokens
+        await storage.updateIntegration(integration.id, {
+          accessToken,
+          refreshToken: tokens.refresh_token || integration.refreshToken,
+          accessTokenExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+        });
+      }
+      
+      // Fetch products from Wix
+      const allProducts: any[] = [];
+      let offset = 0;
+      const limit = 100;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const productsResponse = await fetch("https://www.wixapis.com/stores/v1/products/query", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            query: { paging: { limit, offset } },
+            includeVariants: true,
+          }),
+        });
+        
+        if (!productsResponse.ok) {
+          const error = await productsResponse.text();
+          console.error("Wix products fetch failed:", error);
+          
+          await storage.updateIntegration(integration.id, {
+            lastSyncStatus: "error",
+            lastSyncError: `API error: ${error}`,
+            lastSyncAt: new Date(),
+          });
+          
+          return res.status(500).json({ error: "Failed to fetch products from Wix" });
+        }
+        
+        const data = await productsResponse.json();
+        allProducts.push(...(data.products || []));
+        
+        if (!data.products || data.products.length < limit) {
+          hasMore = false;
+        } else {
+          offset += limit;
+        }
+      }
+      
+      // Map Wix products to our Product format
+      const products = allProducts.map((wixProduct: any, index: number) => {
+        const additionalInfo = wixProduct.additionalInfoSections || [];
+        const notesSection = additionalInfo.find(
+          (s: any) => s.title?.toLowerCase().includes("note") || 
+                       s.title?.toLowerCase() === "additionalinfodescription2"
+        );
+        
+        const collectionNames = wixProduct.collectionIds?.map((id: string) => id) || [];
+        
+        return {
+          id: wixProduct.id || `wix-${index}`,
+          category: wixProduct.brand || "Uncategorized",
+          ribbon: wixProduct.ribbon || undefined,
+          notes: notesSection?.description || undefined,
+          product: wixProduct.name,
+          sku: wixProduct.sku || wixProduct.id,
+          format: "1 x 750 ml",
+          price: wixProduct.price?.formatted?.price || wixProduct.price?.price?.toString() || "0",
+          productImageUrl: wixProduct.media?.mainMedia?.image?.url,
+          isHidden: !wixProduct.visible,
+          collectionRaw: collectionNames.join(", "),
+          collectionBrand: wixProduct.brand,
+        };
+      });
+      
+      // Update integration status
+      await storage.updateIntegration(integration.id, {
+        lastSyncAt: new Date(),
+        lastSyncStatus: "success",
+        lastSyncError: null,
+        lastSyncProductCount: products.length,
+      });
+      
+      res.json({
+        success: true,
+        productCount: products.length,
+        products,
+      });
+    } catch (error) {
+      console.error("Error syncing from Wix:", error);
+      res.status(500).json({ error: "Failed to sync products from Wix" });
+    }
+  });
+
+  // Disconnect Wix integration
+  app.delete("/api/integrations/wix", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const requestedCompanyId = req.query.companyId ? parseInt(req.query.companyId as string) : null;
+      
+      let companyId = user.companyId;
+      const isSuperAdmin = await isUserSuperAdmin(user.email);
+      if (isSuperAdmin && requestedCompanyId) {
+        companyId = requestedCompanyId;
+      }
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "No company context" });
+      }
+      
+      const integration = await storage.getIntegrationByProvider(companyId, "wix");
+      if (integration) {
+        await storage.deleteIntegration(integration.id);
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error disconnecting Wix:", error);
+      res.status(500).json({ error: "Failed to disconnect Wix" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
