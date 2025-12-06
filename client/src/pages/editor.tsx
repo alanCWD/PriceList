@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Upload, FileText, Settings, Eye, Save, ArrowLeft } from "lucide-react";
+import { Upload, FileText, Settings, Eye, Save, ArrowLeft, Loader2, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -64,6 +64,9 @@ export default function Editor() {
   // Initialize from URL param if present, otherwise null (will auto-select for super admins)
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(urlCompanyId);
   
+  // Wix sync state
+  const [isSyncingWix, setIsSyncingWix] = useState(false);
+  
   // Track CSV + mapping fingerprint to detect when products need regeneration
   const csvFingerprintRef = useRef<string>('');
   
@@ -82,6 +85,31 @@ export default function Editor() {
     queryKey: ['/api/companies'],
     enabled: user?.role === 'superAdmin',
   });
+
+  // Fetch Wix integration status
+  interface WixIntegration {
+    id: number;
+    companyId: number;
+    provider: string;
+    status: string;
+    lastSyncAt?: string;
+    lastSyncProductCount?: number;
+  }
+  const companyIdForIntegration = user?.role === 'superAdmin' ? selectedCompanyId : user?.companyId;
+  const { data: integrations } = useQuery<WixIntegration[]>({
+    queryKey: ["/api/integrations", { companyId: companyIdForIntegration }],
+    queryFn: async () => {
+      const url = user?.role === 'superAdmin' && companyIdForIntegration
+        ? `/api/integrations?companyId=${companyIdForIntegration}`
+        : "/api/integrations";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!companyIdForIntegration,
+  });
+  
+  const wixIntegration = integrations?.find(i => i.provider === "wix" && i.status === "connected");
 
   // Auto-select first company if Super Admin hasn't selected one yet (only for new pricelists)
   // Skip auto-select if URL param already set the company
@@ -641,6 +669,42 @@ export default function Editor() {
     setActiveTab("mapping");
   };
 
+  // Handle Wix sync - fetches products from connected Wix store
+  const handleWixSync = async () => {
+    setIsSyncingWix(true);
+    try {
+      const payload = user?.role === 'superAdmin' && selectedCompanyId
+        ? { companyId: selectedCompanyId }
+        : {};
+
+      const res = await apiRequest("POST", "/api/integrations/wix/sync", payload);
+      const data = await res.json();
+
+      if (data.success && data.products) {
+        // Set the products directly from Wix
+        setProducts(data.products);
+        
+        toast({
+          title: "Wix sync successful!",
+          description: `Imported ${data.productCount} products from your Wix store`,
+        });
+        
+        // Skip to the collection/review tab since products are already mapped
+        setActiveTab("collection");
+      } else {
+        throw new Error(data.error || "Sync failed");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Wix sync failed",
+        description: error.message || "Failed to sync products from Wix",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncingWix(false);
+    }
+  };
+
   const handleApplyMapping = () => {
     // Build a map of existing products by SKU to preserve hidden state
     const existingProductsBySKU = new Map<string, Product>();
@@ -1029,7 +1093,52 @@ export default function Editor() {
                 <p className="text-xs text-muted-foreground">This ensures CSV columns are mapped correctly.</p>
               </div>
             ) : (
-              <CSVUpload onUpload={handleCSVUpload} />
+              <div className="space-y-6">
+                <CSVUpload onUpload={handleCSVUpload} />
+                
+                {/* Wix Sync Option */}
+                {wixIntegration && (
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">Or sync from</span>
+                    </div>
+                  </div>
+                )}
+                
+                {wixIntegration && (
+                  <div className="flex flex-col items-center gap-4 p-6 border rounded-lg bg-muted/30">
+                    <div className="text-center">
+                      <h3 className="font-medium flex items-center justify-center gap-2">
+                        <LinkIcon className="w-4 h-4" />
+                        Wix Store Connected
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Import products directly from your Wix store
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleWixSync}
+                      disabled={isSyncingWix}
+                      data-testid="button-sync-wix"
+                    >
+                      {isSyncingWix ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Syncing...
+                        </>
+                      ) : (
+                        <>
+                          <LinkIcon className="w-4 h-4 mr-2" />
+                          Sync from Wix
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
           </TabsContent>
 
