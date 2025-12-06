@@ -655,7 +655,7 @@ function MinimalTemplate({
                   {displayName}
                 </h2>
 
-                {/* Ultra-Compact Table */}
+                {/* Ultra-Compact Table - 6 columns matching PDF generator */}
                 <table 
               className="w-full border-collapse"
               style={{ 
@@ -674,7 +674,7 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: '12%'
+                      width: '9.4%'  /* 50pt / 532pt */
                     }}
                   >
                     SKU
@@ -686,7 +686,7 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: '42%'
+                      width: '34.8%'  /* 185pt / 532pt */
                     }}
                   >
                     Product
@@ -698,19 +698,19 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: '12%'
+                      width: '10.3%'  /* 55pt / 532pt */
                     }}
                   >
                     Format
                   </th>
                   <th 
-                    className="text-right font-semibold"
+                    className="text-left font-semibold"
                     style={{ 
                       padding: '2px 4px',
                       fontSize: '7px',
                       fontWeight: 600,
-                      textAlign: 'right',
-                      width: '8%'
+                      textAlign: 'left',
+                      width: '7.5%'  /* 40pt / 532pt - left-aligned to match PDF */
                     }}
                   >
                     Price
@@ -722,7 +722,19 @@ function MinimalTemplate({
                       fontSize: '7px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: '20%'
+                      width: '17.9%'  /* 95pt / 532pt - Ribbon column (blank header) */
+                    }}
+                  >
+                    {/* Blank header for Ribbon */}
+                  </th>
+                  <th 
+                    className="text-left font-semibold"
+                    style={{ 
+                      padding: '2px 4px',
+                      fontSize: '7px',
+                      fontWeight: 600,
+                      textAlign: 'left',
+                      width: '20.1%'  /* 107pt / 532pt */
                     }}
                   >
                     Notes
@@ -747,11 +759,14 @@ function MinimalTemplate({
                     <td style={{ padding: '1px 4px', fontSize: '8.5px' }}>
                       {product.format}
                     </td>
-                    <td style={{ padding: '1px 4px', fontSize: '8.5px', fontWeight: 500, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    <td style={{ padding: '1px 4px', fontSize: '8.5px', fontWeight: 500, textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}>
                       {formatPrice(product.price)}
                     </td>
                     <td style={{ padding: '1px 4px', fontSize: '8.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {product.notes}
+                      {product.ribbon || ''}
+                    </td>
+                    <td style={{ padding: '1px 4px', fontSize: '8.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {product.notes || ''}
                     </td>
                   </tr>
                 ))}
