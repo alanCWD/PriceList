@@ -165,6 +165,14 @@ export function PreviewPanel({
 
   const handleDownloadPDF = async () => {
     try {
+      // Debug: Log ribbon data before PDF generation
+      const productsWithRibbon = filteredProducts.filter(p => p.ribbon && p.ribbon.trim() !== "");
+      const productsWithNotes = filteredProducts.filter(p => p.notes && p.notes.trim() !== "");
+      console.log(`[PreviewPanel] PDF Download: ${filteredProducts.length} products, ${productsWithRibbon.length} with ribbon, ${productsWithNotes.length} with notes`);
+      if (productsWithRibbon.length > 0) {
+        console.log(`[PreviewPanel] Sample ribbon data:`, productsWithRibbon.slice(0, 3).map(p => ({ sku: p.sku, ribbon: p.ribbon, notes: p.notes })));
+      }
+      
       await generatePDF({
         products: filteredProducts,
         branding,

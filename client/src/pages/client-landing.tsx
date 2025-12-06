@@ -393,6 +393,18 @@ export default function ClientLanding() {
       const allProducts = latestPricelist.products as Product[];
       const visibleProducts = allProducts.filter(p => !isProductHidden(p));
       
+      // Debug: Log ribbon data before PDF generation
+      const productsWithRibbon = visibleProducts.filter(p => p.ribbon && p.ribbon.trim() !== "");
+      const productsWithNotes = visibleProducts.filter(p => p.notes && p.notes.trim() !== "");
+      console.log(`[ClientLanding] PDF Download: ${visibleProducts.length} products, ${productsWithRibbon.length} with ribbon, ${productsWithNotes.length} with notes`);
+      if (productsWithRibbon.length > 0) {
+        console.log(`[ClientLanding] Sample ribbon data:`, productsWithRibbon.slice(0, 3).map(p => ({ sku: p.sku, ribbon: p.ribbon, notes: p.notes })));
+      } else {
+        // Check if any products have ribbon property at all
+        const sampleProducts = visibleProducts.slice(0, 3);
+        console.log(`[ClientLanding] No ribbon data found. Sample products:`, sampleProducts.map(p => ({ sku: p.sku, ribbon: p.ribbon, notes: p.notes, keys: Object.keys(p) })));
+      }
+      
       await generatePDF({
         products: visibleProducts,
         branding: latestPricelist.branding as CompanyBranding,

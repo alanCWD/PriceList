@@ -1314,6 +1314,14 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
 
     // Products table with compressed spacing - column order: SKU, Product, Format, Price, Ribbon+Notes
     // Concatenate ribbon and notes values with space separator for minimal template
+    
+    // Debug: Log products with ribbon data
+    const productsWithRibbon = currentCategoryProducts.filter(p => p.ribbon && p.ribbon.trim() !== "");
+    console.log(`[MinimalPDF] Brand "${groupBrandName}": ${currentCategoryProducts.length} products, ${productsWithRibbon.length} with ribbon data`);
+    if (productsWithRibbon.length > 0) {
+      console.log(`[MinimalPDF] Sample ribbon values:`, productsWithRibbon.slice(0, 3).map(p => ({ sku: p.sku, ribbon: p.ribbon, notes: p.notes })));
+    }
+    
     const tableData = currentCategoryProducts.map(product => {
       const ribbon = product.ribbon || "";
       const notes = product.notes || "";
