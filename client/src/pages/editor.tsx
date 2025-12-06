@@ -613,8 +613,10 @@ export default function Editor() {
         ribbon: headers.find(h => h.toLowerCase() === "ribbon") || "",
         notes: headers.find(h => {
           const lower = h.toLowerCase();
-          // Match columns that are specifically 'notes' or contain 'notes' but not 'ribbon'
-          return lower === "notes" || (lower.includes("note") && !lower.includes("ribbon"));
+          // Match columns that are specifically 'notes', contain 'notes', or Wix's additionalInfoDescription2
+          return lower === "notes" || 
+                 (lower.includes("note") && !lower.includes("ribbon")) ||
+                 lower === "additionalinfodescription2";
         }) || "",
         productImageUrl: headers.find(h => {
           const lower = h.toLowerCase();

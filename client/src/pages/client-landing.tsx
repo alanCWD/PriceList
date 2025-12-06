@@ -275,7 +275,7 @@ export default function ClientLanding() {
             format: headers.find((h) => /format|size|volume/i.test(h)) || "",
             price: headers.find((h) => /price|cost|amount/i.test(h)) || "",
             category: headers.find((h) => /category|type|brand/i.test(h)) || "",
-            notes: headers.find((h) => /note|description|comment/i.test(h)) || "",
+            notes: headers.find((h) => /^notes$|note|additionalinfodescription2/i.test(h)) || "",
             productImageUrl: headers.find((h) => /image|photo|picture|url/i.test(h)) || "",
           };
         }

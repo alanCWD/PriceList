@@ -1312,33 +1312,33 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
 
     const currentCategoryProducts = [...categoryProducts];
 
-    // Products table with compressed spacing - column order: SKU, Product, Format, Price, Ribbon+Notes
-    // Concatenate ribbon and notes values with space separator for minimal template
+    // Products table with compressed spacing - column order: SKU, Product, Format, Price, Ribbon, Notes
+    // Ribbon is 2nd-to-last column (blank header), Notes is last column
     
-    // Debug: Log products with ribbon data
+    // Debug: Log products with ribbon and notes data
     const productsWithRibbon = currentCategoryProducts.filter(p => p.ribbon && p.ribbon.trim() !== "");
-    console.log(`[MinimalPDF] Brand "${groupBrandName}": ${currentCategoryProducts.length} products, ${productsWithRibbon.length} with ribbon data`);
-    if (productsWithRibbon.length > 0) {
-      console.log(`[MinimalPDF] Sample ribbon values:`, productsWithRibbon.slice(0, 3).map(p => ({ sku: p.sku, ribbon: p.ribbon, notes: p.notes })));
+    const productsWithNotes = currentCategoryProducts.filter(p => p.notes && p.notes.trim() !== "");
+    console.log(`[MinimalPDF] Brand "${groupBrandName}": ${currentCategoryProducts.length} products, ${productsWithRibbon.length} with ribbon, ${productsWithNotes.length} with notes`);
+    if (productsWithRibbon.length > 0 || productsWithNotes.length > 0) {
+      console.log(`[MinimalPDF] Sample data:`, currentCategoryProducts.slice(0, 3).map(p => ({ sku: p.sku, ribbon: p.ribbon, notes: p.notes })));
     }
     
     const tableData = currentCategoryProducts.map(product => {
-      const ribbon = product.ribbon || "";
-      const notes = product.notes || "";
-      // Combine ribbon and notes with space separator, trim any excess whitespace
-      const combinedNotes = [ribbon, notes].filter(Boolean).join(" ").trim();
+      const ribbon = (product.ribbon || "").trim();
+      const notes = (product.notes || "").trim();
       
       return [
         product.sku,
         product.product,
         product.format,
         formatPrice(product.price),
-        combinedNotes
+        ribbon,  // 2nd-to-last column (blank header)
+        notes    // Last column
       ];
     });
 
-    // Build header row - use blank header for combined Ribbon+Notes column
-    const headRow = ["SKU", "Product", "Format", "Price", ""];
+    // Build header row - Ribbon has blank header, Notes has "Notes" header
+    const headRow = ["SKU", "Product", "Format", "Price", "", "Notes"];
 
     autoTable(doc, {
       startY: yPosition,
@@ -1364,14 +1364,15 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         fillColor: [242, 242, 242], // Stronger zebra striping for better visibility
       },
       columnStyles: {
-        // Column order: SKU, Product, Format, Price, Ribbon+Notes
+        // Column order: SKU, Product, Format, Price, Ribbon (blank header), Notes
         // Available width: 612pt - 80pt margins = 532pt
-        // Optimized widths with minimum spacing: 60 + 260 + 65 + 45 + 102 = 532pt
-        0: { cellWidth: 60 },      // SKU (slightly reduced)
-        1: { cellWidth: 260 },     // Product (more space for names)
-        2: { cellWidth: 65 },      // Format
-        3: { cellWidth: 45, halign: "right" },  // Price - right-aligned (compact)
-        4: { cellWidth: 102 },     // Ribbon+Notes (combined column)
+        // Optimized widths for 6 columns: 55 + 220 + 60 + 42 + 75 + 80 = 532pt
+        0: { cellWidth: 55 },      // SKU
+        1: { cellWidth: 220 },     // Product (reduced for extra column)
+        2: { cellWidth: 60 },      // Format
+        3: { cellWidth: 42, halign: "right" },  // Price - right-aligned
+        4: { cellWidth: 75 },      // Ribbon (blank header, 2nd-to-last)
+        5: { cellWidth: 80 },      // Notes (last column)
       },
       margin: { left: margin, right: margin, top: 35, bottom: margin + footerHeight },
       didDrawPage: (data) => {
