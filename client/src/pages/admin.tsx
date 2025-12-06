@@ -132,17 +132,17 @@ export default function AdminPage() {
           </>
         ) : (
           <>
-            {/* Company Admin Tabs */}
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="branding" data-testid="tab-company-branding">
+            {/* Company Admin Tabs - stack on mobile */}
+            <TabsList className="flex flex-col w-full md:grid md:grid-cols-3 h-auto">
+              <TabsTrigger value="branding" data-testid="tab-company-branding" className="w-full justify-center">
                 <Building2 className="w-4 h-4 mr-2" />
                 Company Branding
               </TabsTrigger>
-              <TabsTrigger value="sales-agents" data-testid="tab-company-sales-agents">
+              <TabsTrigger value="sales-agents" data-testid="tab-company-sales-agents" className="w-full justify-center">
                 <Users className="w-4 h-4 mr-2" />
                 Sales Agents
               </TabsTrigger>
-              <TabsTrigger value="brands" data-testid="tab-brand-registry">
+              <TabsTrigger value="brands" data-testid="tab-brand-registry" className="w-full justify-center">
                 <Tag className="w-4 h-4 mr-2" />
                 Brand Registry
               </TabsTrigger>
@@ -2974,85 +2974,29 @@ function BrandRegistryManager() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Brand Registry</CardTitle>
-              <CardDescription>
-                Manage your company's brand list for consistent categorization and sorting
-              </CardDescription>
-              {pricelistMeta && (
-                <div className="mt-2 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-md inline-flex items-center gap-2" data-testid="pricelist-info">
-                  <span className="font-medium">Products from:</span>
-                  <span>{pricelistMeta.name}</span>
-                  <span className="text-muted-foreground/70">|</span>
-                  <span>{pricelistMeta.totalProducts} products</span>
-                  {pricelistMeta.productsWithoutBrand > 0 && (
-                    <>
-                      <span className="text-muted-foreground/70">|</span>
-                      <span className="text-amber-600 dark:text-amber-400">
-                        {pricelistMeta.productsWithoutBrand} unmatched
-                      </span>
-                    </>
-                  )}
-                  <span className="text-muted-foreground/70">|</span>
-                  <span>Updated: {new Date(pricelistMeta.updatedAt).toLocaleDateString()}</span>
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button 
-                onClick={handleExportRegistry} 
-                variant="outline"
-                disabled={isExporting || !brands || brands.length === 0}
-                data-testid="button-export-registry"
-              >
-                {isExporting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 mr-2" />
+          <div>
+            <CardTitle>Brand Registry</CardTitle>
+            <CardDescription>
+              Manage your company's brand list for consistent categorization and sorting
+            </CardDescription>
+            {pricelistMeta && (
+              <div className="mt-2 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-md inline-flex items-center gap-2 flex-wrap" data-testid="pricelist-info">
+                <span className="font-medium">Products from:</span>
+                <span>{pricelistMeta.name}</span>
+                <span className="text-muted-foreground/70">|</span>
+                <span>{pricelistMeta.totalProducts} products</span>
+                {pricelistMeta.productsWithoutBrand > 0 && (
+                  <>
+                    <span className="text-muted-foreground/70">|</span>
+                    <span className="text-amber-600 dark:text-amber-400">
+                      {pricelistMeta.productsWithoutBrand} unmatched
+                    </span>
+                  </>
                 )}
-                Export
-              </Button>
-              <Button 
-                variant="outline"
-                disabled={isImporting}
-                data-testid="button-import-registry"
-                asChild
-              >
-                <label className="cursor-pointer">
-                  {isImporting ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Upload className="w-4 h-4 mr-2" />
-                  )}
-                  Import
-                  <input 
-                    type="file" 
-                    accept=".json"
-                    onChange={handleFileChange}
-                    className="sr-only"
-                    data-testid="input-import-file"
-                  />
-                </label>
-              </Button>
-              <Button 
-                onClick={() => regenerateSortKeysMutation.mutate()} 
-                variant="outline"
-                disabled={regenerateSortKeysMutation.isPending}
-                data-testid="button-regenerate-sortkeys"
-              >
-                {regenerateSortKeysMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <ArrowUpDown className="w-4 h-4 mr-2" />
-                )}
-                Fix Sort Order
-              </Button>
-              <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-brand">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Brand
-              </Button>
-            </div>
+                <span className="text-muted-foreground/70">|</span>
+                <span>Updated: {new Date(pricelistMeta.updatedAt).toLocaleDateString()}</span>
+              </div>
+            )}
           </div>
           {isSuperAdmin && (
             <div className="mt-4">
@@ -3546,6 +3490,79 @@ function BrandRegistryManager() {
           </CardContent>
         </Card>
       )}
+
+      {/* Brand Registry Settings - positioned at bottom */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Brand Registry Settings</CardTitle>
+          <CardDescription>
+            Export, import, or manage your brand registry
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3 md:flex-row md:gap-2">
+            <Button 
+              onClick={handleExportRegistry} 
+              variant="outline"
+              disabled={isExporting || !brands || brands.length === 0}
+              data-testid="button-export-registry"
+              className="w-full md:w-auto"
+            >
+              {isExporting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              Export Registry
+            </Button>
+            <Button 
+              variant="outline"
+              disabled={isImporting}
+              data-testid="button-import-registry"
+              asChild
+              className="w-full md:w-auto"
+            >
+              <label className="cursor-pointer">
+                {isImporting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4 mr-2" />
+                )}
+                Import Registry
+                <input 
+                  type="file" 
+                  accept=".json"
+                  onChange={handleFileChange}
+                  className="sr-only"
+                  data-testid="input-import-file"
+                />
+              </label>
+            </Button>
+            <Button 
+              onClick={() => regenerateSortKeysMutation.mutate()} 
+              variant="outline"
+              disabled={regenerateSortKeysMutation.isPending}
+              data-testid="button-regenerate-sortkeys"
+              className="w-full md:w-auto"
+            >
+              {regenerateSortKeysMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <ArrowUpDown className="w-4 h-4 mr-2" />
+              )}
+              Fix Sort Order
+            </Button>
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)} 
+              data-testid="button-add-brand"
+              className="w-full md:w-auto"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Brand
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Add Brand Dialog */}
       {isAddDialogOpen && (
