@@ -1371,7 +1371,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         0: { cellWidth: 50 },      // SKU
         1: { cellWidth: 185 },     // Product (moved left 0.5" = reduced by 35pt)
         2: { cellWidth: 55 },      // Format (moved left 0.5")
-        3: { cellWidth: 40, halign: "right" },  // Price - right-aligned (moved left 1")
+        3: { cellWidth: 40, halign: "left" },   // Price - left-aligned to stay under header
         4: { cellWidth: 95 },      // Ribbon (blank header, 2nd-to-last) - more space
         5: { cellWidth: 107 },     // Notes (last column) - more space
       },
