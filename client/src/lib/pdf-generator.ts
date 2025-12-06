@@ -1399,11 +1399,22 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         const footerText = formatFooterText(pageNum, branding.companyName, dayMonthDate, brandName, 25);
         doc.text(footerText, margin, footerY);
         
-        // Tiny QR code on the right
+        // Tiny QR code on the right with "Order Here:" label
         if (qrCodeBase64) {
           try {
             const qrX = pageWidth - margin - qrCodeSize;
             const qrY = separatorY + 1;
+            
+            // Add "Order Here:" text to the left of the QR code
+            doc.setFontSize(7);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(100, 100, 100);
+            const labelText = "Order Here:";
+            const labelWidth = doc.getTextWidth(labelText);
+            const labelX = qrX - labelWidth - 3; // 3pt gap between text and QR code
+            const labelY = qrY + (qrCodeSize / 2) + 2; // Vertically center with QR code
+            doc.text(labelText, labelX, labelY);
+            
             doc.addImage(qrCodeBase64, 'PNG', qrX, qrY, qrCodeSize, qrCodeSize);
           } catch (error) {
             console.error('Failed to add QR code to PDF:', error);
