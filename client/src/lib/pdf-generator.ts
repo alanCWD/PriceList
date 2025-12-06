@@ -1366,13 +1366,14 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       columnStyles: {
         // Column order: SKU, Product, Format, Price, Ribbon (blank header), Notes
         // Available width: 612pt - 80pt margins = 532pt
-        // Optimized widths for 6 columns: 55 + 220 + 60 + 42 + 75 + 80 = 532pt
-        0: { cellWidth: 55 },      // SKU
-        1: { cellWidth: 220 },     // Product (reduced for extra column)
-        2: { cellWidth: 60 },      // Format
-        3: { cellWidth: 42, halign: "right" },  // Price - right-aligned
-        4: { cellWidth: 75 },      // Ribbon (blank header, 2nd-to-last)
-        5: { cellWidth: 80 },      // Notes (last column)
+        // Adjusted widths per user request: Product -0.5", Format -0.5", Price -1" (moved left)
+        // New widths: 50 + 185 + 55 + 40 + 95 + 107 = 532pt
+        0: { cellWidth: 50 },      // SKU
+        1: { cellWidth: 185 },     // Product (moved left 0.5" = reduced by 35pt)
+        2: { cellWidth: 55 },      // Format (moved left 0.5")
+        3: { cellWidth: 40, halign: "right" },  // Price - right-aligned (moved left 1")
+        4: { cellWidth: 95 },      // Ribbon (blank header, 2nd-to-last) - more space
+        5: { cellWidth: 107 },     // Notes (last column) - more space
       },
       margin: { left: margin, right: margin, top: 35, bottom: margin + footerHeight },
       didDrawPage: (data) => {
