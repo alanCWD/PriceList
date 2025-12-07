@@ -2333,7 +2333,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestedCompanyId = req.query.companyId ? parseInt(req.query.companyId as string) : null;
       
       // Super admins can view any company's integrations
-      const isSuperAdmin = await isUserSuperAdmin(user.email);
+      const isSuperAdmin = user.role === "superAdmin";
       if (isSuperAdmin && requestedCompanyId) {
         companyId = requestedCompanyId;
       }
@@ -2366,7 +2366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get target company
       let companyId = user.companyId;
-      const isSuperAdmin = await isUserSuperAdmin(user.email);
+      const isSuperAdmin = user.role === "superAdmin";
       if (isSuperAdmin && requestedCompanyId) {
         companyId = requestedCompanyId;
       }
@@ -2488,7 +2488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get target company
       let companyId = user.companyId;
-      const isSuperAdmin = await isUserSuperAdmin(user.email);
+      const isSuperAdmin = user.role === "superAdmin";
       if (isSuperAdmin && requestedCompanyId) {
         companyId = requestedCompanyId;
       }
@@ -2650,7 +2650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestedCompanyId = req.query.companyId ? parseInt(req.query.companyId as string) : null;
       
       let companyId = user.companyId;
-      const isSuperAdmin = await isUserSuperAdmin(user.email);
+      const isSuperAdmin = user.role === "superAdmin";
       if (isSuperAdmin && requestedCompanyId) {
         companyId = requestedCompanyId;
       }
