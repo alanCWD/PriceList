@@ -2326,14 +2326,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all integrations for a company
   app.get("/api/integrations", isAuthenticated, async (req, res) => {
     try {
-      const user = req.user as User;
+      const sessionUser = req.user as any;
+      const userId = sessionUser.claims?.sub;
+      const dbUser = await storage.getUser(userId);
+      
+      if (!dbUser) {
+        return res.status(401).json({ error: "User not found" });
+      }
       
       // Get user's company or impersonated company (for super admins)
-      let companyId = user.companyId;
+      let companyId = dbUser.companyId;
       const requestedCompanyId = req.query.companyId ? parseInt(req.query.companyId as string) : null;
       
       // Super admins can view any company's integrations
-      const isSuperAdmin = user.role === "superAdmin";
+      const isSuperAdmin = dbUser.role === "superAdmin";
       if (isSuperAdmin && requestedCompanyId) {
         companyId = requestedCompanyId;
       }
@@ -2361,21 +2367,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get Wix OAuth authorization URL
   app.post("/api/integrations/wix/connect", isAuthenticated, async (req, res) => {
     try {
-      const user = req.user as User;
+      const sessionUser = req.user as any;
+      const userId = sessionUser.claims?.sub;
+      const dbUser = await storage.getUser(userId);
+      
+      if (!dbUser) {
+        return res.status(401).json({ error: "User not found" });
+      }
+      
       const { companyId: requestedCompanyId, appId, installToken } = req.body;
       
-      console.log("[Wix Connect] Request body:", JSON.stringify(req.body));
-      console.log("[Wix Connect] User companyId:", user.companyId, "Role:", user.role);
-      console.log("[Wix Connect] Requested companyId:", requestedCompanyId);
-      
       // Get target company
-      let companyId = user.companyId;
-      const isSuperAdmin = user.role === "superAdmin";
+      let companyId = dbUser.companyId;
+      const isSuperAdmin = dbUser.role === "superAdmin";
       if (isSuperAdmin && requestedCompanyId) {
         companyId = requestedCompanyId;
       }
-      
-      console.log("[Wix Connect] Final companyId:", companyId, "isSuperAdmin:", isSuperAdmin);
       
       if (!companyId) {
         return res.status(400).json({ error: "No company context" });
@@ -2489,12 +2496,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sync products from Wix
   app.post("/api/integrations/wix/sync", isAuthenticated, async (req, res) => {
     try {
-      const user = req.user as User;
+      const sessionUser = req.user as any;
+      const userId = sessionUser.claims?.sub;
+      const dbUser = await storage.getUser(userId);
+      
+      if (!dbUser) {
+        return res.status(401).json({ error: "User not found" });
+      }
+      
       const { companyId: requestedCompanyId } = req.body;
       
       // Get target company
-      let companyId = user.companyId;
-      const isSuperAdmin = user.role === "superAdmin";
+      let companyId = dbUser.companyId;
+      const isSuperAdmin = dbUser.role === "superAdmin";
       if (isSuperAdmin && requestedCompanyId) {
         companyId = requestedCompanyId;
       }
@@ -2652,11 +2666,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Disconnect Wix integration
   app.delete("/api/integrations/wix", isAuthenticated, async (req, res) => {
     try {
-      const user = req.user as User;
+      const sessionUser = req.user as any;
+      const userId = sessionUser.claims?.sub;
+      const dbUser = await storage.getUser(userId);
+      
+      if (!dbUser) {
+        return res.status(401).json({ error: "User not found" });
+      }
+      
       const requestedCompanyId = req.query.companyId ? parseInt(req.query.companyId as string) : null;
       
-      let companyId = user.companyId;
-      const isSuperAdmin = user.role === "superAdmin";
+      let companyId = dbUser.companyId;
+      const isSuperAdmin = dbUser.role === "superAdmin";
       if (isSuperAdmin && requestedCompanyId) {
         companyId = requestedCompanyId;
       }
