@@ -2715,23 +2715,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Fetch products from Wix
+      // Fetch products from Wix using Catalog V3 API with cursor pagination
       const allProducts: any[] = [];
-      let offset = 0;
+      let cursor: string | null = null;
       const limit = 100;
       let hasMore = true;
       
       while (hasMore) {
-        const productsResponse = await fetch("https://www.wixapis.com/stores/v1/products/query", {
+        const requestBody: any = {
+          query: { 
+            paging: { limit } 
+          }
+        };
+        
+        // Add cursor for subsequent pages
+        if (cursor) {
+          requestBody.query.paging.cursor = cursor;
+        }
+        
+        const productsResponse = await fetch("https://www.wixapis.com/stores/v3/products/query", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({
-            query: { paging: { limit, offset } },
-            includeVariants: true,
-          }),
+          body: JSON.stringify(requestBody),
         });
         
         if (!productsResponse.ok) {
@@ -2750,11 +2758,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const data = await productsResponse.json();
         allProducts.push(...(data.products || []));
         
-        if (!data.products || data.products.length < limit) {
-          hasMore = false;
-        } else {
-          offset += limit;
-        }
+        // V3 uses cursor-based pagination
+        cursor = data.pagingMetadata?.cursors?.next || null;
+        hasMore = !!cursor;
       }
       
       // Map Wix products to our Product format

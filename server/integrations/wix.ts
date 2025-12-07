@@ -71,6 +71,7 @@ interface WixProductsResponse {
     offset: number;
     total: number;
   };
+  _cursor?: string | null;
 }
 
 const WIX_API_BASE = "https://www.wixapis.com";
@@ -149,22 +150,25 @@ export class WixIntegrationService {
     };
   }
 
-  async fetchProducts(accessToken: string, limit = 100, offset = 0): Promise<WixProductsResponse> {
-    const response = await fetch(`${WIX_API_BASE}/stores/v1/products/query`, {
+  async fetchProducts(accessToken: string, limit = 100, cursor?: string): Promise<WixProductsResponse> {
+    const requestBody: any = {
+      query: {
+        paging: { limit },
+      },
+    };
+    
+    // Add cursor for subsequent pages (V3 uses cursor-based pagination)
+    if (cursor) {
+      requestBody.query.paging.cursor = cursor;
+    }
+    
+    const response = await fetch(`${WIX_API_BASE}/stores/v3/products/query`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({
-        query: {
-          paging: {
-            limit,
-            offset,
-          },
-        },
-        includeVariants: true,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -172,24 +176,33 @@ export class WixIntegrationService {
       throw new Error(`Failed to fetch products: ${error}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    
+    // Adapt V3 response to match expected interface
+    return {
+      products: data.products || [],
+      metadata: {
+        count: data.products?.length || 0,
+        total: data.pagingMetadata?.total || data.products?.length || 0,
+        offset: 0,
+      },
+      _cursor: data.pagingMetadata?.cursors?.next || null,
+    };
   }
 
   async fetchAllProducts(accessToken: string): Promise<WixProduct[]> {
     const allProducts: WixProduct[] = [];
-    let offset = 0;
+    let cursor: string | undefined = undefined;
     const limit = 100;
     let hasMore = true;
 
     while (hasMore) {
-      const response = await this.fetchProducts(accessToken, limit, offset);
+      const response = await this.fetchProducts(accessToken, limit, cursor);
       allProducts.push(...response.products);
 
-      if (response.products.length < limit || allProducts.length >= response.metadata.total) {
-        hasMore = false;
-      } else {
-        offset += limit;
-      }
+      // V3 uses cursor-based pagination
+      cursor = (response as any)._cursor;
+      hasMore = !!cursor;
     }
 
     return allProducts;
