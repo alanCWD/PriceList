@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Download, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical, ArrowUpDown, Eye, EyeOff, AlertCircle, Link as LinkIcon, Key } from "lucide-react";
+import { Loader2, Building2, Users, Trash2, Edit, Plus, Upload, Download, Building, UserCog, Tag, ChevronDown, ChevronUp, GripVertical, ArrowUpDown, Eye, EyeOff, AlertCircle, Link as LinkIcon, Key, ExternalLink } from "lucide-react";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { CSVUpload } from "@/components/csv-upload";
 import { ColorPicker } from "@/components/color-picker";
@@ -3741,23 +3741,38 @@ function BrandRegistryManager() {
                   </div>
                   
                   <div className="text-sm text-muted-foreground space-y-1">
-                    <p className="font-medium">Steps:</p>
+                    <p className="font-medium">First-time Setup:</p>
                     <ol className="list-decimal list-inside space-y-1">
                       <li>Go to Wix Developer Center → Your App → OAuth</li>
                       <li>Set the App URL and Redirect URL to the values above</li>
                       <li>Save and create a new app version</li>
-                      <li>Install/reinstall the app on your Wix site</li>
-                      <li>The connection will complete automatically</li>
+                    </ol>
+                    
+                    <p className="font-medium mt-4">To Complete Connection:</p>
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Go to your Wix Dashboard → Manage Apps</li>
+                      <li>Click on your app to open it</li>
+                      <li>This will redirect you through the authorization flow</li>
                     </ol>
                   </div>
                   
-                  <Button
-                    variant="outline"
-                    onClick={() => setWixSetupInfo(null)}
-                    className="w-full md:w-auto"
-                  >
-                    Close Instructions
-                  </Button>
+                  <div className="flex flex-col gap-2 md:flex-row md:gap-2">
+                    <Button
+                      onClick={() => window.open("https://manage.wix.com/account/site-selector?actionUrl=https%3A%2F%2Fmanage.wix.com%2Fdashboard%2F%7BmetaSiteId%7D%2Fapp-market%2Fmy-apps", "_blank")}
+                      data-testid="button-open-wix-apps"
+                      className="w-full md:w-auto"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Open Wix My Apps
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setWixSetupInfo(null)}
+                      className="w-full md:w-auto"
+                    >
+                      Close Instructions
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <>
