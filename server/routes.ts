@@ -2364,7 +2364,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get Wix OAuth authorization URL
+  // Wix App URL - This is called by Wix when user installs the app
+  // User sets this URL in Wix Dev Center as "App URL"
+  app.get("/api/integrations/wix/app", async (req, res) => {
+    try {
+      const { token, instanceId, state: stateParam } = req.query;
+      
+      console.log("[Wix App] Received params:", { 
+        hasToken: !!token, 
+        hasInstanceId: !!instanceId,
+        hasState: !!stateParam 
+      });
+      
+      const appId = process.env.WIX_APP_ID;
+      const appSecret = process.env.WIX_APP_SECRET;
+      
+      if (!appId || !appSecret) {
+        console.error("[Wix App] Missing WIX_APP_ID or WIX_APP_SECRET");
+        return res.redirect("/?error=wix_config_missing");
+      }
+      
+      // Build base URL for redirect
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL || 
+                      (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 
+                       `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+      const redirectUrl = `${baseUrl}/api/integrations/wix/callback`;
+      
+      console.log("[Wix App] Redirect URL:", redirectUrl);
+      
+      if (token) {
+        // Advanced OAuth flow: Wix sent a token, redirect to installer
+        // The state will encode our company ID (we'll use default company 2 for now, or parse from query)
+        const companyId = stateParam ? parseInt(stateParam as string) : 2;
+        const state = `${companyId}:${Date.now()}`;
+        
+        const installerUrl = new URL("https://www.wix.com/installer/install");
+        installerUrl.searchParams.set("token", token as string);
+        installerUrl.searchParams.set("appId", appId);
+        installerUrl.searchParams.set("redirectUrl", redirectUrl);
+        installerUrl.searchParams.set("state", state);
+        
+        console.log("[Wix App] Redirecting to installer:", installerUrl.toString());
+        return res.redirect(installerUrl.toString());
+      }
+      
+      if (instanceId) {
+        // Standard OAuth flow: Wix sent instanceId directly
+        // Use client_credentials to get access token
+        console.log("[Wix App] Using client_credentials with instanceId:", instanceId);
+        
+        const tokenResponse = await fetch("https://www.wixapis.com/oauth/access", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            grant_type: "client_credentials",
+            client_id: appId,
+            client_secret: appSecret,
+            instance_id: instanceId,
+          }),
+        });
+        
+        if (!tokenResponse.ok) {
+          const error = await tokenResponse.text();
+          console.error("[Wix App] Token request failed:", error);
+          return res.redirect("/?error=wix_token_failed");
+        }
+        
+        const tokens = await tokenResponse.json();
+        console.log("[Wix App] Got tokens, storing...");
+        
+        // Store integration for default company (2)
+        const companyId = 2;
+        let integration = await storage.getIntegrationByProvider(companyId, "wix");
+        
+        if (integration) {
+          await storage.updateIntegration(integration.id, {
+            status: "connected",
+            accessToken: tokens.access_token,
+            accessTokenExpiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4 hours for client_credentials
+            config: { appId, instanceId: instanceId as string },
+          });
+        } else {
+          await storage.createIntegration({
+            companyId,
+            provider: "wix",
+            status: "connected",
+            accessToken: tokens.access_token,
+            accessTokenExpiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
+            config: { appId, instanceId: instanceId as string },
+          });
+        }
+        
+        return res.redirect("/admin?tab=brands&wix_connected=true");
+      }
+      
+      // No token or instanceId - show error
+      console.error("[Wix App] No token or instanceId provided");
+      return res.redirect("/?error=wix_no_params");
+    } catch (error) {
+      console.error("[Wix App] Error:", error);
+      return res.redirect("/?error=wix_app_error");
+    }
+  });
+
+  // Get Wix connection info and App URL for setup
   app.post("/api/integrations/wix/connect", isAuthenticated, async (req, res) => {
     try {
       const sessionUser = req.user as any;
@@ -2390,21 +2493,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get Wix credentials from environment
       const appId = process.env.WIX_APP_ID;
-      const appSecret = process.env.WIX_APP_SECRET;
       
-      if (!appId || !appSecret) {
-        return res.status(500).json({ error: "Wix App ID and Secret must be configured in environment variables" });
+      if (!appId) {
+        return res.status(500).json({ error: "Wix App ID must be configured in environment variables" });
       }
+      
+      // Build the App URL that user needs to configure in Wix Dev Center
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL || 
+                      (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 
+                       `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+      const appUrl = `${baseUrl}/api/integrations/wix/app?state=${companyId}`;
+      const redirectUrl = `${baseUrl}/api/integrations/wix/callback`;
+      
+      console.log("[Wix Connect] App URL:", appUrl);
+      console.log("[Wix Connect] Redirect URL:", redirectUrl);
       
       // Create or update integration record with pending status
       let integration = await storage.getIntegrationByProvider(companyId, "wix");
       
-      if (integration) {
-        await storage.updateIntegration(integration.id, {
-          status: "pending",
-          config: { appId },
-        });
-      } else {
+      if (!integration) {
         integration = await storage.createIntegration({
           companyId,
           provider: "wix",
@@ -2413,65 +2520,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Generate state for CSRF protection (includes integration ID for callback lookup)
-      const state = `${companyId}:${integration.id}:${Date.now()}`;
-      
-      // Build redirect URL for OAuth callback
-      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL || 
-                      (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 
-                       `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
-      const redirectUrl = `${baseUrl}/api/integrations/wix/callback`;
-      
-      console.log("[Wix Connect] Redirect URL:", redirectUrl);
-      
-      // Build Wix OAuth authorization URL (standard OAuth 2.0 flow)
-      const authUrl = new URL("https://www.wix.com/oauth/authorize");
-      authUrl.searchParams.set("client_id", appId);
-      authUrl.searchParams.set("redirect_uri", redirectUrl);
-      authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("scope", "offline_access");
-      authUrl.searchParams.set("state", state);
-      
-      res.json({ authUrl: authUrl.toString(), state });
+      // Return setup instructions instead of redirect URL
+      res.json({ 
+        appUrl,
+        redirectUrl,
+        message: "Configure these URLs in your Wix Developer Center, then install the app on your Wix site.",
+        instructions: [
+          "1. Go to Wix Developer Center → Your App → OAuth",
+          `2. Set App URL to: ${appUrl}`,
+          `3. Set Redirect URL to: ${redirectUrl}`,
+          "4. Save and create a new app version",
+          "5. Install/reinstall the app on your Wix site",
+          "6. The connection will complete automatically"
+        ]
+      });
     } catch (error) {
       console.error("Error initiating Wix connection:", error);
       res.status(500).json({ error: "Failed to initiate Wix connection" });
     }
   });
 
-  // Wix OAuth callback - handles token exchange
+  // Wix OAuth callback - handles token exchange from installer flow
   app.get("/api/integrations/wix/callback", async (req, res) => {
     try {
-      const { code, state } = req.query;
+      const { code, state, instanceId } = req.query;
       
-      if (!code || !state) {
-        return res.redirect("/?error=missing_params");
+      console.log("[Wix Callback] Received params:", { 
+        hasCode: !!code, 
+        hasState: !!state, 
+        hasInstanceId: !!instanceId 
+      });
+      
+      if (!code) {
+        console.error("[Wix Callback] Missing code");
+        return res.redirect("/?error=missing_code");
       }
       
-      // Parse state to get company ID
-      const [companyIdStr] = (state as string).split(":");
-      const companyId = parseInt(companyIdStr);
-      
-      if (!companyId) {
-        return res.redirect("/?error=invalid_state");
+      // Parse state to get company ID (format: "companyId:timestamp")
+      let companyId = 2; // Default fallback
+      if (state) {
+        const [companyIdStr] = (state as string).split(":");
+        const parsedCompanyId = parseInt(companyIdStr);
+        if (parsedCompanyId) {
+          companyId = parsedCompanyId;
+        }
       }
       
-      // Get integration record to get appId
-      const integration = await storage.getIntegrationByProvider(companyId, "wix");
-      if (!integration || !integration.config?.appId) {
-        return res.redirect("/?error=no_integration");
-      }
+      console.log("[Wix Callback] Using companyId:", companyId);
       
-      const appId = integration.config.appId;
+      const appId = process.env.WIX_APP_ID;
       const appSecret = process.env.WIX_APP_SECRET;
       
-      if (!appSecret) {
-        console.error("WIX_APP_SECRET not configured");
+      if (!appId || !appSecret) {
+        console.error("[Wix Callback] Missing WIX_APP_ID or WIX_APP_SECRET");
         return res.redirect("/?error=config_error");
       }
       
-      // Exchange code for tokens
-      const tokenResponse = await fetch("https://www.wix.com/oauth/access", {
+      // Exchange code for tokens using Wix API
+      console.log("[Wix Callback] Exchanging code for tokens...");
+      const tokenResponse = await fetch("https://www.wixapis.com/oauth/access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2484,24 +2591,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!tokenResponse.ok) {
         const error = await tokenResponse.text();
-        console.error("Wix token exchange failed:", error);
+        console.error("[Wix Callback] Token exchange failed:", error);
         return res.redirect("/?error=token_exchange_failed");
       }
       
       const tokens = await tokenResponse.json();
+      console.log("[Wix Callback] Token exchange successful, storing tokens...");
       
-      // Update integration with tokens
-      await storage.updateIntegration(integration.id, {
-        status: "connected",
+      // Get or create integration record
+      let integration = await storage.getIntegrationByProvider(companyId, "wix");
+      
+      const integrationData = {
+        status: "connected" as const,
         refreshToken: tokens.refresh_token,
         accessToken: tokens.access_token,
-        accessTokenExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
-      });
+        accessTokenExpiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes for auth code flow
+        config: { 
+          appId, 
+          instanceId: instanceId as string || tokens.instance_id 
+        },
+      };
+      
+      if (integration) {
+        await storage.updateIntegration(integration.id, integrationData);
+      } else {
+        await storage.createIntegration({
+          companyId,
+          provider: "wix",
+          ...integrationData,
+        });
+      }
+      
+      console.log("[Wix Callback] Integration stored successfully!");
       
       // Redirect to admin page with success message
       res.redirect("/admin?tab=brands&wix_connected=true");
     } catch (error) {
-      console.error("Error in Wix callback:", error);
+      console.error("[Wix Callback] Error:", error);
       res.redirect("/?error=callback_failed");
     }
   });

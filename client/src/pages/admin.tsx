@@ -2833,6 +2833,13 @@ function BrandRegistryManager() {
     }
   };
 
+  // Wix setup info state
+  const [wixSetupInfo, setWixSetupInfo] = useState<{
+    appUrl: string;
+    redirectUrl: string;
+    instructions: string[];
+  } | null>(null);
+
   // Wix integration handlers
   const handleConnectWix = async () => {
     setIsConnectingWix(true);
@@ -2844,10 +2851,22 @@ function BrandRegistryManager() {
       const res = await apiRequest("POST", "/api/integrations/wix/connect", payload);
       const data = await res.json();
 
-      if (data.authUrl) {
+      if (data.appUrl && data.redirectUrl) {
+        // Show setup instructions instead of redirecting
+        setWixSetupInfo({
+          appUrl: data.appUrl,
+          redirectUrl: data.redirectUrl,
+          instructions: data.instructions || [],
+        });
+        toast({
+          title: "Setup Instructions",
+          description: "Configure the URLs shown below in your Wix Developer Center.",
+        });
+      } else if (data.authUrl) {
+        // Legacy flow - redirect directly
         window.location.href = data.authUrl;
       } else {
-        throw new Error(data.error || "No authorization URL received");
+        throw new Error(data.error || "Failed to get setup information");
       }
     } catch (error: any) {
       toast({
@@ -3672,23 +3691,95 @@ function BrandRegistryManager() {
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Connect your Wix store to automatically sync products. You'll be redirected to Wix to authorize the connection.
-              </p>
-              
-              <Button
-                onClick={handleConnectWix}
-                disabled={isConnectingWix}
-                data-testid="button-connect-wix"
-                className="w-full md:w-auto"
-              >
-                {isConnectingWix ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Key className="w-4 h-4 mr-2" />
-                )}
-                Connect to Wix
-              </Button>
+              {wixSetupInfo ? (
+                <>
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Configure these URLs in your Wix Developer Center:</strong>
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium">App URL:</label>
+                      <div className="flex gap-2 mt-1">
+                        <code className="flex-1 p-2 bg-muted rounded text-xs break-all">
+                          {wixSetupInfo.appUrl}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            navigator.clipboard.writeText(wixSetupInfo.appUrl);
+                            toast({ title: "Copied App URL" });
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium">Redirect URL:</label>
+                      <div className="flex gap-2 mt-1">
+                        <code className="flex-1 p-2 bg-muted rounded text-xs break-all">
+                          {wixSetupInfo.redirectUrl}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            navigator.clipboard.writeText(wixSetupInfo.redirectUrl);
+                            toast({ title: "Copied Redirect URL" });
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p className="font-medium">Steps:</p>
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Go to Wix Developer Center → Your App → OAuth</li>
+                      <li>Set the App URL and Redirect URL to the values above</li>
+                      <li>Save and create a new app version</li>
+                      <li>Install/reinstall the app on your Wix site</li>
+                      <li>The connection will complete automatically</li>
+                    </ol>
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => setWixSetupInfo(null)}
+                    className="w-full md:w-auto"
+                  >
+                    Close Instructions
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Connect your Wix store to automatically sync products. Click the button below to get setup instructions.
+                  </p>
+                  
+                  <Button
+                    onClick={handleConnectWix}
+                    disabled={isConnectingWix}
+                    data-testid="button-connect-wix"
+                    className="w-full md:w-auto"
+                  >
+                    {isConnectingWix ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Key className="w-4 h-4 mr-2" />
+                    )}
+                    Connect to Wix
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </CardContent>
