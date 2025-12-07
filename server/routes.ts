@@ -2364,12 +2364,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as User;
       const { companyId: requestedCompanyId, appId, installToken } = req.body;
       
+      console.log("[Wix Connect] Request body:", JSON.stringify(req.body));
+      console.log("[Wix Connect] User companyId:", user.companyId, "Role:", user.role);
+      console.log("[Wix Connect] Requested companyId:", requestedCompanyId);
+      
       // Get target company
       let companyId = user.companyId;
       const isSuperAdmin = user.role === "superAdmin";
       if (isSuperAdmin && requestedCompanyId) {
         companyId = requestedCompanyId;
       }
+      
+      console.log("[Wix Connect] Final companyId:", companyId, "isSuperAdmin:", isSuperAdmin);
       
       if (!companyId) {
         return res.status(400).json({ error: "No company context" });
