@@ -3758,12 +3758,12 @@ function BrandRegistryManager() {
                   
                   <div className="flex flex-col gap-2 md:flex-row md:gap-2">
                     <Button
-                      onClick={() => window.open("https://manage.wix.com/account/site-selector?actionUrl=https%3A%2F%2Fmanage.wix.com%2Fdashboard%2F%7BmetaSiteId%7D%2Fapp-market%2Fmy-apps", "_blank")}
-                      data-testid="button-open-wix-apps"
+                      onClick={() => window.open("https://dev.wix.com/apps", "_blank")}
+                      data-testid="button-open-wix-dev-center"
                       className="w-full md:w-auto"
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
-                      Open Wix My Apps
+                      Open Wix Dev Center
                     </Button>
                     <Button
                       variant="outline"
@@ -3773,6 +3773,13 @@ function BrandRegistryManager() {
                       Close Instructions
                     </Button>
                   </div>
+                  
+                  <Alert className="mt-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      <strong>To authorize:</strong> In Wix Dev Center, go to your app → Test Your App → select your site and click "Test". This will trigger the OAuth flow.
+                    </AlertDescription>
+                  </Alert>
                 </>
               ) : (
                 <>
