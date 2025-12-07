@@ -2715,63 +2715,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Fetch products from Wix using Catalog V3 API with cursor pagination
-      const allProducts: any[] = [];
-      let cursor: string | null = null;
-      const limit = 100;
-      let hasMore = true;
+      // Detect catalog version first
+      let catalogVersion = "V1"; // Default to V1 as most stores are still on V1
       
-      while (hasMore) {
-        const requestBody: any = {
-          query: { 
-            paging: { limit } 
-          }
-        };
-        
-        // Add cursor for subsequent pages
-        if (cursor) {
-          requestBody.query.paging.cursor = cursor;
-        }
-        
-        const productsResponse = await fetch("https://www.wixapis.com/stores/v3/products/query", {
-          method: "POST",
+      try {
+        const versionResponse = await fetch("https://www.wixapis.com/stores/v1/catalog/version", {
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify(requestBody),
         });
         
-        if (!productsResponse.ok) {
-          const error = await productsResponse.text();
-          console.error("Wix products fetch failed:", error);
-          
-          await storage.updateIntegration(integration.id, {
-            lastSyncStatus: "error",
-            lastSyncError: `API error: ${error}`,
-            lastSyncAt: new Date(),
-          });
-          
-          return res.status(500).json({ error: "Failed to fetch products from Wix" });
+        if (versionResponse.ok) {
+          const versionData = await versionResponse.json();
+          catalogVersion = versionData.version || "V1";
+          console.log("[Wix Sync] Detected catalog version:", catalogVersion);
         }
-        
-        const data = await productsResponse.json();
-        allProducts.push(...(data.products || []));
-        
-        // V3 uses cursor-based pagination
-        cursor = data.pagingMetadata?.cursors?.next || null;
-        hasMore = !!cursor;
+      } catch (e) {
+        console.log("[Wix Sync] Could not detect catalog version, defaulting to V1");
       }
       
-      // Map Wix products to our Product format
+      // Fetch products using the appropriate API version
+      const allProducts: any[] = [];
+      const limit = 100;
+      
+      if (catalogVersion === "V3") {
+        // V3 API with cursor-based pagination
+        let cursor: string | null = null;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const requestBody: any = {
+            query: { 
+              paging: { limit } 
+            }
+          };
+          
+          if (cursor) {
+            requestBody.query.paging.cursor = cursor;
+          }
+          
+          const productsResponse = await fetch("https://www.wixapis.com/stores/v3/products/query", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify(requestBody),
+          });
+          
+          if (!productsResponse.ok) {
+            const error = await productsResponse.text();
+            console.error("[Wix Sync V3] Products fetch failed:", error);
+            
+            await storage.updateIntegration(integration.id, {
+              lastSyncStatus: "error",
+              lastSyncError: `API error: ${error}`,
+              lastSyncAt: new Date(),
+            });
+            
+            return res.status(500).json({ error: "Failed to fetch products from Wix" });
+          }
+          
+          const data = await productsResponse.json();
+          allProducts.push(...(data.products || []));
+          
+          cursor = data.pagingMetadata?.cursors?.next || null;
+          hasMore = !!cursor;
+        }
+      } else {
+        // V1 API with offset-based pagination
+        let offset = 0;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const productsResponse = await fetch("https://www.wixapis.com/stores/v1/products/query", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              query: { paging: { limit, offset } },
+              includeVariants: true,
+            }),
+          });
+          
+          if (!productsResponse.ok) {
+            const error = await productsResponse.text();
+            console.error("[Wix Sync V1] Products fetch failed:", error);
+            
+            await storage.updateIntegration(integration.id, {
+              lastSyncStatus: "error",
+              lastSyncError: `API error: ${error}`,
+              lastSyncAt: new Date(),
+            });
+            
+            return res.status(500).json({ error: "Failed to fetch products from Wix" });
+          }
+          
+          const data = await productsResponse.json();
+          const products = data.products || [];
+          allProducts.push(...products);
+          
+          console.log(`[Wix Sync V1] Fetched ${products.length} products (offset: ${offset}, total so far: ${allProducts.length})`);
+          
+          // V1 uses offset-based pagination
+          if (products.length < limit) {
+            hasMore = false;
+          } else {
+            offset += limit;
+          }
+        }
+      }
+      
+      console.log(`[Wix Sync] Total products fetched: ${allProducts.length} (using ${catalogVersion})`);
+      
+      // Map Wix products to our Product format (works for both V1 and V3)
       const products = allProducts.map((wixProduct: any, index: number) => {
-        const additionalInfo = wixProduct.additionalInfoSections || [];
+        // V1 uses additionalInfoSections, V3 uses infoSections
+        const additionalInfo = wixProduct.additionalInfoSections || wixProduct.infoSections || [];
         const notesSection = additionalInfo.find(
           (s: any) => s.title?.toLowerCase().includes("note") || 
                        s.title?.toLowerCase() === "additionalinfodescription2"
         );
         
-        const collectionNames = wixProduct.collectionIds?.map((id: string) => id) || [];
+        // V1 uses collectionIds, both may have different collection structures
+        const collectionNames = wixProduct.collectionIds?.map((id: string) => id) || 
+                                wixProduct.collections?.map((c: any) => c.name) || [];
+        
+        // Extract price - V1 and V3 have slightly different structures
+        let price = "0";
+        if (wixProduct.price?.formatted?.price) {
+          price = wixProduct.price.formatted.price;
+        } else if (wixProduct.price?.price) {
+          price = wixProduct.price.price.toString();
+        } else if (wixProduct.priceData?.formatted?.price) {
+          price = wixProduct.priceData.formatted.price;
+        } else if (wixProduct.priceData?.price) {
+          price = wixProduct.priceData.price.toString();
+        } else if (wixProduct.actualPriceRange?.minValue?.amount) {
+          price = wixProduct.actualPriceRange.minValue.amount;
+        }
+        
+        // Extract image URL - V1 and V3 have different structures
+        let productImageUrl = wixProduct.media?.mainMedia?.image?.url || 
+                              wixProduct.media?.main?.image?.url ||
+                              wixProduct.media?.items?.[0]?.image?.url;
         
         return {
           id: wixProduct.id || `wix-${index}`,
@@ -2781,8 +2872,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           product: wixProduct.name,
           sku: wixProduct.sku || wixProduct.id,
           format: "1 x 750 ml",
-          price: wixProduct.price?.formatted?.price || wixProduct.price?.price?.toString() || "0",
-          productImageUrl: wixProduct.media?.mainMedia?.image?.url,
+          price,
+          productImageUrl,
           isHidden: !wixProduct.visible,
           collectionRaw: collectionNames.join(", "),
           collectionBrand: wixProduct.brand,
