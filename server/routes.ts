@@ -2417,8 +2417,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const state = `${companyId}:${integration.id}:${Date.now()}`;
       
       // Build redirect URL for OAuth callback
-      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL || 
+                      (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 
+                       `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
       const redirectUrl = `${baseUrl}/api/integrations/wix/callback`;
+      
+      console.log("[Wix Connect] Redirect URL:", redirectUrl);
       
       // Build Wix OAuth authorization URL (standard OAuth 2.0 flow)
       const authUrl = new URL("https://www.wix.com/oauth/authorize");
