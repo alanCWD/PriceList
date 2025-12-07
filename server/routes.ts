@@ -2715,122 +2715,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Detect catalog version first
-      let catalogVersion = "V1"; // Default to V1 as most stores are still on V1
+      // Fetch products using Wix Catalog V3 API with cursor pagination
+      // Your store is on V3, so we use V3 directly
+      const allProducts: any[] = [];
+      const limit = 100;
+      let cursor: string | null = null;
+      let hasMore = true;
+      let pageCount = 0;
       
-      try {
-        const versionResponse = await fetch("https://www.wixapis.com/stores/v1/catalog/version", {
-          method: "GET",
+      console.log("[Wix Sync] Starting V3 product sync...");
+      
+      while (hasMore) {
+        pageCount++;
+        const requestBody: any = {
+          query: { 
+            paging: { limit }
+          },
+          includeHiddenProducts: true, // Request hidden products too
+          includeVariants: true,
+        };
+        
+        if (cursor) {
+          requestBody.query.cursorPaging = { cursor, limit };
+          delete requestBody.query.paging; // Use cursorPaging instead when we have a cursor
+        }
+        
+        console.log(`[Wix Sync V3] Fetching page ${pageCount}...`, JSON.stringify(requestBody));
+        
+        const productsResponse = await fetch("https://www.wixapis.com/stores/v3/products/query", {
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
           },
+          body: JSON.stringify(requestBody),
         });
         
-        if (versionResponse.ok) {
-          const versionData = await versionResponse.json();
-          catalogVersion = versionData.version || "V1";
-          console.log("[Wix Sync] Detected catalog version:", catalogVersion);
-        }
-      } catch (e) {
-        console.log("[Wix Sync] Could not detect catalog version, defaulting to V1");
-      }
-      
-      // Fetch products using the appropriate API version
-      const allProducts: any[] = [];
-      const limit = 100;
-      
-      if (catalogVersion === "V3") {
-        // V3 API with cursor-based pagination
-        let cursor: string | null = null;
-        let hasMore = true;
-        
-        while (hasMore) {
-          const requestBody: any = {
-            query: { 
-              paging: { limit } 
-            }
-          };
+        if (!productsResponse.ok) {
+          const error = await productsResponse.text();
+          console.error("[Wix Sync V3] Products fetch failed:", error);
           
-          if (cursor) {
-            requestBody.query.paging.cursor = cursor;
-          }
-          
-          const productsResponse = await fetch("https://www.wixapis.com/stores/v3/products/query", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify(requestBody),
+          await storage.updateIntegration(integration.id, {
+            lastSyncStatus: "error",
+            lastSyncError: `API error: ${error}`,
+            lastSyncAt: new Date(),
           });
           
-          if (!productsResponse.ok) {
-            const error = await productsResponse.text();
-            console.error("[Wix Sync V3] Products fetch failed:", error);
-            
-            await storage.updateIntegration(integration.id, {
-              lastSyncStatus: "error",
-              lastSyncError: `API error: ${error}`,
-              lastSyncAt: new Date(),
-            });
-            
-            return res.status(500).json({ error: "Failed to fetch products from Wix" });
-          }
-          
-          const data = await productsResponse.json();
-          allProducts.push(...(data.products || []));
-          
-          cursor = data.pagingMetadata?.cursors?.next || null;
-          hasMore = !!cursor;
+          return res.status(500).json({ error: "Failed to fetch products from Wix", details: error });
         }
-      } else {
-        // V1 API with offset-based pagination
-        let offset = 0;
-        let hasMore = true;
         
-        while (hasMore) {
-          const productsResponse = await fetch("https://www.wixapis.com/stores/v1/products/query", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({
-              query: { paging: { limit, offset } },
-              includeVariants: true,
-            }),
-          });
-          
-          if (!productsResponse.ok) {
-            const error = await productsResponse.text();
-            console.error("[Wix Sync V1] Products fetch failed:", error);
-            
-            await storage.updateIntegration(integration.id, {
-              lastSyncStatus: "error",
-              lastSyncError: `API error: ${error}`,
-              lastSyncAt: new Date(),
-            });
-            
-            return res.status(500).json({ error: "Failed to fetch products from Wix" });
-          }
-          
-          const data = await productsResponse.json();
-          const products = data.products || [];
-          allProducts.push(...products);
-          
-          console.log(`[Wix Sync V1] Fetched ${products.length} products (offset: ${offset}, total so far: ${allProducts.length})`);
-          
-          // V1 uses offset-based pagination
-          if (products.length < limit) {
-            hasMore = false;
-          } else {
-            offset += limit;
-          }
+        const data = await productsResponse.json();
+        const pageProducts = data.products || [];
+        allProducts.push(...pageProducts);
+        
+        // Log pagination info
+        console.log(`[Wix Sync V3] Page ${pageCount}: Got ${pageProducts.length} products, total: ${allProducts.length}`);
+        console.log(`[Wix Sync V3] Paging metadata:`, JSON.stringify(data.pagingMetadata || data.metadata || {}));
+        
+        // V3 uses cursor-based pagination - check multiple possible locations
+        const nextCursor = data.pagingMetadata?.cursors?.next || 
+                          data.metadata?.cursors?.next ||
+                          data.cursors?.next;
+        
+        if (nextCursor && pageProducts.length > 0) {
+          cursor = nextCursor;
+          hasMore = true;
+        } else {
+          hasMore = false;
         }
       }
       
-      console.log(`[Wix Sync] Total products fetched: ${allProducts.length} (using ${catalogVersion})`);
+      console.log(`[Wix Sync] Total products fetched: ${allProducts.length} (V3, ${pageCount} pages)`);
       
       // Map Wix products to our Product format (works for both V1 and V3)
       const products = allProducts.map((wixProduct: any, index: number) => {
