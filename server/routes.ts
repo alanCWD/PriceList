@@ -2375,7 +2375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "User not found" });
       }
       
-      const { companyId: requestedCompanyId, appId, installToken } = req.body;
+      const { companyId: requestedCompanyId } = req.body;
       
       // Get target company
       let companyId = dbUser.companyId;
@@ -2388,8 +2388,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "No company context" });
       }
       
-      if (!appId || !installToken) {
-        return res.status(400).json({ error: "Missing appId or installToken" });
+      // Get Wix credentials from environment
+      const appId = process.env.WIX_APP_ID;
+      const appSecret = process.env.WIX_APP_SECRET;
+      
+      if (!appId || !appSecret) {
+        return res.status(500).json({ error: "Wix App ID and Secret must be configured in environment variables" });
       }
       
       // Create or update integration record with pending status
@@ -2409,17 +2413,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Generate state for CSRF protection
-      const state = `${companyId}:${Date.now()}`;
+      // Generate state for CSRF protection (includes integration ID for callback lookup)
+      const state = `${companyId}:${integration.id}:${Date.now()}`;
       
       // Build redirect URL for OAuth callback
       const baseUrl = process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
       const redirectUrl = `${baseUrl}/api/integrations/wix/callback`;
       
-      // Build Wix authorization URL
-      const authUrl = `https://www.wix.com/installer/install?token=${installToken}&appId=${appId}&redirectUrl=${encodeURIComponent(redirectUrl)}&state=${encodeURIComponent(state)}`;
+      // Build Wix OAuth authorization URL (standard OAuth 2.0 flow)
+      const authUrl = new URL("https://www.wix.com/oauth/authorize");
+      authUrl.searchParams.set("client_id", appId);
+      authUrl.searchParams.set("redirect_uri", redirectUrl);
+      authUrl.searchParams.set("response_type", "code");
+      authUrl.searchParams.set("scope", "offline_access");
+      authUrl.searchParams.set("state", state);
       
-      res.json({ authUrl, state });
+      res.json({ authUrl: authUrl.toString(), state });
     } catch (error) {
       console.error("Error initiating Wix connection:", error);
       res.status(500).json({ error: "Failed to initiate Wix connection" });

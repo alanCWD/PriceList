@@ -2835,20 +2835,11 @@ function BrandRegistryManager() {
 
   // Wix integration handlers
   const handleConnectWix = async () => {
-    if (!wixAppId || !wixInstallToken) {
-      toast({
-        title: "Missing information",
-        description: "Please enter your Wix App ID and Install Token",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsConnectingWix(true);
     try {
       const payload = isSuperAdmin && selectedCompanyId
-        ? { appId: wixAppId, installToken: wixInstallToken, companyId: selectedCompanyId }
-        : { appId: wixAppId, installToken: wixInstallToken };
+        ? { companyId: selectedCompanyId }
+        : {};
 
       const res = await apiRequest("POST", "/api/integrations/wix/connect", payload);
       const data = await res.json();
@@ -2856,7 +2847,7 @@ function BrandRegistryManager() {
       if (data.authUrl) {
         window.location.href = data.authUrl;
       } else {
-        throw new Error("No authorization URL received");
+        throw new Error(data.error || "No authorization URL received");
       }
     } catch (error: any) {
       toast({
@@ -3682,36 +3673,12 @@ function BrandRegistryManager() {
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                To connect your Wix store, you'll need your App ID and Install Token from the Wix Developer Center.
+                Connect your Wix store to automatically sync products. You'll be redirected to Wix to authorize the connection.
               </p>
-              
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="wix-app-id">Wix App ID</Label>
-                  <Input
-                    id="wix-app-id"
-                    value={wixAppId}
-                    onChange={(e) => setWixAppId(e.target.value)}
-                    placeholder="Enter your Wix App ID"
-                    data-testid="input-wix-app-id"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wix-install-token">Install Token</Label>
-                  <Input
-                    id="wix-install-token"
-                    value={wixInstallToken}
-                    onChange={(e) => setWixInstallToken(e.target.value)}
-                    placeholder="Enter your Install Token"
-                    type="password"
-                    data-testid="input-wix-install-token"
-                  />
-                </div>
-              </div>
               
               <Button
                 onClick={handleConnectWix}
-                disabled={isConnectingWix || !wixAppId || !wixInstallToken}
+                disabled={isConnectingWix}
                 data-testid="button-connect-wix"
                 className="w-full md:w-auto"
               >
