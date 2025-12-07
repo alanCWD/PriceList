@@ -2715,34 +2715,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Fetch products using Wix Catalog V3 API with cursor pagination
-      // Your store is on V3, so we use V3 directly
+      // First, count total products to understand what we're working with
+      console.log("[Wix Sync] Counting products first...");
+      
+      try {
+        const countResponse = await fetch("https://www.wixapis.com/stores/v3/products/count", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            returnNonVisibleProducts: true,
+          }),
+        });
+        
+        if (countResponse.ok) {
+          const countData = await countResponse.json();
+          console.log(`[Wix Sync] Product count API says: ${countData.count} products`);
+        } else {
+          console.log("[Wix Sync] Count API failed:", await countResponse.text());
+        }
+      } catch (e) {
+        console.log("[Wix Sync] Count API error:", e);
+      }
+      
+      // Fetch products using Wix Catalog V3 Search API (more capable than Query)
       const allProducts: any[] = [];
       const limit = 100;
       let cursor: string | null = null;
       let hasMore = true;
       let pageCount = 0;
       
-      console.log("[Wix Sync] Starting V3 product sync...");
+      console.log("[Wix Sync] Starting V3 product search...");
       
       while (hasMore) {
         pageCount++;
+        
+        // Use Search API instead of Query API - it has more capabilities
         const requestBody: any = {
-          query: { 
+          search: { 
             paging: { limit }
           },
-          includeHiddenProducts: true, // Request hidden products too
-          includeVariants: true,
+          // Request all fields we need
+          fields: ["CURRENCY", "VARIANTS_INFO"],
         };
         
         if (cursor) {
-          requestBody.query.cursorPaging = { cursor, limit };
-          delete requestBody.query.paging; // Use cursorPaging instead when we have a cursor
+          requestBody.search.cursorPaging = { cursor, limit };
+          delete requestBody.search.paging;
         }
         
-        console.log(`[Wix Sync V3] Fetching page ${pageCount}...`, JSON.stringify(requestBody));
+        console.log(`[Wix Sync V3] Fetching page ${pageCount} via Search API...`);
         
-        const productsResponse = await fetch("https://www.wixapis.com/stores/v3/products/query", {
+        const productsResponse = await fetch("https://www.wixapis.com/stores/v3/products/search", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -2753,30 +2779,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (!productsResponse.ok) {
           const error = await productsResponse.text();
-          console.error("[Wix Sync V3] Products fetch failed:", error);
+          console.error("[Wix Sync V3] Search failed, trying Query API:", error);
           
-          await storage.updateIntegration(integration.id, {
-            lastSyncStatus: "error",
-            lastSyncError: `API error: ${error}`,
-            lastSyncAt: new Date(),
+          // Fall back to Query API if Search fails
+          const queryBody: any = {
+            query: { 
+              paging: { limit }
+            },
+          };
+          
+          if (cursor) {
+            queryBody.query.cursorPaging = { cursor, limit };
+            delete queryBody.query.paging;
+          }
+          
+          const queryResponse = await fetch("https://www.wixapis.com/stores/v3/products/query", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify(queryBody),
           });
           
-          return res.status(500).json({ error: "Failed to fetch products from Wix", details: error });
+          if (!queryResponse.ok) {
+            const queryError = await queryResponse.text();
+            console.error("[Wix Sync V3] Query also failed:", queryError);
+            
+            await storage.updateIntegration(integration.id, {
+              lastSyncStatus: "error",
+              lastSyncError: `API error: ${queryError}`,
+              lastSyncAt: new Date(),
+            });
+            
+            return res.status(500).json({ error: "Failed to fetch products from Wix", details: queryError });
+          }
+          
+          const queryData = await queryResponse.json();
+          const pageProducts = queryData.products || [];
+          allProducts.push(...pageProducts);
+          
+          console.log(`[Wix Sync V3] Query page ${pageCount}: Got ${pageProducts.length} products, total: ${allProducts.length}`);
+          console.log(`[Wix Sync V3] Query paging:`, JSON.stringify(queryData.pagingMetadata || {}));
+          
+          const nextCursor = queryData.pagingMetadata?.cursors?.next;
+          if (nextCursor && pageProducts.length > 0) {
+            cursor = nextCursor;
+          } else {
+            hasMore = false;
+          }
+          continue;
         }
         
         const data = await productsResponse.json();
         const pageProducts = data.products || [];
         allProducts.push(...pageProducts);
         
-        // Log pagination info
-        console.log(`[Wix Sync V3] Page ${pageCount}: Got ${pageProducts.length} products, total: ${allProducts.length}`);
-        console.log(`[Wix Sync V3] Paging metadata:`, JSON.stringify(data.pagingMetadata || data.metadata || {}));
+        console.log(`[Wix Sync V3] Search page ${pageCount}: Got ${pageProducts.length} products, total: ${allProducts.length}`);
+        console.log(`[Wix Sync V3] Paging metadata:`, JSON.stringify(data.pagingMetadata || {}));
         
-        // V3 uses cursor-based pagination - check multiple possible locations
-        const nextCursor = data.pagingMetadata?.cursors?.next || 
-                          data.metadata?.cursors?.next ||
-                          data.cursors?.next;
-        
+        const nextCursor = data.pagingMetadata?.cursors?.next;
         if (nextCursor && pageProducts.length > 0) {
           cursor = nextCursor;
           hasMore = true;
