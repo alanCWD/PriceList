@@ -7,7 +7,7 @@ import { PricelistDocument } from "@/components/pricelist-document";
 import { generatePDF } from "@/lib/pdf-generator";
 import { generateSpreadsheet, downloadSpreadsheet } from "@/lib/spreadsheet-generator";
 import { useToast } from "@/hooks/use-toast";
-import { parseCollection, extractWineTypeFromProductName, injectManualSortIndex, type BrandRegistryEntry } from "@/lib/collection-parser";
+import { parseCollection, extractWineTypeFromProductName, injectManualSortIndex, lookupBrandBySKU, registryHasSKUMappings, type BrandRegistryEntry } from "@/lib/collection-parser";
 import { sortBrandGroups, type BrandOrderingEntry } from "@/lib/sort-utils";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
@@ -86,17 +86,33 @@ export function PreviewPanel({
   };
 
   // Normalize products: re-parse collection data for any product missing parsed fields
+  // CRITICAL: Use SKU-based brand lookup first (matches Brand Registry exactly)
   const normalizedProducts = useMemo(() => {
     // Convert brand registry to the format expected by parseCollection
     const brandRegistryEntries: BrandRegistryEntry[] = (brandRegistry || []).map(b => ({
       brandName: b.brandName,
       category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
       displayOrder: b.displayOrder,
+      skus: b.skus || [],
     }));
+    
+    // Check if brand registry has SKU mappings
+    const hasSKUMappings = registryHasSKUMappings(brandRegistryEntries);
     
     return products.map(product => {
       // Start with the existing product
       let normalized = { ...product };
+      
+      // PRIORITY 0 (HIGHEST): SKU-based brand lookup from Brand Registry
+      // This ensures ordering matches the Brand Registry exactly
+      if (hasSKUMappings && product.sku) {
+        const skuMatch = lookupBrandBySKU(product.sku, brandRegistryEntries);
+        if (skuMatch) {
+          // Override collectionBrand and collectionCategory with registry values
+          normalized.collectionBrand = skuMatch.brandName;
+          normalized.collectionCategory = normalized.collectionCategory || skuMatch.category;
+        }
+      }
       
       // PRIORITY 1: For nonAlc products, ALWAYS extract wine type from product name first
       // (CSV collection strings often have incorrect wine types for non-alcoholic wines)
@@ -108,7 +124,7 @@ export function PreviewPanel({
       }
       
       // PRIORITY 2: Re-parse if ANY key field is still missing (brand, category, OR type)
-      if (!product.collectionBrand || !product.collectionCategory || !product.collectionType) {
+      if (!normalized.collectionBrand || !normalized.collectionCategory || !normalized.collectionType) {
         const collectionString = product.collectionRaw || product.category || "";
         // Pass product name to enable brand matching from product name when collection doesn't contain brand
         const parsed = parseCollection(collectionString, brandRegistryEntries, product.product);
@@ -122,7 +138,7 @@ export function PreviewPanel({
             normalized.collectionType = normalized.collectionType || parsed.wineType;
           }
           normalized.collectionRegion = normalized.collectionRegion || parsed.region;
-        } else if (!product.collectionBrand) {
+        } else if (!normalized.collectionBrand) {
           // Parsing failed - extract a clean brand name from the category string
           const terms = collectionString
             .split(';')

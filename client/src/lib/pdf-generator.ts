@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { getDisplayName, injectManualSortIndex, type BrandWithOrder } from "./collection-parser";
+import { getDisplayName, injectManualSortIndex, lookupBrandBySKU, registryHasSKUMappings, type BrandWithOrder, type BrandRegistryEntry } from "./collection-parser";
 import { sortBrandGroups, type BrandOrderingEntry } from "./sort-utils";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
@@ -455,10 +455,45 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   // Move yPosition to after header (add small spacing)
   yPosition = headerHeight + 20;
 
-  // Inject manual sort index from brand registry FIRST (before filtering)
+  // STEP 1: Normalize products with SKU-based brand lookup from Brand Registry
+  // This ensures collectionBrand is set correctly for manual ordering to work
+  const normalizedProducts = (() => {
+    if (!config.brandRegistry || config.brandRegistry.length === 0) {
+      return products;
+    }
+    
+    // Convert to BrandRegistryEntry format with skus
+    const brandRegistryEntries: BrandRegistryEntry[] = config.brandRegistry.map(b => ({
+      brandName: b.brandName,
+      category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
+      displayOrder: b.displayOrder,
+      skus: b.skus || [],
+    }));
+    
+    const hasSKUMappings = registryHasSKUMappings(brandRegistryEntries);
+    if (!hasSKUMappings) {
+      return products;
+    }
+    
+    return products.map(product => {
+      if (!product.sku) return product;
+      
+      const skuMatch = lookupBrandBySKU(product.sku, brandRegistryEntries);
+      if (skuMatch) {
+        return {
+          ...product,
+          collectionBrand: skuMatch.brandName,
+          collectionCategory: product.collectionCategory || skuMatch.category,
+        };
+      }
+      return product;
+    });
+  })();
+  
+  // STEP 2: Inject manual sort index from brand registry
   const productsWithSortIndex = config.brandRegistry && config.brandRegistry.length > 0
-    ? injectManualSortIndex(products, config.brandRegistry)
-    : products;
+    ? injectManualSortIndex(normalizedProducts, config.brandRegistry)
+    : normalizedProducts;
   
   // THEN filter out uncategorized products
   const filteredProducts = productsWithSortIndex.filter(product => {
@@ -760,10 +795,45 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 30;
 
-  // Inject manual sort index from brand registry FIRST (before filtering)
+  // STEP 1: Normalize products with SKU-based brand lookup from Brand Registry
+  // This ensures collectionBrand is set correctly for manual ordering to work
+  const normalizedProducts = (() => {
+    if (!config.brandRegistry || config.brandRegistry.length === 0) {
+      return products;
+    }
+    
+    // Convert to BrandRegistryEntry format with skus
+    const brandRegistryEntries: BrandRegistryEntry[] = config.brandRegistry.map(b => ({
+      brandName: b.brandName,
+      category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
+      displayOrder: b.displayOrder,
+      skus: b.skus || [],
+    }));
+    
+    const hasSKUMappings = registryHasSKUMappings(brandRegistryEntries);
+    if (!hasSKUMappings) {
+      return products;
+    }
+    
+    return products.map(product => {
+      if (!product.sku) return product;
+      
+      const skuMatch = lookupBrandBySKU(product.sku, brandRegistryEntries);
+      if (skuMatch) {
+        return {
+          ...product,
+          collectionBrand: skuMatch.brandName,
+          collectionCategory: product.collectionCategory || skuMatch.category,
+        };
+      }
+      return product;
+    });
+  })();
+  
+  // STEP 2: Inject manual sort index from brand registry
   const productsWithSortIndex = config.brandRegistry && config.brandRegistry.length > 0
-    ? injectManualSortIndex(products, config.brandRegistry)
-    : products;
+    ? injectManualSortIndex(normalizedProducts, config.brandRegistry)
+    : normalizedProducts;
   
   // THEN filter out uncategorized products
   const filteredProducts = productsWithSortIndex.filter(product => {
@@ -1171,10 +1241,45 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
   drawHeader();
   yPosition = headerHeight + 15;
 
-  // Inject manual sort index from brand registry FIRST (before filtering)
+  // STEP 1: Normalize products with SKU-based brand lookup from Brand Registry
+  // This ensures collectionBrand is set correctly for manual ordering to work
+  const normalizedProducts = (() => {
+    if (!config.brandRegistry || config.brandRegistry.length === 0) {
+      return products;
+    }
+    
+    // Convert to BrandRegistryEntry format with skus
+    const brandRegistryEntries: BrandRegistryEntry[] = config.brandRegistry.map(b => ({
+      brandName: b.brandName,
+      category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
+      displayOrder: b.displayOrder,
+      skus: b.skus || [],
+    }));
+    
+    const hasSKUMappings = registryHasSKUMappings(brandRegistryEntries);
+    if (!hasSKUMappings) {
+      return products;
+    }
+    
+    return products.map(product => {
+      if (!product.sku) return product;
+      
+      const skuMatch = lookupBrandBySKU(product.sku, brandRegistryEntries);
+      if (skuMatch) {
+        return {
+          ...product,
+          collectionBrand: skuMatch.brandName,
+          collectionCategory: product.collectionCategory || skuMatch.category,
+        };
+      }
+      return product;
+    });
+  })();
+  
+  // STEP 2: Inject manual sort index from brand registry
   const productsWithSortIndex = config.brandRegistry && config.brandRegistry.length > 0
-    ? injectManualSortIndex(products, config.brandRegistry)
-    : products;
+    ? injectManualSortIndex(normalizedProducts, config.brandRegistry)
+    : normalizedProducts;
   
   // THEN filter out uncategorized products
   const filteredProducts = productsWithSortIndex.filter(product => {
