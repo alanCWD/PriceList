@@ -1259,6 +1259,7 @@ function CompanyProfilesManager() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [profileName, setProfileName] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [companyNameShort, setCompanyNameShort] = useState("");
   const [tagline, setTagline] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
 
@@ -1311,6 +1312,7 @@ function CompanyProfilesManager() {
     setEditingId(null);
     setProfileName("");
     setCompanyName("");
+    setCompanyNameShort("");
     setTagline("");
     setLogoUrl("");
   };
@@ -1319,6 +1321,7 @@ function CompanyProfilesManager() {
     setEditingId(profile.id);
     setProfileName(profile.name);
     setCompanyName(profile.branding.companyName);
+    setCompanyNameShort(profile.branding.companyNameShort || "");
     setTagline(profile.branding.tagline || "");
     setLogoUrl(profile.branding.logoUrl || "");
   };
@@ -1337,6 +1340,7 @@ function CompanyProfilesManager() {
       name: profileName.trim(),
       branding: {
         companyName: companyName.trim(),
+        companyNameShort: companyNameShort.trim() || undefined,
         tagline: tagline.trim() || undefined,
         logoUrl: logoUrl.trim() || undefined,
       },
@@ -1390,6 +1394,17 @@ function CompanyProfilesManager() {
               placeholder="Your Company Name"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="company-name-short">Company Name Short Form (Optional)</Label>
+            <Input
+              id="company-name-short"
+              data-testid="input-company-name-short"
+              placeholder="Short name for filenames (e.g., SWS)"
+              value={companyNameShort}
+              onChange={(e) => setCompanyNameShort(e.target.value)}
             />
           </div>
 
