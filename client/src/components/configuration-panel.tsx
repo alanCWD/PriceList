@@ -176,6 +176,16 @@ export function ConfigurationPanel({
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="company-name-short">Short Name (for filenames)</Label>
+              <Input
+                id="company-name-short"
+                data-testid="input-company-name-short"
+                placeholder="e.g., Storied Wines"
+                value={branding.companyNameShort || ""}
+                onChange={(e) => onBrandingChange({ ...branding, companyNameShort: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="tagline">Tagline</Label>
               <Input
                 id="tagline"
