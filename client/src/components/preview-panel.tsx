@@ -230,7 +230,7 @@ export function PreviewPanel({
       });
       
       const filename = pricelistName 
-        ? `${pricelistName.replace(/[^a-z0-9]/gi, '_')}.xlsx`
+        ? `${pricelistName.replace(/[^a-z0-9\s]/gi, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
         : 'pricelist.xlsx';
       
       downloadSpreadsheet(blob, filename);
