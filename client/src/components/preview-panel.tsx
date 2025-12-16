@@ -229,9 +229,9 @@ export function PreviewPanel({
         salesAgents,
       });
       
-      const filename = pricelistName 
-        ? `${pricelistName.replace(/[^a-z0-9\s]/gi, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
-        : 'pricelist.xlsx';
+      const dateStr = new Date().toISOString().split("T")[0];
+      const companyName = branding.companyName.replace(/[^a-z0-9\s]/gi, ' ').replace(/\s+/g, ' ').trim();
+      const filename = `${companyName} Spreadsheet ${dateStr}.xlsx`;
       
       downloadSpreadsheet(blob, filename);
       
