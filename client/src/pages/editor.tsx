@@ -205,6 +205,8 @@ export default function Editor() {
   });
 
   // Effect to populate form when pricelist is loaded (editing mode)
+  // Note: After saves, onSuccess updates form state from server response, 
+  // so refetch race conditions won't lose user edits
   useEffect(() => {
     if (loadedPricelist) {
       // Mark that we're in the middle of loading a pricelist (to protect branding)
@@ -910,6 +912,17 @@ export default function Editor() {
       setCurrentPricelistId(data.id);
       setCurrentPricelistName(variables.name);
       setCurrentPricelistDescription(variables.description || "");
+      
+      // Update form state with server response data to ensure consistency
+      // This prevents any refetch race conditions from overwriting user edits
+      if (data.branding) {
+        console.log("Mutation: Updating branding from server response:", JSON.stringify(data.branding, null, 2));
+        setCompanyBranding({
+          companyName: "", // Default if missing
+          ...data.branding,
+        });
+      }
+      
       toast({
         title: currentPricelistId ? "Pricelist updated" : "Pricelist saved",
         description: "Your pricelist has been saved successfully",
