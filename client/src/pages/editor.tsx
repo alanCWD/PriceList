@@ -213,7 +213,11 @@ export default function Editor() {
       setCurrentPricelistId(loadedPricelist.id);
       setCurrentPricelistName(loadedPricelist.name);
       setCurrentPricelistDescription(loadedPricelist.description || "");
-      setCompanyBranding(loadedPricelist.branding);
+      // Ensure companyName always exists (old data might not have it)
+      setCompanyBranding({
+        companyName: "", // Default if missing
+        ...loadedPricelist.branding,
+      });
       setSalesAgents(loadedPricelist.salesAgents as SalesAgent[]);
       setQRCodeConfig(loadedPricelist.qrCode as QRCodeConfig | undefined);
       setProducts(loadedPricelist.products as Product[]);
@@ -332,7 +336,11 @@ export default function Editor() {
       // This ensures we get the company's saved colors, not stale values
       if (companyDefaults.defaultBranding) {
         console.log('[Apply Defaults] Setting branding:', companyDefaults.defaultBranding);
-        setCompanyBranding(companyDefaults.defaultBranding);
+        // Ensure companyName always exists (old data might not have it)
+        setCompanyBranding({
+          companyName: "", // Default if missing
+          ...companyDefaults.defaultBranding,
+        });
       } else {
         console.log('[Apply Defaults] No branding in defaults');
       }
