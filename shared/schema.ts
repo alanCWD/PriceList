@@ -260,6 +260,7 @@ export const insertCompanyProfileSchema = z.object({
   name: z.string().min(1, "Profile name is required"),
   branding: z.object({
     companyName: z.string().min(1, "Company name is required"),
+    companyNameShort: z.string().optional(),
     tagline: z.string().optional(),
     logoUrl: z.string().optional(),
   }),
@@ -271,6 +272,7 @@ export type InsertCompanyProfile = z.infer<typeof insertCompanyProfileSchema>;
 export const updateCompanyProfileSchema = insertCompanyProfileSchema.partial().extend({
   branding: z.object({
     companyName: z.string().min(1).optional(),
+    companyNameShort: z.string().optional(),
     tagline: z.string().optional(),
     logoUrl: z.string().optional(),
   }).partial().optional(),
