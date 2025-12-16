@@ -1881,6 +1881,16 @@ function CompanyBrandingManager() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="companyNameShort">Company Name Short Form</Label>
+              <Input
+                id="companyNameShort"
+                value={branding.companyNameShort || ""}
+                onChange={(e) => setBranding({ ...branding, companyNameShort: e.target.value })}
+                placeholder="Short name for filenames (e.g., SWS)"
+                data-testid="input-company-name-short"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="tagline">Tagline</Label>
               <Input
                 id="tagline"

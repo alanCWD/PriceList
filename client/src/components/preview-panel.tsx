@@ -230,8 +230,9 @@ export function PreviewPanel({
       });
       
       const dateStr = new Date().toISOString().split("T")[0];
-      const companyName = branding.companyName.replace(/[^a-z0-9\s]/gi, ' ').replace(/\s+/g, ' ').trim();
-      const filename = `${companyName} Spreadsheet ${dateStr}.xlsx`;
+      // Use short form company name for filenames if available
+      const companyNameForFile = (branding.companyNameShort || branding.companyName).replace(/[^a-z0-9\s]/gi, ' ').replace(/\s+/g, ' ').trim();
+      const filename = `${companyNameForFile} Spreadsheet ${dateStr}.xlsx`;
       
       downloadSpreadsheet(blob, filename);
       

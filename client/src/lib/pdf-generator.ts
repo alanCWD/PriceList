@@ -732,15 +732,16 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   const dateStr = new Date().toISOString().split("T")[0];
   let fileName: string;
   
-  const companyName = branding.companyName.replace(/[^a-z0-9\s]/gi, " ").replace(/\s+/g, " ").trim();
+  // Use short form company name for filenames if available
+  const companyNameForFile = (branding.companyNameShort || branding.companyName).replace(/[^a-z0-9\s]/gi, " ").replace(/\s+/g, " ").trim();
   
   if (brandName) {
     // Single-brand download: CompanyName BrandName Date.pdf
     const cleanBrandName = brandName.replace(/[^a-z0-9\s]/gi, " ").replace(/\s+/g, " ").trim();
-    fileName = `${companyName} ${cleanBrandName} ${dateStr}.pdf`;
+    fileName = `${companyNameForFile} ${cleanBrandName} ${dateStr}.pdf`;
   } else {
     // Full pricelist: CompanyName Pricelist Date.pdf
-    fileName = `${companyName} Pricelist ${dateStr}.pdf`;
+    fileName = `${companyNameForFile} Pricelist ${dateStr}.pdf`;
   }
   
   doc.save(fileName);
@@ -1024,15 +1025,16 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
   const dateStr = new Date().toISOString().split("T")[0];
   let fileName: string;
   
-  const companyName = branding.companyName.replace(/[^a-z0-9\s]/gi, " ").replace(/\s+/g, " ").trim();
+  // Use short form company name for filenames if available
+  const companyNameForFile = (branding.companyNameShort || branding.companyName).replace(/[^a-z0-9\s]/gi, " ").replace(/\s+/g, " ").trim();
   
   if (brandName) {
     // Single-brand download: CompanyName BrandName Date.pdf
     const cleanBrandName = brandName.replace(/[^a-z0-9\s]/gi, " ").replace(/\s+/g, " ").trim();
-    fileName = `${companyName} ${cleanBrandName} ${dateStr}.pdf`;
+    fileName = `${companyNameForFile} ${cleanBrandName} ${dateStr}.pdf`;
   } else {
     // Full pricelist: CompanyName Pricelist Date.pdf
-    fileName = `${companyName} Pricelist ${dateStr}.pdf`;
+    fileName = `${companyNameForFile} Pricelist ${dateStr}.pdf`;
   }
   
   doc.save(fileName);
@@ -1539,15 +1541,16 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
   const dateStr = new Date().toISOString().split("T")[0];
   let fileName: string;
   
-  const companyName = branding.companyName.replace(/[^a-z0-9\s]/gi, " ").replace(/\s+/g, " ").trim();
+  // Use short form company name for filenames if available
+  const companyNameForFile = (branding.companyNameShort || branding.companyName).replace(/[^a-z0-9\s]/gi, " ").replace(/\s+/g, " ").trim();
   
   if (brandName) {
     // Single-brand download: CompanyName BrandName Date.pdf
     const cleanBrandName = brandName.replace(/[^a-z0-9\s]/gi, " ").replace(/\s+/g, " ").trim();
-    fileName = `${companyName} ${cleanBrandName} ${dateStr}.pdf`;
+    fileName = `${companyNameForFile} ${cleanBrandName} ${dateStr}.pdf`;
   } else {
     // Full pricelist: CompanyName Pricelist Date.pdf
-    fileName = `${companyName} Pricelist ${dateStr}.pdf`;
+    fileName = `${companyNameForFile} Pricelist ${dateStr}.pdf`;
   }
   
   doc.save(fileName);

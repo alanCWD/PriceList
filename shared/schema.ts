@@ -39,6 +39,7 @@ export type SalesAgent = z.infer<typeof salesAgentSchema>;
 // Company branding schema
 export const companyBrandingSchema = z.object({
   companyName: z.string(),
+  companyNameShort: z.string().optional(), // Short form for filenames (e.g., "SWS" instead of "Storied Wines & Spirits")
   tagline: z.string().optional(),
   logoUrl: z.string().optional(),
   headerBackgroundColor: z.string().optional(), // Extracted from logo or manually set
