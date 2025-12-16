@@ -835,11 +835,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied: You can only update your company's pricelists" });
       }
 
+      console.log("[PATCH /api/pricelists] Received branding:", JSON.stringify(req.body.branding, null, 2));
+      console.log("[PATCH /api/pricelists] companyNameShort in request:", req.body.branding?.companyNameShort);
+      
       const validation = insertPricelistSchema.partial().safeParse(req.body);
       if (!validation.success) {
         const errorMessage = fromZodError(validation.error).message;
         return res.status(400).json({ error: errorMessage });
       }
+
+      console.log("[PATCH /api/pricelists] companyNameShort after validation:", validation.data.branding?.companyNameShort);
 
       // SECURITY: Clients CANNOT change companyId at all
       const updateData: any = { ...validation.data };
