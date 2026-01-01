@@ -1468,8 +1468,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               productsByBrand[brandName] = [];
             }
             // Apply hidden status based on visibility table
+            // CRITICAL: Set collectionBrand to registry's canonical name for consistent ordering
+            // This ensures PATCH /api/brands/products saves productOrder under the correct brand
             const isHidden = hiddenSkuSet.has(product.sku);
-            productsByBrand[brandName].push({ ...product, isHidden });
+            productsByBrand[brandName].push({ ...product, isHidden, collectionBrand: brandName });
             skuMatched++;
           } else {
             productsWithoutBrand++;
