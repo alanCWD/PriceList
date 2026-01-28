@@ -207,9 +207,15 @@ let cachedBrandRegistry: any[] | undefined;
 let cachedSkuToBrandMap: Map<string, string> = new Map();
 let cachedBrandNameMap: Map<string, string> = new Map();
 
+// Skip words that should never be used as brand names (regions, categories, wine types)
+const skipWords = ['wine', 'wines', 'cider', 'spirits', 'non alcoholic', 'non-alcoholic',
+                   'white', 'red', 'rosé', 'rose', 'sparkling', 
+                   'okanagan', 'vancouver island', 'similkameen', 'fraser valley',
+                   'gulf islands', 'kootenays', 'bc', 'british columbia', 'lower mainland'];
+
 // Helper to get the brand key for grouping products
-// Uses SKU-only matching from brand registry - products must have SKU in registry
-function getBrandKey(product: any, brandRegistry?: any[]): string | null {
+// Now uses the same logic as preview panel to ensure consistency
+function getBrandKey(product: any, brandRegistry?: any[]): string {
   // Rebuild cache if brandRegistry changed
   if (brandRegistry !== cachedBrandRegistry) {
     cachedBrandRegistry = brandRegistry;
@@ -217,13 +223,38 @@ function getBrandKey(product: any, brandRegistry?: any[]): string | null {
     cachedBrandNameMap = buildBrandNameMap(brandRegistry);
   }
   
-  // SKU-only matching: product must have SKU that exists in brand registry
+  // PRIORITY 1: SKU-based matching from brand registry (highest priority)
   if (product.sku && cachedSkuToBrandMap.has(product.sku)) {
     return cachedSkuToBrandMap.get(product.sku)!;
   }
   
-  // No match - product won't be included in any brand group
-  return null;
+  // PRIORITY 2: Check if product name matches a brand in registry
+  const registryMatch = extractBrandFromProductName(product.product, brandRegistry);
+  if (registryMatch && brandRegistry?.some((b: any) => b.brandName === registryMatch)) {
+    return registryMatch;
+  }
+  
+  // PRIORITY 3: collectionBrand (if not a skip word)
+  let brandKey = product.collectionBrand;
+  if (brandKey && skipWords.includes(brandKey.toLowerCase().trim())) {
+    brandKey = null;
+  }
+  
+  // PRIORITY 4: extracted from category
+  if (!brandKey) {
+    brandKey = extractBrandFromCategory(product.category);
+  }
+  
+  // PRIORITY 5: extracted from product name (fallback for non-registry brands)
+  if (!brandKey || brandKey.toLowerCase() === "uncategorized") {
+    if (registryMatch) {
+      brandKey = registryMatch;
+    } else {
+      brandKey = "Uncategorized";
+    }
+  }
+  
+  return brandKey;
 }
 
 export async function generatePDF(config: PDFConfig): Promise<void> {
@@ -500,13 +531,11 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
     return !product.category || product.category.toLowerCase() !== "uncategorized";
   });
 
-  // Group products by brand using SKU-only matching from brand registry
-  // Products only appear if their SKU exists in the registry
+  // Group products by brand using flexible matching (same logic as preview panel)
+  // Products are grouped by: SKU→Registry match, product name match, collectionBrand, or category
   const groupedProducts = filteredProducts
     .reduce((acc, product) => {
       const brandKey = getBrandKey(product, config.brandRegistry);
-      // Skip products without matching SKU in brand registry
-      if (!brandKey) return acc;
       
       if (!acc[brandKey]) {
         acc[brandKey] = [];
@@ -843,11 +872,9 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     return !product.category || product.category.toLowerCase() !== "uncategorized";
   });
 
-  // Group products by brand using SKU-only matching from brand registry
+  // Group products by brand using flexible matching (same logic as preview panel)
   const groupedProducts = filteredProducts.reduce((acc, product) => {
     const brandKey = getBrandKey(product, config.brandRegistry);
-    // Skip products without matching SKU in brand registry
-    if (!brandKey) return acc;
     
     if (!acc[brandKey]) {
       acc[brandKey] = [];
@@ -1292,13 +1319,11 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     return !product.category || product.category.toLowerCase() !== "uncategorized";
   });
 
-  // Group products by brand using SKU-only matching from brand registry
-  // Products only appear if their SKU exists in the registry
+  // Group products by brand using flexible matching (same logic as preview panel)
+  // Products are grouped by: SKU→Registry match, product name match, collectionBrand, or category
   const groupedProducts = filteredProducts
     .reduce((acc, product) => {
       const brandKey = getBrandKey(product, config.brandRegistry);
-      // Skip products without matching SKU in brand registry
-      if (!brandKey) return acc;
       
       if (!acc[brandKey]) {
         acc[brandKey] = [];

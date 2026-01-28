@@ -95,6 +95,12 @@ export function sortBrandGroups(
     const entryA = brandOrderMap.get(brandA);
     const entryB = brandOrderMap.get(brandB);
     
+    // PRIORITY 0: Brands in registry come before brands not in registry
+    const inRegistryA = !!entryA;
+    const inRegistryB = !!entryB;
+    if (inRegistryA && !inRegistryB) return -1;
+    if (!inRegistryA && inRegistryB) return 1;
+    
     // Get categories (from registry or fallback to product metadata)
     const categoryA = entryA?.category || getProductCategory(productsA);
     const categoryB = entryB?.category || getProductCategory(productsB);
@@ -108,16 +114,23 @@ export function sortBrandGroups(
     }
     
     // Secondary sort: by displayOrder
-    // NULL displayOrder = 0 (sort alphabetically among other nulls at the start)
-    // Explicit displayOrder = positioned at that value (higher = later in list)
-    const displayOrderA = entryA?.displayOrder ?? 0;
-    const displayOrderB = entryB?.displayOrder ?? 0;
+    // Brands with explicit displayOrder sort by that value
+    // Brands with null/undefined displayOrder sort alphabetically after those with explicit order
+    const hasOrderA = entryA?.displayOrder !== null && entryA?.displayOrder !== undefined;
+    const hasOrderB = entryB?.displayOrder !== null && entryB?.displayOrder !== undefined;
     
-    if (displayOrderA !== displayOrderB) {
-      return displayOrderA - displayOrderB;
+    // Both have explicit order - sort by displayOrder value
+    if (hasOrderA && hasOrderB) {
+      if (entryA!.displayOrder !== entryB!.displayOrder) {
+        return entryA!.displayOrder! - entryB!.displayOrder!;
+      }
     }
     
-    // Tertiary sort: alphabetical by brand name (for same displayOrder or both null/0)
+    // Only one has explicit order - the one with order comes first
+    if (hasOrderA && !hasOrderB) return -1;
+    if (!hasOrderA && hasOrderB) return 1;
+    
+    // Tertiary sort: alphabetical by brand name (for same displayOrder or both null)
     return brandA.localeCompare(brandB);
   });
 }

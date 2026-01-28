@@ -1,6 +1,22 @@
 import ExcelJS from "exceljs";
 import { getDisplayName, injectManualSortIndex, type ProductWithSortIndex } from "./collection-parser";
+import { sortBrandGroups, type BrandOrderingEntry } from "./sort-utils";
 import type { Product, CompanyBranding, BrandRegistry, SalesAgent } from "@shared/schema";
+
+// Build SKU→Brand map from brand registry for fast lookup
+function buildSkuToBrandMap(brandRegistry?: BrandRegistry[]): Map<string, string> {
+  const map = new Map<string, string>();
+  if (brandRegistry) {
+    brandRegistry.forEach((brand) => {
+      if (brand.skus && Array.isArray(brand.skus)) {
+        brand.skus.forEach((sku: string) => {
+          map.set(sku, brand.brandName);
+        });
+      }
+    });
+  }
+  return map;
+}
 
 interface SpreadsheetConfig {
   products: Product[];
@@ -87,10 +103,29 @@ function extractBrandFromCategory(category: string): string {
   return category;
 }
 
+// Cached SKU map for spreadsheet generator
+let cachedSpreadsheetRegistry: BrandRegistry[] | undefined;
+let cachedSpreadsheetSkuMap: Map<string, string> = new Map();
+
 function getBrandForProduct(product: Product, brandRegistry?: BrandRegistry[]): string {
-  const brandFromName = extractBrandFromProductName(product.product, brandRegistry);
-  if (brandFromName) return brandFromName;
+  // Rebuild cache if brandRegistry changed
+  if (brandRegistry !== cachedSpreadsheetRegistry) {
+    cachedSpreadsheetRegistry = brandRegistry;
+    cachedSpreadsheetSkuMap = buildSkuToBrandMap(brandRegistry);
+  }
   
+  // PRIORITY 1: SKU-based matching from brand registry (highest priority)
+  if (product.sku && cachedSpreadsheetSkuMap.has(product.sku)) {
+    return cachedSpreadsheetSkuMap.get(product.sku)!;
+  }
+  
+  // PRIORITY 2: Check if product name matches a brand in registry
+  const brandFromName = extractBrandFromProductName(product.product, brandRegistry);
+  if (brandFromName && brandRegistry?.some(b => b.brandName === brandFromName)) {
+    return brandFromName;
+  }
+  
+  // PRIORITY 3: collectionBrand (if not a skip word)
   if (product.collectionBrand) {
     const lower = product.collectionBrand.toLowerCase().trim();
     if (!skipWords.some(skip => lower === skip)) {
@@ -98,8 +133,14 @@ function getBrandForProduct(product: Product, brandRegistry?: BrandRegistry[]): 
     }
   }
   
+  // PRIORITY 4: extracted from category
   if (product.category) {
     return extractBrandFromCategory(product.category);
+  }
+  
+  // PRIORITY 5: fallback to product name match or Uncategorized
+  if (brandFromName) {
+    return brandFromName;
   }
   
   return "Uncategorized";
@@ -292,12 +333,19 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
     });
   });
   
-  const sortedBrandEntries = Object.entries(productsByBrand)
-    .sort(([brandA, productsA], [brandB, productsB]) => {
-      const sortKeyA = (productsA[0] as any)?.category || brandA;
-      const sortKeyB = (productsB[0] as any)?.category || brandB;
-      return sortKeyA.localeCompare(sortKeyB);
-    });
+  // Convert brand registry to the format expected by sortBrandGroups
+  const brandOrderingData: BrandOrderingEntry[] = (brandRegistry || []).map(b => ({
+    brandName: b.brandName,
+    category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
+    displayOrder: b.displayOrder,
+    productOrder: b.productOrder,
+  }));
+  
+  // Sort brand groups using the same utility as preview/PDF (Wine → Spirits → Cider → Non-Alc, then displayOrder)
+  const sortedBrandEntries = sortBrandGroups(
+    Object.entries(productsByBrand) as [string, Product[]][],
+    brandOrderingData
+  );
   
   let rowIndex = 4;
   const brandHeaderRows: number[] = [];
