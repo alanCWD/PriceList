@@ -128,13 +128,12 @@ export default function ClientLanding() {
   // Create a Set of hidden SKUs for efficient lookup (authoritative source from visibility table)
   const hiddenSkusSet = useMemo(() => new Set(hiddenSkus || []), [hiddenSkus]);
 
-  // Check if a product is hidden using the authoritative visibility table
+  // Check if a product is hidden using the authoritative visibility table ONLY.
+  // We do NOT fall back to product.isHidden (from saved pricelist JSON) because
+  // that field can be stale if a user un-hides a product after the pricelist was saved.
   const isProductHidden = (product: Product): boolean => {
-    // Use visibility table as authoritative source, fall back to stored isHidden
-    if (product.sku && hiddenSkusSet.has(product.sku)) {
-      return true;
-    }
-    return product.isHidden || false;
+    if (!product.sku) return false;
+    return hiddenSkusSet.has(product.sku);
   };
 
   // SKU-only matching: product must have a SKU in the brand registry
@@ -308,11 +307,10 @@ export default function ClientLanding() {
           // Get SKU for reconciliation
           const sku = stripHtml(fieldMapping.sku ? row[fieldMapping.sku] || "" : "");
           
-          // Determine visibility: 
-          // 1. First check the persistent visibility table (authoritative source)
-          // 2. Fall back to existing pricelist if not in visibility table
-          const existingProduct = existingProductsBySKU.get(sku);
-          const isHidden = hiddenSkusSet.has(sku) || (existingProduct?.isHidden ?? false);
+          // Determine visibility using visibility table as authoritative source.
+          // We do NOT fall back to existingProduct.isHidden — that value can be stale
+          // if a user un-hides a product after the pricelist was saved.
+          const isHidden = sku ? hiddenSkusSet.has(sku) : false;
           
           return {
             id: `product-${index}`,

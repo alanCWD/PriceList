@@ -181,6 +181,21 @@ export default function Editor() {
   // Otherwise use user's company
   const companyIdForBrands = loadedPricelist?.companyId || companyIdForDefaults;
 
+  // Fetch hidden SKUs from the visibility table (authoritative source for isHidden state)
+  // Used during CSV product generation so we don't perpetuate stale isHidden values from old pricelist JSON
+  const { data: visibilityHiddenSkus } = useQuery<string[]>({
+    queryKey: ['/api/visibility/hidden-skus', { companyId: companyIdForBrands }],
+    queryFn: async () => {
+      const url = user?.role === 'superAdmin' && companyIdForBrands
+        ? `/api/visibility/hidden-skus?companyId=${companyIdForBrands}`
+        : '/api/visibility/hidden-skus';
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: companyIdForBrands !== null || !!loadedPricelist,
+  });
+
   // Load brand registry for the current company
   const { data: brandRegistry } = useQuery<BrandRegistry[]>({
     queryKey: ['/api/brands', { companyId: companyIdForBrands }],
@@ -433,6 +448,11 @@ export default function Editor() {
         }
       });
     }
+
+    // Build authoritative hidden SKUs set from visibility table.
+    // This is the source of truth — pricelist JSON's isHidden can be stale
+    // if a user un-hides a product after the pricelist was saved.
+    const visibilityHiddenSkusSet = new Set<string>(visibilityHiddenSkus || []);
     
     // Track unassigned products for admin review
     let unassignedCount = 0;
@@ -552,9 +572,11 @@ export default function Editor() {
         }
       }
       
-      // Check if this product exists in the previous pricelist (by SKU)
-      const existingProduct = existingProductsBySKU.get(sku);
-      const isHidden = existingProduct?.isHidden ?? false;
+      // Determine isHidden using visibility table as authoritative source.
+      // If the SKU is in the visibility table's hidden list, it's hidden.
+      // If it's NOT in the hidden list, it's visible — even if the old pricelist JSON
+      // had isHidden:true (which can happen when a user un-hides a product but doesn't re-save).
+      const isHidden: boolean = sku ? visibilityHiddenSkusSet.has(sku) : false;
       
       // Strip HTML tags from all text fields (Wix exports include HTML markup)
       return {
@@ -567,7 +589,7 @@ export default function Editor() {
         format: stripHtml(format),
         price: stripHtml(row[fieldMapping.price] || ""),
         productImageUrl: imageUrl,
-        isHidden, // Preserve hidden state from previous pricelist
+        isHidden, // Authoritative from visibility table
         collectionRaw,
         collectionCategory,
         collectionType,
@@ -726,6 +748,9 @@ export default function Editor() {
       });
     }
 
+    // Authoritative hidden SKUs from visibility table (same logic as auto-generate)
+    const visibilityHiddenSkusSet = new Set<string>(visibilityHiddenSkus || []);
+
     const mappedProducts: Product[] = csvData.map((row, index) => {
       let imageUrl = fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "";
       
@@ -834,9 +859,11 @@ export default function Editor() {
         }
       }
       
-      // Check if this product exists in the previous pricelist (by SKU)
-      const existingProduct = existingProductsBySKU.get(sku);
-      const isHidden = existingProduct?.isHidden ?? false;
+      // Determine isHidden using visibility table as authoritative source.
+      // If the SKU is in the visibility table's hidden list, it's hidden.
+      // If it's NOT in the hidden list, it's visible — even if the old pricelist JSON
+      // had isHidden:true (which can happen when a user un-hides a product but doesn't re-save).
+      const isHidden: boolean = sku ? visibilityHiddenSkusSet.has(sku) : false;
       
       // Strip HTML tags from all text fields (Wix exports include HTML markup)
       return {
@@ -849,7 +876,7 @@ export default function Editor() {
         format: stripHtml(format),
         price: stripHtml(row[fieldMapping.price] || ""),
         productImageUrl: imageUrl,
-        isHidden, // Preserve hidden state from previous pricelist
+        isHidden, // Authoritative from visibility table
         collectionRaw,
         collectionCategory,
         collectionType,

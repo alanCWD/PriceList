@@ -77,12 +77,15 @@ export function PreviewPanel({
     return !!(product.sku && registrySkusSet.has(product.sku));
   };
 
-  // Check if a product is hidden using the authoritative visibility table
+  // Check if a product is hidden using the authoritative visibility table ONLY.
+  // We intentionally do NOT fall back to product.isHidden (from saved pricelist JSON)
+  // because that field can become stale if a user un-hides a product via the visibility
+  // table after the pricelist was last saved. The visibility table is the single source
+  // of truth. While hiddenSkus is still loading, treat everything as visible (export
+  // buttons are already disabled during that period via isLoadingVisibility).
   const isProductHidden = (product: Product): boolean => {
-    if (product.sku && hiddenSkusSet.has(product.sku)) {
-      return true;
-    }
-    return product.isHidden || false;
+    if (!product.sku) return false;
+    return hiddenSkusSet.has(product.sku);
   };
 
   // Normalize products: re-parse collection data for any product missing parsed fields
