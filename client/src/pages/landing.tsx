@@ -846,7 +846,7 @@ export default function Landing() {
         <footer className="border-t border-white/10 mt-8">
           <div className="max-w-6xl mx-auto px-6 py-8 text-center text-sm text-white/60">
             <p>
-              © 2025{" "}
+              © {new Date().getFullYear()}{" "}
               <a 
                 href="https://citywidedigital.ca/" 
                 target="_blank" 
