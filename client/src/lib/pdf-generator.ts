@@ -274,7 +274,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 48;
+  const margin = 18;
   const footerHeight = 40;
   let yPosition = margin;
 
@@ -682,20 +682,20 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         halign: "left",
       },
       bodyStyles: {
-        fontSize: 10,
+        fontSize: 11,
         textColor: [30, 30, 30],
-        minCellHeight: 15,
+        minCellHeight: 16,
       },
       alternateRowStyles: {
         fillColor: [250, 250, 250],
       },
       columnStyles: {
-        0: { cellWidth: 80 },  // Notes
-        1: { cellWidth: 181 }, // Product
-        2: { cellWidth: 80 },  // SKU
-        3: { cellWidth: 100 }, // Format
-        4: { cellWidth: 75, halign: "right" },  // Price - right-aligned
-        // Total: 80 + 181 + 80 + 100 + 75 = 516pt (full available width)
+        0: { cellWidth: 89 },  // Notes
+        1: { cellWidth: 202 }, // Product
+        2: { cellWidth: 89 },  // SKU
+        3: { cellWidth: 112 }, // Format
+        4: { cellWidth: 84, halign: "right" },  // Price - right-aligned
+        // Total: 89 + 202 + 89 + 112 + 84 = 576pt (full available width at 18pt margins)
       },
       margin: { left: margin, right: margin, top: 50, bottom: margin + footerHeight },
       didDrawPage: (data) => {
@@ -787,7 +787,7 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 48;
+  const margin = 18;
   const footerHeight = 30;
   let yPosition = margin;
 
@@ -1012,16 +1012,17 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
         font: "times",
       },
       bodyStyles: {
-        fontSize: 10,
+        fontSize: 11,
         textColor: [30, 30, 30],
         font: "times",
       },
       columnStyles: {
-        0: { cellWidth: 70 },
-        1: { cellWidth: 200 },
-        2: { cellWidth: 100 },
-        3: { cellWidth: 70, halign: "right" },
-        4: { cellWidth: 100 },
+        0: { cellWidth: 75 },   // SKU
+        1: { cellWidth: 213 },  // Product
+        2: { cellWidth: 107 },  // Format
+        3: { cellWidth: 75, halign: "right" },  // Price
+        4: { cellWidth: 106 },  // Notes
+        // Total: 75 + 213 + 107 + 75 + 106 = 576pt (full available width at 18pt margins)
       },
       margin: { left: margin, right: margin, bottom: margin + footerHeight },
       didDrawPage: (data) => {
@@ -1078,7 +1079,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 40; // Reduced margin for more content
+  const margin = 18; // Minimal margin for maximum content width
   const footerHeight = 25; // Reduced footer
   let yPosition = margin;
 
@@ -1484,16 +1485,16 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       headStyles: {
         fillColor: [245, 245, 245],
         textColor: [60, 60, 60],
-        fontSize: 6.5, // Ultra-small header font (1/4 reduction)
+        fontSize: 7.5,
         fontStyle: "bold",
         halign: "left",
         cellPadding: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 }, // Minimum padding
-        minCellHeight: 5, // Minimal header row height
+        minCellHeight: 6,
       },
       bodyStyles: {
-        fontSize: 6.5, // Ultra-small body font (1/4 reduction)
+        fontSize: 7.5,
         textColor: [30, 30, 30],
-        minCellHeight: 5, // Ultra-compact rows
+        minCellHeight: 6,
         cellPadding: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 }, // Minimum padding
       },
       alternateRowStyles: {
@@ -1501,15 +1502,14 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       },
       columnStyles: {
         // Column order: SKU, Product, Format, Price, Ribbon (blank header), Notes
-        // Available width: 612pt - 80pt margins = 532pt
-        // Adjusted widths per user request: Product -0.5", Format -0.5", Price -1" (moved left)
-        // New widths: 50 + 185 + 55 + 40 + 95 + 107 = 532pt
-        0: { cellWidth: 50 },      // SKU
-        1: { cellWidth: 185 },     // Product (moved left 0.5" = reduced by 35pt)
-        2: { cellWidth: 55 },      // Format (moved left 0.5")
-        3: { cellWidth: 40, halign: "left" },   // Price - left-aligned to stay under header
-        4: { cellWidth: 95 },      // Ribbon (blank header, 2nd-to-last) - more space
-        5: { cellWidth: 107 },     // Notes (last column) - more space
+        // Available width: 612pt - 36pt margins = 576pt
+        // Widths: 54 + 200 + 59 + 43 + 103 + 117 = 576pt
+        0: { cellWidth: 54 },      // SKU
+        1: { cellWidth: 200 },     // Product
+        2: { cellWidth: 59 },      // Format
+        3: { cellWidth: 43, halign: "left" },   // Price - left-aligned to stay under header
+        4: { cellWidth: 103 },     // Ribbon (blank header, 2nd-to-last)
+        5: { cellWidth: 117 },     // Notes (last column)
       },
       margin: { left: margin, right: margin, top: 35, bottom: margin + footerHeight },
       didDrawPage: (data) => {

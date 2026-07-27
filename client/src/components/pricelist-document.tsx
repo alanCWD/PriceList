@@ -70,7 +70,7 @@ export function PricelistDocument({
   return (
     <div className="pricelist-document font-sans" id="pricelist-document" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Header - Logo far left, title/tagline at top, sales team at bottom */}
-      <header className="px-12 border-b-2 border-gray-900" style={{ backgroundColor: headerBgColor }}>
+      <header className="px-4 border-b-2 border-gray-900" style={{ backgroundColor: headerBgColor }}>
         <div className="flex gap-6">
           {/* Logo - Far Left, no vertical padding */}
           {branding.logoUrl && (
@@ -145,7 +145,7 @@ export function PricelistDocument({
       </header>
 
       {/* Products by Brand */}
-      <main className="px-12 py-8" style={{ paddingTop: '32px', paddingBottom: '32px' }}>
+      <main className="px-4 py-8" style={{ paddingTop: '32px', paddingBottom: '32px' }}>
         {sortedGroupedProducts.map(([brandName, categoryProducts], categoryIndex) => (
           <div 
             key={brandName} 
@@ -339,7 +339,7 @@ export function PricelistDocument({
 
       {/* Footer - Minimal Height */}
       <footer 
-        className="px-12 py-2 border-t border-gray-300 mt-8"
+        className="px-4 py-2 border-t border-gray-300 mt-8"
         style={{ marginTop: '32px', borderTop: '1px solid #d1d5db', paddingTop: '8px', paddingBottom: '8px' }}
       >
         <div className="flex items-center justify-between gap-4">
@@ -382,7 +382,7 @@ function ClassicTemplate({
 }: TemplateProps) {
   return (
     <div className="pricelist-document font-serif" id="pricelist-document" style={{ fontFamily: 'Georgia, serif' }}>
-      <header className="px-12 py-3 border-b border-gray-400" style={{ backgroundColor: '#CCC79A' }}>
+      <header className="px-4 py-3 border-b border-gray-400" style={{ backgroundColor: '#CCC79A' }}>
         <div className="flex gap-6">
           {/* Logo - Far Left */}
           {branding.logoUrl && (
@@ -456,7 +456,7 @@ function ClassicTemplate({
         </div>
       </header>
 
-      <main className="px-12 py-8" style={{ paddingTop: '32px', paddingBottom: '32px' }}>
+      <main className="px-4 py-8" style={{ paddingTop: '32px', paddingBottom: '32px' }}>
         {groupedProducts.map(([brandName, categoryProducts], categoryIndex) => (
           <div key={brandName} className={categoryIndex > 0 ? "mt-10" : ""} style={{ marginTop: categoryIndex > 0 ? '40px' : '0' }}>
             <h2 
@@ -521,7 +521,7 @@ function ClassicTemplate({
 
       {/* Footer - Minimal Height */}
       <footer 
-        className="px-12 py-2 border-t border-gray-300 mt-8"
+        className="px-4 py-2 border-t border-gray-300 mt-8"
         style={{ marginTop: '32px', borderTop: '1px solid #d1d5db', paddingTop: '8px', paddingBottom: '8px' }}
       >
         <div className="flex items-center justify-between gap-4">
@@ -561,13 +561,13 @@ function MinimalTemplate({
     <div className="pricelist-document font-sans" id="pricelist-document" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Ultra-Compact Header */}
       <header 
-        className="px-8 py-2"
+        className="px-4 py-2"
         style={{ 
           backgroundColor: headerBgColor,
           paddingTop: '8px',
           paddingBottom: '8px',
-          paddingLeft: '32px',
-          paddingRight: '32px'
+          paddingLeft: '16px',
+          paddingRight: '16px'
         }}
       >
         <div className="flex gap-4 items-center">
@@ -631,7 +631,7 @@ function MinimalTemplate({
       </header>
 
       {/* Ultra-Compact Table Layout */}
-      <main className="px-8 py-4" style={{ paddingTop: '16px', paddingBottom: '16px', paddingLeft: '32px', paddingRight: '32px' }}>
+      <main className="px-4 py-4" style={{ paddingTop: '16px', paddingBottom: '16px', paddingLeft: '16px', paddingRight: '16px' }}>
         {groupedProducts.map(([brandName, categoryProducts], categoryIndex) => {
             // brandName is now the clean brand name (e.g., "Mt. Boucherie Estate Winery")
             const displayName = brandName;
@@ -661,7 +661,7 @@ function MinimalTemplate({
               style={{ 
                 width: '100%',
                 borderCollapse: 'collapse',
-                fontSize: '8.5px',
+                fontSize: '9.5px',
                 lineHeight: '1.2'
               }}
             >
@@ -750,22 +750,22 @@ function MinimalTemplate({
                       backgroundColor: productIndex % 2 === 0 ? '#ffffff' : '#f2f2f2'
                     }}
                   >
-                    <td style={{ padding: '1px 4px', fontSize: '8.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <td style={{ padding: '1px 4px', fontSize: '9.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {product.sku}
                     </td>
-                    <td style={{ padding: '1px 4px', fontSize: '8.5px', fontWeight: 500 }}>
+                    <td style={{ padding: '1px 4px', fontSize: '9.5px', fontWeight: 500 }}>
                       {product.product}
                     </td>
-                    <td style={{ padding: '1px 4px', fontSize: '8.5px' }}>
+                    <td style={{ padding: '1px 4px', fontSize: '9.5px' }}>
                       {product.format}
                     </td>
-                    <td style={{ padding: '1px 4px', fontSize: '8.5px', fontWeight: 500, textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}>
+                    <td style={{ padding: '1px 4px', fontSize: '9.5px', fontWeight: 500, textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}>
                       {formatPrice(product.price)}
                     </td>
-                    <td style={{ padding: '1px 4px', fontSize: '8.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <td style={{ padding: '1px 4px', fontSize: '9.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {product.ribbon || ''}
                     </td>
-                    <td style={{ padding: '1px 4px', fontSize: '8.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <td style={{ padding: '1px 4px', fontSize: '9.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {product.notes || ''}
                     </td>
                   </tr>
@@ -779,14 +779,14 @@ function MinimalTemplate({
 
       {/* Compact Footer */}
       <footer 
-        className="px-8 py-1 border-t mt-6"
+        className="px-4 py-1 border-t mt-6"
         style={{ 
           marginTop: '24px',
           borderTop: '1px solid #d1d5db',
           paddingTop: '4px',
           paddingBottom: '4px',
-          paddingLeft: '32px',
-          paddingRight: '32px'
+          paddingLeft: '16px',
+          paddingRight: '16px'
         }}
       >
         <div className="flex items-center justify-between gap-2">
