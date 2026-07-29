@@ -1178,7 +1178,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       doc.rect(0, 0, pageWidth, headerHeight, "F");
     }
 
-    const headerPadding = 8;
+    const headerPadding = 18;
     const lineHeight = 8;
     
     // Logo on left if present
@@ -1462,20 +1462,18 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     
     const tableData = currentCategoryProducts.map(product => {
       const ribbon = (product.ribbon || "").trim();
-      const notes = (product.notes || "").trim();
       
       return [
         product.sku,
         product.product,
         product.format,
         formatPrice(product.price),
-        ribbon,  // 2nd-to-last column (blank header)
-        notes    // Last column
+        ribbon,  // Ribbon column (centred header)
       ];
     });
 
-    // Build header row - Ribbon has blank header, Notes has "Notes" header
-    const headRow = ["SKU", "Product", "Format", "Price", "", "Notes"];
+    // Build header row - Notes column removed, Ribbon now has a visible centred header
+    const headRow = ["SKU", "Product", "Format", "Price", "Ribbon"];
 
     autoTable(doc, {
       startY: yPosition,
@@ -1485,31 +1483,30 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
       headStyles: {
         fillColor: [245, 245, 245],
         textColor: [60, 60, 60],
-        fontSize: 7.5,
+        fontSize: 9,
         fontStyle: "bold",
         halign: "left",
         cellPadding: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 }, // Minimum padding
-        minCellHeight: 6,
+        minCellHeight: 8,
       },
       bodyStyles: {
-        fontSize: 7.5,
+        fontSize: 9,
         textColor: [30, 30, 30],
-        minCellHeight: 6,
+        minCellHeight: 8,
         cellPadding: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 }, // Minimum padding
       },
       alternateRowStyles: {
         fillColor: [242, 242, 242], // Stronger zebra striping for better visibility
       },
       columnStyles: {
-        // Column order: SKU, Product, Format, Price, Ribbon (blank header), Notes
+        // Column order: SKU, Product, Format, Price, Ribbon
         // Available width: 612pt - 36pt margins = 576pt
-        // Widths: 54 + 200 + 59 + 43 + 103 + 117 = 576pt
+        // Widths: 54 + 290 + 59 + 43 + 130 = 576pt (Notes freed 117pt → Product +90, Ribbon +27)
         0: { cellWidth: 54 },      // SKU
-        1: { cellWidth: 200 },     // Product
+        1: { cellWidth: 290 },     // Product (wider, accommodates longer names)
         2: { cellWidth: 59 },      // Format
-        3: { cellWidth: 43, halign: "left" },   // Price - left-aligned to stay under header
-        4: { cellWidth: 103 },     // Ribbon (blank header, 2nd-to-last)
-        5: { cellWidth: 117 },     // Notes (last column)
+        3: { cellWidth: 43, halign: "left" },   // Price - left-aligned
+        4: { cellWidth: 130, halign: "center" }, // Ribbon - centred header and data
       },
       margin: { left: margin, right: margin, top: 35, bottom: margin + footerHeight },
       didDrawPage: (data) => {

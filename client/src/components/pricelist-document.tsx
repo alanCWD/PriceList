@@ -566,8 +566,8 @@ function MinimalTemplate({
           backgroundColor: headerBgColor,
           paddingTop: '8px',
           paddingBottom: '8px',
-          paddingLeft: '16px',
-          paddingRight: '16px'
+          paddingLeft: '18px',
+          paddingRight: '18px'
         }}
       >
         <div className="flex gap-4 items-center">
@@ -655,13 +655,13 @@ function MinimalTemplate({
                   {displayName}
                 </h2>
 
-                {/* Ultra-Compact Table - 6 columns matching PDF generator */}
+                {/* Ultra-Compact Table - 5 columns matching PDF generator */}
                 <table 
               className="w-full border-collapse"
               style={{ 
                 width: '100%',
                 borderCollapse: 'collapse',
-                fontSize: '9.5px',
+                fontSize: '11px',
                 lineHeight: '1.2'
               }}
             >
@@ -671,10 +671,10 @@ function MinimalTemplate({
                     className="text-left font-semibold"
                     style={{ 
                       padding: '2px 4px',
-                      fontSize: '7px',
+                      fontSize: '8px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: '9.4%'  /* 50pt / 532pt */
+                      width: '9.4%'  /* 54pt / 576pt */
                     }}
                   >
                     SKU
@@ -683,10 +683,10 @@ function MinimalTemplate({
                     className="text-left font-semibold"
                     style={{ 
                       padding: '2px 4px',
-                      fontSize: '7px',
+                      fontSize: '8px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: '34.8%'  /* 185pt / 532pt */
+                      width: '50.3%'  /* 290pt / 576pt */
                     }}
                   >
                     Product
@@ -695,10 +695,10 @@ function MinimalTemplate({
                     className="text-left font-semibold"
                     style={{ 
                       padding: '2px 4px',
-                      fontSize: '7px',
+                      fontSize: '8px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: '10.3%'  /* 55pt / 532pt */
+                      width: '10.2%'  /* 59pt / 576pt */
                     }}
                   >
                     Format
@@ -707,37 +707,25 @@ function MinimalTemplate({
                     className="text-left font-semibold"
                     style={{ 
                       padding: '2px 4px',
-                      fontSize: '7px',
+                      fontSize: '8px',
                       fontWeight: 600,
                       textAlign: 'left',
-                      width: '7.5%'  /* 40pt / 532pt - left-aligned to match PDF */
+                      width: '7.5%'  /* 43pt / 576pt */
                     }}
                   >
                     Price
                   </th>
                   <th 
-                    className="text-left font-semibold"
+                    className="text-center font-semibold"
                     style={{ 
                       padding: '2px 4px',
-                      fontSize: '7px',
+                      fontSize: '8px',
                       fontWeight: 600,
-                      textAlign: 'left',
-                      width: '17.9%'  /* 95pt / 532pt - Ribbon column (blank header) */
+                      textAlign: 'center',
+                      width: '22.6%'  /* 130pt / 576pt */
                     }}
                   >
-                    {/* Blank header for Ribbon */}
-                  </th>
-                  <th 
-                    className="text-left font-semibold"
-                    style={{ 
-                      padding: '2px 4px',
-                      fontSize: '7px',
-                      fontWeight: 600,
-                      textAlign: 'left',
-                      width: '20.1%'  /* 107pt / 532pt */
-                    }}
-                  >
-                    Notes
+                    Ribbon
                   </th>
                 </tr>
               </thead>
@@ -750,23 +738,20 @@ function MinimalTemplate({
                       backgroundColor: productIndex % 2 === 0 ? '#ffffff' : '#f2f2f2'
                     }}
                   >
-                    <td style={{ padding: '1px 4px', fontSize: '9.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <td style={{ padding: '1px 4px', fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {product.sku}
                     </td>
-                    <td style={{ padding: '1px 4px', fontSize: '9.5px', fontWeight: 500 }}>
+                    <td style={{ padding: '1px 4px', fontSize: '11px', fontWeight: 500 }}>
                       {product.product}
                     </td>
-                    <td style={{ padding: '1px 4px', fontSize: '9.5px' }}>
+                    <td style={{ padding: '1px 4px', fontSize: '11px' }}>
                       {product.format}
                     </td>
-                    <td style={{ padding: '1px 4px', fontSize: '9.5px', fontWeight: 500, textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}>
+                    <td style={{ padding: '1px 4px', fontSize: '11px', fontWeight: 500, textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}>
                       {formatPrice(product.price)}
                     </td>
-                    <td style={{ padding: '1px 4px', fontSize: '9.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <td style={{ padding: '1px 4px', fontSize: '11px', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {product.ribbon || ''}
-                    </td>
-                    <td style={{ padding: '1px 4px', fontSize: '9.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {product.notes || ''}
                     </td>
                   </tr>
                 ))}
