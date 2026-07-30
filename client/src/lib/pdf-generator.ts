@@ -462,8 +462,9 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         // Calculate width for this agent
         const agentWidth = Math.max(...lines.map(line => doc.getTextWidth(line)));
         
-        // Calculate starting Y for this agent block (bottom-aligned)
-        let agentY = headerHeight - bottomPadding - (lines.length - 1) * lineHeight;
+        // Calculate starting Y for this agent block (vertically centred)
+        const totalBlockHeight = (lines.length - 1) * lineHeight;
+        let agentY = (headerHeight - totalBlockHeight) / 2;
         
         // Position this agent using cumulative offset
         const agentX = agentRightX - cumulativeOffset;
