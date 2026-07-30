@@ -1170,7 +1170,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     : null;
 
   // Compact header height with minimum to ensure space for sales agents
-  const minHeaderHeight = 45;
+  const minHeaderHeight = 60;
   const headerHeight = logoBase64 ? Math.max(logoHeight + 10, minHeaderHeight) : minHeaderHeight;
   
   // Function to draw compact header (only on first page)
@@ -1258,7 +1258,11 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         // Calculate width for this agent
         const agentWidth = Math.max(...lines.map(line => doc.getTextWidth(line)));
         
-        let agentY = headerHeight - headerPadding - (lines.length - 1) * lineHeight;
+        // Vertically centre the agent block with equal visual padding top and bottom.
+        // visualHeight covers ascent of first line + baseline spacing + descent of last line.
+        const agentFontSize = 7;
+        const visualHeight = agentFontSize + (lines.length - 1) * lineHeight;
+        let agentY = (headerHeight - visualHeight) / 2 + agentFontSize * 0.8;
         
         // Position this agent using cumulative offset
         const agentX = agentRightX - cumulativeOffset;
