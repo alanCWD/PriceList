@@ -464,7 +464,9 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
         
         // Calculate starting Y for this agent block (vertically centred)
         const totalBlockHeight = (lines.length - 1) * lineHeight;
-        let agentY = (headerHeight - totalBlockHeight) / 2;
+        // Add ~3pt correction for font ascent above the first baseline so the
+        // visual block appears centred rather than sitting slightly high.
+        let agentY = (headerHeight - totalBlockHeight) / 2 + 3;
         
         // Position this agent using cumulative offset
         const agentX = agentRightX - cumulativeOffset;
@@ -1486,7 +1488,6 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         textColor: [60, 60, 60],
         fontSize: 9,
         fontStyle: "bold",
-        halign: "left",
         cellPadding: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 }, // Minimum padding
         minCellHeight: 8,
       },
