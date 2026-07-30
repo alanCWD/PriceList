@@ -1511,6 +1511,14 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
         4: { cellWidth: 130, halign: "center" }, // Ribbon - centred header and data
       },
       margin: { left: margin, right: margin, top: 35, bottom: margin + footerHeight },
+      didParseCell: (data) => {
+        // Force centre alignment on the Notes column header (col 4).
+        // columnStyles.halign is overridden by headStyles in some autotable
+        // versions, so we set it explicitly here where it always wins.
+        if (data.section === "head" && data.column.index === 4) {
+          data.cell.styles.halign = "center";
+        }
+      },
       didDrawPage: (data) => {
         // Only draw header on first page
         const currentPageNum = (doc as any).getCurrentPageInfo().pageNumber;
