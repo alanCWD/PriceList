@@ -1474,7 +1474,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     });
 
     // Build header row - Notes column removed, Ribbon now has a visible centred header
-    const headRow = ["SKU", "Product", "Format", "Price", "Ribbon"];
+    const headRow = ["SKU", "Product", "Format", "Price", "Notes"];
 
     autoTable(doc, {
       startY: yPosition,

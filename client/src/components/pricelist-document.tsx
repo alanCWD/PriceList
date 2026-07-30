@@ -725,7 +725,7 @@ function MinimalTemplate({
                       width: '22.6%'  /* 130pt / 576pt */
                     }}
                   >
-                    Ribbon
+                    Notes
                   </th>
                 </tr>
               </thead>
