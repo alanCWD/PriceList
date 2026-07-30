@@ -66,7 +66,7 @@ export default function ClientLanding() {
       if (!response.ok) throw new Error('Failed to fetch company defaults');
       return response.json();
     },
-    enabled: impersonatedCompanyId !== null || user?.role !== 'superAdmin',
+    enabled: !!user && (impersonatedCompanyId !== null || user.role !== 'superAdmin'),
   });
 
   // CRITICAL: Use the pricelist's companyId for brand registry and hidden SKUs

@@ -165,7 +165,7 @@ export default function Editor() {
       // Server now returns companyId in response for provenance verification
       return await response.json();
     },
-    enabled: companyIdForDefaults !== null, // Fetch whenever a company is selected (for both new and existing pricelists)
+    enabled: !!user && companyIdForDefaults !== null, // Only fetch after user is loaded and a company is selected
     staleTime: 0, // Always consider data stale to ensure fresh fetch on company switch
   });
 
@@ -387,16 +387,12 @@ export default function Editor() {
     }
   }, [companyDefaults, companyIdForDefaults, isFetchingDefaults]);
 
-  // Effect to handle company defaults error
+  // Effect to handle company defaults error - log silently, auto-detection handles the fallback
   useEffect(() => {
     if (defaultsError) {
-      toast({
-        title: "Failed to load company defaults",
-        description: "Using auto-detection for field mapping",
-        variant: "destructive",
-      });
+      console.warn('[Editor] Failed to load company defaults, falling back to auto-detection:', defaultsError);
     }
-  }, [defaultsError, toast]);
+  }, [defaultsError]);
 
   // NEW: Auto-generate products whenever CSV data and field mapping are available
   // This enables the save button without requiring manual "Apply" or tab navigation
