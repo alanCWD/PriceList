@@ -19,6 +19,7 @@ import {
   type User
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
+import { findDuplicateSkus, reconcileProductIdsBySku } from "@shared/product-reconciliation";
 
 // Helper to get effective company ID (supports Super Admin impersonation)
 function getEffectiveCompanyId(req: Request, user: User): number | null {
@@ -724,6 +725,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyId: finalCompanyId,
       };
 
+      const duplicateSkus = findDuplicateSkus(pricelistData.products || []);
+      if (duplicateSkus.length > 0) {
+        return res.status(400).json({
+          error: `The upload contains duplicate SKU${duplicateSkus.length === 1 ? "" : "s"}: ${duplicateSkus.join(", ")}`,
+        });
+      }
+
       // Preserve isHidden settings from previous pricelist when uploading new CSV
       // Match products by SKU and copy the isHidden flag from the previous pricelist
       try {
@@ -850,6 +858,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData: any = { ...validation.data };
       if (user.role !== "admin" && user.role !== "superAdmin") {
         delete updateData.companyId; // Force remove - clients cannot change company
+      }
+
+      if (updateData.products) {
+        const duplicateSkus = findDuplicateSkus(updateData.products);
+        if (duplicateSkus.length > 0) {
+          return res.status(400).json({
+            error: `The upload contains duplicate SKU${duplicateSkus.length === 1 ? "" : "s"}: ${duplicateSkus.join(", ")}`,
+          });
+        }
+
+        // A new export is authoritative for mutable product fields (including
+        // its name), while a unique matching SKU keeps the existing product ID.
+        // Blank SKUs intentionally remain new standalone rows.
+        updateData.products = reconcileProductIdsBySku(
+          existingPricelist.products,
+          updateData.products,
+        ).products;
       }
 
       console.log("[PATCH /api/pricelists] categoryFilter in validation.data:", validation.data.categoryFilter);

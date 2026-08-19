@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { stripHtml } from "@/lib/text-utils";
 import { parseCollection, extractWineTypeFromProductName, lookupBrandBySKU, registryHasSKUMappings, type BrandRegistryEntry } from "@/lib/collection-parser";
+import { findDuplicateSkus, reconcileProductIdsBySku } from "@shared/product-reconciliation";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template, BrandRegistry } from "@shared/schema";
 
 export default function Editor() {
@@ -232,8 +233,8 @@ export default function Editor() {
       setCurrentPricelistDescription(loadedPricelist.description || "");
       // Ensure companyName always exists (old data might not have it)
       setCompanyBranding({
-        companyName: "", // Default if missing
         ...loadedPricelist.branding,
+        companyName: loadedPricelist.branding.companyName || "",
       });
       setSalesAgents(loadedPricelist.salesAgents as SalesAgent[]);
       setQRCodeConfig(loadedPricelist.qrCode as QRCodeConfig | undefined);
@@ -355,8 +356,8 @@ export default function Editor() {
         console.log('[Apply Defaults] Setting branding:', companyDefaults.defaultBranding);
         // Ensure companyName always exists (old data might not have it)
         setCompanyBranding({
-          companyName: "", // Default if missing
           ...companyDefaults.defaultBranding,
+          companyName: companyDefaults.defaultBranding.companyName || "",
         });
       } else {
         console.log('[Apply Defaults] No branding in defaults');
@@ -434,16 +435,6 @@ export default function Editor() {
     // Check if registry has SKU mappings (determines matching strategy)
     const hasSKUMappings = registryHasSKUMappings(brandRegistryEntries);
     console.log('[Auto-generate products] Using SKU-based matching:', hasSKUMappings);
-
-    // Build a map of existing products by SKU to preserve hidden state
-    const existingProductsBySKU = new Map<string, Product>();
-    if (loadedPricelist?.products) {
-      loadedPricelist.products.forEach((product: Product) => {
-        if (product.sku) {
-          existingProductsBySKU.set(product.sku, product);
-        }
-      });
-    }
 
     // Build authoritative hidden SKUs set from visibility table.
     // This is the source of truth — pricelist JSON's isHidden can be stale
@@ -594,7 +585,10 @@ export default function Editor() {
       };
     });
 
-    setProducts(mappedProducts);
+    setProducts(reconcileProductIdsBySku(
+      (loadedPricelist?.products as Product[] | undefined) || [],
+      mappedProducts,
+    ).products);
     console.log('[Auto-generate products] Generated', mappedProducts.length, 'products');
     if (hasSKUMappings && unassignedCount > 0) {
       console.log('[Auto-generate products] Unassigned products (SKU not in registry):', unassignedCount);
@@ -709,8 +703,17 @@ export default function Editor() {
       const data = await res.json();
 
       if (data.success && data.products) {
-        // Set the products directly from Wix
-        setProducts(data.products);
+        const reconciliation = reconcileProductIdsBySku(
+          (loadedPricelist?.products as Product[] | undefined) || [],
+          data.products as Product[],
+        );
+        if (reconciliation.duplicateSkus.length > 0) {
+          throw new Error(`Wix returned duplicate SKU${reconciliation.duplicateSkus.length === 1 ? "" : "s"}: ${reconciliation.duplicateSkus.join(", ")}`);
+        }
+
+        // Preserve a stable ID only for matching SKUs; current Wix fields,
+        // including a renamed product name, come from the fresh sync.
+        setProducts(reconciliation.products);
         
         toast({
           title: "Wix sync successful!",
@@ -734,16 +737,6 @@ export default function Editor() {
   };
 
   const handleApplyMapping = () => {
-    // Build a map of existing products by SKU to preserve hidden state
-    const existingProductsBySKU = new Map<string, Product>();
-    if (loadedPricelist?.products) {
-      loadedPricelist.products.forEach((product: Product) => {
-        if (product.sku) {
-          existingProductsBySKU.set(product.sku, product);
-        }
-      });
-    }
-
     // Authoritative hidden SKUs from visibility table (same logic as auto-generate)
     const visibilityHiddenSkusSet = new Set<string>(visibilityHiddenSkus || []);
 
@@ -881,7 +874,20 @@ export default function Editor() {
       };
     });
 
-    setProducts(mappedProducts);
+    const reconciliation = reconcileProductIdsBySku(
+      (loadedPricelist?.products as Product[] | undefined) || [],
+      mappedProducts,
+    );
+    if (reconciliation.duplicateSkus.length > 0) {
+      toast({
+        title: "Duplicate SKUs in upload",
+        description: `Fix the duplicate SKU${reconciliation.duplicateSkus.length === 1 ? "" : "s"} before continuing: ${reconciliation.duplicateSkus.join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setProducts(reconciliation.products);
     setActiveTab("collection");
   };
 
@@ -962,7 +968,8 @@ export default function Editor() {
 
   // Allow saving as long as products exist - fallback chain in dialog will handle name generation
   // Super admins must select a company before saving and companies must be loaded
-  const canSave = products.length > 0 && (
+  const duplicateSkus = findDuplicateSkus(products);
+  const canSave = products.length > 0 && duplicateSkus.length === 0 && (
     user?.role !== 'superAdmin' || (
       !isLoadingCompanies && 
       (selectedCompanyId !== null || currentPricelistId !== null)
@@ -996,6 +1003,14 @@ export default function Editor() {
                     toast({
                       title: "Company Required",
                       description: "Please select a company before saving",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  if (duplicateSkus.length > 0) {
+                    toast({
+                      title: "Duplicate SKUs in pricelist",
+                      description: `Fix the duplicate SKU${duplicateSkus.length === 1 ? "" : "s"} before saving: ${duplicateSkus.join(", ")}`,
                       variant: "destructive",
                     });
                     return;
@@ -1068,6 +1083,14 @@ export default function Editor() {
             toast({
               title: "Company Required",
               description: "Please select a company before saving",
+              variant: "destructive",
+            });
+            return;
+          }
+          if (duplicateSkus.length > 0) {
+            toast({
+              title: "Duplicate SKUs in pricelist",
+              description: `Fix the duplicate SKU${duplicateSkus.length === 1 ? "" : "s"} before saving: ${duplicateSkus.join(", ")}`,
               variant: "destructive",
             });
             return;

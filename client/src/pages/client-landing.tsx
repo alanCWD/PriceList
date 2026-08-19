@@ -13,6 +13,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { generatePDF } from "@/lib/pdf-generator";
 import { stripHtml } from "@/lib/text-utils";
 import { useViewMode } from "@/contexts/ViewModeContext";
+import { reconcileProductIdsBySku } from "@shared/product-reconciliation";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template, BrandRegistry } from "@shared/schema";
 import Papa from "papaparse";
 
@@ -282,21 +283,11 @@ export default function ClientLanding() {
           };
         }
 
-        // Build SKU map from existing pricelist to preserve isHidden state
-        const existingProductsBySKU = new Map<string, Product>();
-        if (latestPricelist?.products) {
-          (latestPricelist.products as Product[]).forEach((product: Product) => {
-            if (product.sku) {
-              existingProductsBySKU.set(product.sku, product);
-            }
-          });
-        }
-
         // Build set of hidden SKUs from the persistent visibility table
         const hiddenSkusSet = new Set<string>(hiddenSkus || []);
 
         // Map CSV data to products and strip HTML tags (for Wix exports)
-        const products: Product[] = csvData.map((row: any, index: number) => {
+        const importedProducts: Product[] = csvData.map((row: any, index: number) => {
           let imageUrl = fieldMapping.productImageUrl ? row[fieldMapping.productImageUrl] || "" : "";
           
           // Auto-complete Wix image URLs if only filename is provided
@@ -324,6 +315,21 @@ export default function ClientLanding() {
             isHidden, // Preserve hidden state from visibility table or existing pricelist
           };
         });
+
+        const reconciliation = reconcileProductIdsBySku(
+          (latestPricelist?.products as Product[] | undefined) || [],
+          importedProducts,
+        );
+        if (reconciliation.duplicateSkus.length > 0) {
+          toast({
+            title: "Duplicate SKUs in upload",
+            description: `Fix the duplicate SKU${reconciliation.duplicateSkus.length === 1 ? "" : "s"} before uploading: ${reconciliation.duplicateSkus.join(", ")}`,
+            variant: "destructive",
+          });
+          setIsUploading(false);
+          return;
+        }
+        const products = reconciliation.products;
 
         // Validate we have products
         if (products.length === 0) {
