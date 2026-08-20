@@ -1215,6 +1215,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Verify all product IDs exist in the current pricelist
         const reorderedIds = req.body.reorderedProducts.map((p: any) => p.id);
+        const uniqueReorderedIds = new Set(reorderedIds);
+        if (uniqueReorderedIds.size !== reorderedIds.length) {
+          return res.status(400).json({
+            error: "Invalid product IDs",
+            details: "Each product can appear only once in a reorder request",
+          });
+        }
         const invalidIds = reorderedIds.filter((id: string) => !existingProductsMap.has(id));
         
         if (invalidIds.length > 0) {
@@ -1226,49 +1233,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Reorder existing complete products based on ID order from request
         // This preserves all product fields while applying the new order
-        const reorderedCompleteProducts = reorderedIds.map((id: string) => 
+        const reorderedCompleteProducts = reorderedIds.map((id: string) =>
           existingProductsMap.get(id)!
         );
+        // The admin view intentionally excludes unassigned products. Preserve those
+        // current rows instead of dropping them from the pricelist during a reorder.
+        const productsNotIncludedInRequest = latestPricelist.products.filter(
+          (product) => !uniqueReorderedIds.has(product.id),
+        );
+        const completeProductsInOrder = [
+          ...reorderedCompleteProducts,
+          ...productsNotIncludedInRequest,
+        ];
         
-        // Save the reordered complete products
-        await storage.updatePricelist(latestPricelist.id, {
-          products: reorderedCompleteProducts,
-        });
-        
-        // Also persist product order to brand registry for each brand
-        // Store SKUs (not product IDs) because SKUs are stable across CSV uploads
-        // Group products by brand to save productOrder per brand
+        // Resolve the brand from registry SKU membership, not from collectionBrand
+        // supplied by the browser: Wix collection metadata can change between imports.
+        // The pricelist and all registry product orders are saved together below.
+        const brands = await storage.getBrandsByCompanyId(targetCompanyId);
+        const brandNameBySku = new Map<string, string>();
+        for (const brand of brands) {
+          for (const sku of brand.skus || []) {
+            if (sku) brandNameBySku.set(sku, brand.brandName);
+          }
+        }
+
         const skusByBrand: Record<string, string[]> = {};
-        req.body.reorderedProducts.forEach((product: any) => {
-          const brandName = product.collectionBrand;
+        const seenSkusByBrand: Record<string, Set<string>> = {};
+        completeProductsInOrder.forEach((product: any) => {
           const sku = product.sku;
+          const brandName = sku ? brandNameBySku.get(sku) : undefined;
           if (brandName && sku) {
             if (!skusByBrand[brandName]) {
               skusByBrand[brandName] = [];
+              seenSkusByBrand[brandName] = new Set();
             }
-            skusByBrand[brandName].push(sku);
+            if (!seenSkusByBrand[brandName].has(sku)) {
+              skusByBrand[brandName].push(sku);
+              seenSkusByBrand[brandName].add(sku);
+            }
           }
         });
         
-        // Update productOrder for each brand in registry (stores SKUs now)
-        for (const [brandName, skuList] of Object.entries(skusByBrand)) {
-          try {
-            // Find existing brand registry entry
-            const existingBrand = await storage.getBrandByName(targetCompanyId, brandName);
-            
-            if (existingBrand) {
-              // Update existing brand with productOrder (array of SKUs)
-              await storage.updateBrand(existingBrand.id, {
-                productOrder: skuList,
-              });
-            }
-            // If brand doesn't exist in registry, we don't create it automatically
-            // Brands should be added via the brand registry UI first
-          } catch (error) {
-            console.error(`[Brand Reorder] Error updating productOrder for brand ${brandName}:`, error);
-            // Continue processing other brands even if one fails
+        const brandOrders = Object.entries(skusByBrand).map(([brandName, skuList]) => {
+          const brand = brands.find((candidate) => candidate.brandName === brandName);
+          if (!brand) {
+            throw new Error(`Registry brand "${brandName}" was removed while reordering products`);
           }
-        }
+          return { brandId: brand.id, productOrder: skuList };
+        });
+
+        // A reorder is not successful unless both the visible pricelist order and
+        // the stable SKU sequence used by future imports are persisted.
+        await storage.reorderPricelistAndUpdateBrandOrders(
+          latestPricelist.id,
+          completeProductsInOrder,
+          brandOrders,
+        );
         
         res.json({ success: true });
       } else {

@@ -57,6 +57,11 @@ export interface IStorage {
   getLatestPricelistByCompanyId(companyId: number): Promise<Pricelist | undefined>;
   createPricelist(pricelist: InsertPricelist): Promise<Pricelist>;
   updatePricelist(id: number, pricelist: Partial<InsertPricelist>): Promise<Pricelist | undefined>;
+  reorderPricelistAndUpdateBrandOrders(
+    pricelistId: number,
+    products: Pricelist["products"],
+    brandOrders: Array<{ brandId: number; productOrder: string[] }>,
+  ): Promise<Pricelist>;
   deletePricelist(id: number): Promise<boolean>;
   
   // Company Profile operations
@@ -317,6 +322,38 @@ export class DatabaseStorage implements IStorage {
       .returning();
     console.log("[Storage] updatePricelist: Returned categoryFilter:", result[0]?.categoryFilter);
     return result[0];
+  }
+
+  async reorderPricelistAndUpdateBrandOrders(
+    pricelistId: number,
+    products: Pricelist["products"],
+    brandOrders: Array<{ brandId: number; productOrder: string[] }>,
+  ): Promise<Pricelist> {
+    return db.transaction(async (tx) => {
+      const [updatedPricelist] = await tx
+        .update(pricelists)
+        .set({ products, updatedAt: new Date() })
+        .where(eq(pricelists.id, pricelistId))
+        .returning();
+
+      if (!updatedPricelist) {
+        throw new Error("Pricelist not found while saving product order");
+      }
+
+      for (const brandOrder of brandOrders) {
+        const [updatedBrand] = await tx
+          .update(brandRegistry)
+          .set({ productOrder: brandOrder.productOrder, updatedAt: new Date() })
+          .where(eq(brandRegistry.id, brandOrder.brandId))
+          .returning();
+
+        if (!updatedBrand) {
+          throw new Error(`Brand ${brandOrder.brandId} not found while saving product order`);
+        }
+      }
+
+      return updatedPricelist;
+    });
   }
 
   async deletePricelist(id: number): Promise<boolean> {

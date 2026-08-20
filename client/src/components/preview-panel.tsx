@@ -7,8 +7,9 @@ import { PricelistDocument } from "@/components/pricelist-document";
 import { generatePDF } from "@/lib/pdf-generator";
 import { generateSpreadsheet, downloadSpreadsheet } from "@/lib/spreadsheet-generator";
 import { useToast } from "@/hooks/use-toast";
-import { parseCollection, extractWineTypeFromProductName, injectManualSortIndex, lookupBrandBySKU, registryHasSKUMappings, type BrandRegistryEntry } from "@/lib/collection-parser";
+import { parseCollection, extractWineTypeFromProductName, lookupBrandBySKU, registryHasSKUMappings, type BrandRegistryEntry } from "@/lib/collection-parser";
 import { sortBrandGroups, type BrandOrderingEntry } from "@/lib/sort-utils";
+import { sortProductsByBrandRegistryOrder } from "@shared/product-ordering";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
 interface PreviewPanelProps {
@@ -67,6 +68,16 @@ export function PreviewPanel({
       }
     }
     return skus.size > 0 ? skus : null;
+  }, [brandRegistry]);
+
+  const registryBrandBySku = useMemo(() => {
+    const brandsBySku = new Map<string, string>();
+    for (const brand of brandRegistry || []) {
+      for (const sku of brand.skus || []) {
+        if (sku) brandsBySku.set(sku, brand.brandName);
+      }
+    }
+    return brandsBySku;
   }, [brandRegistry]);
 
   // Check if a product's SKU exists in the brand registry
@@ -255,14 +266,6 @@ export function PreviewPanel({
     }
   };
 
-  // Inject manualSortIndex from brand registry productOrder
-  const productsWithSortIndex = useMemo(() => {
-    if (!brandRegistry || brandRegistry.length === 0) {
-      return filteredProducts;
-    }
-    return injectManualSortIndex(filteredProducts, brandRegistry);
-  }, [filteredProducts, brandRegistry]);
-
   // Helper to extract brand from category - excludes regions and category words
   // Uses exact equality checks to avoid flagging brands like "Storied Wine Agency"
   const extractBrandFromCategory = (category: string): string => {
@@ -371,14 +374,20 @@ export function PreviewPanel({
                        'okanagan', 'vancouver island', 'similkameen', 'fraser valley',
                        'gulf islands', 'kootenays', 'bc', 'british columbia', 'lower mainland'];
     
-    // PRIORITY 1: Check if product name matches a brand in registry (highest priority)
+    // PRIORITY 1: Use the registry SKU mapping. Product names and collection
+    // metadata can change on re-import, but a registered SKU remains stable.
+    if (product.sku && registryBrandBySku.has(product.sku)) {
+      return registryBrandBySku.get(product.sku)!;
+    }
+
+    // PRIORITY 2: Check if product name matches a brand in registry
     // This ensures "Rust Wines 2022 Merlot" matches "Rust Wines" brand even if collectionBrand says otherwise
     const registryMatch = extractBrandFromProductName(product.product);
     if (registryMatch && brandRegistry?.some(b => b.brandName === registryMatch)) {
       return registryMatch;
     }
     
-    // PRIORITY 2: collectionBrand (if not a skip word)
+    // PRIORITY 3: collectionBrand (if not a skip word)
     let brandKey = product.collectionBrand;
     
     // Check if collectionBrand is a skip word (region/category) - if so, don't use it
@@ -386,12 +395,12 @@ export function PreviewPanel({
       brandKey = null;
     }
     
-    // PRIORITY 3: extracted from category
+    // PRIORITY 4: extracted from category
     if (!brandKey) {
       brandKey = extractBrandFromCategory(product.category);
     }
     
-    // PRIORITY 4: extracted from product name (fallback for non-registry brands)
+    // PRIORITY 5: extracted from product name (fallback for non-registry brands)
     if (!brandKey || brandKey.toLowerCase() === "uncategorized") {
       if (registryMatch) {
         brandKey = registryMatch;
@@ -403,7 +412,7 @@ export function PreviewPanel({
   };
 
   // Group products by brand (using improved brand extraction)
-  const groupedProducts = productsWithSortIndex.reduce((acc, product) => {
+  const groupedProducts = filteredProducts.reduce((acc, product) => {
     const brandKey = getBrandKey(product);
     if (!acc[brandKey]) {
       acc[brandKey] = [];
@@ -412,71 +421,10 @@ export function PreviewPanel({
     return acc;
   }, {} as Record<string, any[]>);
 
-  // Sort products within each brand group
-  // Priority 1: Manual order (via brand registry productOrder)
-  // Priority 2: Automatic wine type sorting (Sparkling → White → Rosé → Red)
-  const wineTypeOrder: Record<string, number> = {
-    'sparkling': 1,
-    'white': 2,
-    'rosé': 3,
-    'rose': 3,
-    'red': 4,
-  };
-
-  // Helper to extract secondary wine type from "Sparkling X" product names
-  const getSecondaryWineType = (productName: string, primaryType: string): string => {
-    if (primaryType !== 'sparkling') return primaryType;
-    
-    const lower = productName.toLowerCase();
-    // Check for secondary types in order of priority
-    if (lower.includes('white')) return 'white';
-    if (lower.includes('rosé') || lower.includes('rose') || lower.includes('pink')) return 'rosé';
-    if (lower.includes('red')) return 'red';
-    
-    return primaryType; // fallback to primary
-  };
-
-  Object.values(groupedProducts).forEach(brandProducts => {
-    brandProducts.sort((a, b) => {
-      // PRIORITY 1: Check for manual ordering first
-      const hasManualA = typeof a.manualSortIndex === 'number';
-      const hasManualB = typeof b.manualSortIndex === 'number';
-      
-      // Both have manual order - sort by manualSortIndex
-      if (hasManualA && hasManualB) {
-        return a.manualSortIndex - b.manualSortIndex;
-      }
-      
-      // Only A has manual order - A comes first
-      if (hasManualA && !hasManualB) return -1;
-      
-      // Only B has manual order - B comes first
-      if (!hasManualA && hasManualB) return 1;
-      
-      // PRIORITY 2: Neither has manual order - fall back to automatic wine type sorting
-      // Get primary wine types
-      const typeA = a.collectionType?.toLowerCase() || '';
-      const typeB = b.collectionType?.toLowerCase() || '';
-      
-      // For sparkling products, use secondary type from product name
-      const effectiveTypeA = getSecondaryWineType(a.product || '', typeA);
-      const effectiveTypeB = getSecondaryWineType(b.product || '', typeB);
-      
-      const orderA = wineTypeOrder[effectiveTypeA] || 999;
-      const orderB = wineTypeOrder[effectiveTypeB] || 999;
-      
-      if (orderA !== orderB) {
-        return orderA - orderB;
-      }
-      
-      // Tertiary sort: prioritize sparkling variants over non-sparkling when effective type is the same
-      if (typeA === 'sparkling' && typeB !== 'sparkling') return -1;
-      if (typeA !== 'sparkling' && typeB === 'sparkling') return 1;
-      
-      // Finally by product name
-      return (a.product || '').localeCompare(b.product || '');
-    });
-  });
+  const orderedProductsByBrand = sortProductsByBrandRegistryOrder(
+    groupedProducts,
+    brandRegistry,
+  );
 
   // Convert brand registry to the format expected by sortBrandGroups
   const brandOrderingData: BrandOrderingEntry[] = useMemo(() => {
@@ -491,7 +439,7 @@ export function PreviewPanel({
 
   // Sort brand groups using shared utility with brand registry ordering
   // Ensures Wine → Spirits → Cider → NonAlc order, then by displayOrder, then alphabetical
-  const orderedBrandGroups = sortBrandGroups(Object.entries(groupedProducts), brandOrderingData);
+  const orderedBrandGroups = sortBrandGroups(Object.entries(orderedProductsByBrand), brandOrderingData);
 
   return (
     <div className="space-y-6">

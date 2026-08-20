@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
-import { getDisplayName, injectManualSortIndex, type ProductWithSortIndex } from "./collection-parser";
+import { getDisplayName } from "./collection-parser";
 import { sortBrandGroups, type BrandOrderingEntry } from "./sort-utils";
+import { sortProductsByBrandRegistryOrder } from "@shared/product-ordering";
 import type { Product, CompanyBranding, BrandRegistry, SalesAgent } from "@shared/schema";
 
 // Build SKU→Brand map from brand registry for fast lookup
@@ -271,67 +272,15 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
     };
   });
   
-  const productsWithSortIndex = brandRegistry && brandRegistry.length > 0
-    ? injectManualSortIndex(visibleProducts, brandRegistry)
-    : visibleProducts;
-  
-  const productsByBrand: Record<string, ProductWithSortIndex[]> = {};
-  productsWithSortIndex.forEach(product => {
+  const productsByBrand: Record<string, Product[]> = {};
+  visibleProducts.forEach(product => {
     const brand = getBrandForProduct(product as Product, brandRegistry);
     if (!productsByBrand[brand]) {
       productsByBrand[brand] = [];
     }
-    productsByBrand[brand].push(product as ProductWithSortIndex);
+    productsByBrand[brand].push(product);
   });
-  
-  const wineTypeOrder: Record<string, number> = {
-    'sparkling': 1,
-    'white': 2,
-    'rose': 3,
-    'rosé': 3,
-    'red': 4,
-  };
-  
-  const getSecondaryWineType = (productName: string, primaryType: string): string => {
-    if (primaryType !== 'sparkling') return primaryType;
-    
-    const lower = productName.toLowerCase();
-    if (lower.includes('white')) return 'white';
-    if (lower.includes('rosé') || lower.includes('rose') || lower.includes('pink')) return 'rosé';
-    if (lower.includes('red')) return 'red';
-    
-    return primaryType;
-  };
-  
-  Object.values(productsByBrand).forEach(brandProducts => {
-    brandProducts.sort((a, b) => {
-      const hasManualA = typeof a.manualSortIndex === 'number';
-      const hasManualB = typeof b.manualSortIndex === 'number';
-      
-      if (hasManualA && hasManualB) {
-        return (a.manualSortIndex ?? 0) - (b.manualSortIndex ?? 0);
-      }
-      
-      if (hasManualA && !hasManualB) return -1;
-      if (!hasManualA && hasManualB) return 1;
-      
-      const typeA = (a as any).collectionType?.toLowerCase() || '';
-      const typeB = (b as any).collectionType?.toLowerCase() || '';
-      
-      const effectiveTypeA = getSecondaryWineType(a.product || '', typeA);
-      const effectiveTypeB = getSecondaryWineType(b.product || '', typeB);
-      
-      const orderA = wineTypeOrder[effectiveTypeA] || 999;
-      const orderB = wineTypeOrder[effectiveTypeB] || 999;
-      
-      if (orderA !== orderB) return orderA - orderB;
-      
-      if (typeA === 'sparkling' && typeB !== 'sparkling') return -1;
-      if (typeA !== 'sparkling' && typeB === 'sparkling') return 1;
-      
-      return (a.product || '').localeCompare(b.product || '');
-    });
-  });
+  const orderedProductsByBrand = sortProductsByBrandRegistryOrder(productsByBrand, brandRegistry);
   
   // Convert brand registry to the format expected by sortBrandGroups
   const brandOrderingData: BrandOrderingEntry[] = (brandRegistry || []).map(b => ({
@@ -343,7 +292,7 @@ export async function generateSpreadsheet(config: SpreadsheetConfig): Promise<Bl
   
   // Sort brand groups using the same utility as preview/PDF (Wine → Spirits → Cider → Non-Alc, then displayOrder)
   const sortedBrandEntries = sortBrandGroups(
-    Object.entries(productsByBrand) as [string, Product[]][],
+    Object.entries(orderedProductsByBrand) as [string, Product[]][],
     brandOrderingData
   );
   

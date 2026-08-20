@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getDisplayName, injectManualSortIndex, lookupBrandBySKU, registryHasSKUMappings, type BrandWithOrder, type BrandRegistryEntry } from "./collection-parser";
 import { sortBrandGroups, type BrandOrderingEntry } from "./sort-utils";
+import { sortProductsByBrandRegistryOrder } from "@shared/product-ordering";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, Template, BrandRegistry } from "@shared/schema";
 
 // Helper function to format price with 2 decimal places
@@ -257,6 +258,56 @@ function getBrandKey(product: any, brandRegistry?: any[]): string {
   return brandKey;
 }
 
+/**
+ * Resolves current products into canonical registry brands, then applies the
+ * saved per-brand SKU sequence. This is shared by every PDF template so a
+ * re-import cannot produce a different order in a different download type.
+ */
+function getOrderedProductsByBrand(
+  products: Product[],
+  brandRegistry?: BrandRegistry[],
+): Record<string, Product[]> {
+  const normalizedProducts = (() => {
+    if (!brandRegistry || brandRegistry.length === 0) {
+      return products;
+    }
+
+    const registryEntries: BrandRegistryEntry[] = brandRegistry.map((brand) => ({
+      brandName: brand.brandName,
+      category: brand.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
+      displayOrder: brand.displayOrder,
+      skus: brand.skus || [],
+    }));
+
+    if (!registryHasSKUMappings(registryEntries)) {
+      return products;
+    }
+
+    return products.map((product) => {
+      if (!product.sku) return product;
+      const skuMatch = lookupBrandBySKU(product.sku, registryEntries);
+      return skuMatch
+        ? {
+            ...product,
+            collectionBrand: skuMatch.brandName,
+            collectionCategory: product.collectionCategory || skuMatch.category,
+          }
+        : product;
+    });
+  })();
+
+  const groupedProducts = normalizedProducts
+    .filter((product) => !product.category || product.category.toLowerCase() !== "uncategorized")
+    .reduce((groups, product) => {
+      const brandKey = getBrandKey(product, brandRegistry);
+      if (!groups[brandKey]) groups[brandKey] = [];
+      groups[brandKey].push(product);
+      return groups;
+    }, {} as Record<string, Product[]>);
+
+  return sortProductsByBrandRegistryOrder(groupedProducts, brandRegistry);
+}
+
 export async function generatePDF(config: PDFConfig): Promise<void> {
   const { products, branding, salesAgents, qrCodeConfig, template = "modern", pricelistName, brandName } = config;
   
@@ -489,129 +540,7 @@ export async function generatePDF(config: PDFConfig): Promise<void> {
   // Move yPosition to after header (add small spacing)
   yPosition = headerHeight + 20;
 
-  // STEP 1: Normalize products with SKU-based brand lookup from Brand Registry
-  // This ensures collectionBrand is set correctly for manual ordering to work
-  const normalizedProducts = (() => {
-    if (!config.brandRegistry || config.brandRegistry.length === 0) {
-      return products;
-    }
-    
-    // Convert to BrandRegistryEntry format with skus
-    const brandRegistryEntries: BrandRegistryEntry[] = config.brandRegistry.map(b => ({
-      brandName: b.brandName,
-      category: b.category as 'cider' | 'wine' | 'spirits' | 'nonAlc',
-      displayOrder: b.displayOrder,
-      skus: b.skus || [],
-    }));
-    
-    const hasSKUMappings = registryHasSKUMappings(brandRegistryEntries);
-    if (!hasSKUMappings) {
-      return products;
-    }
-    
-    return products.map(product => {
-      if (!product.sku) return product;
-      
-      const skuMatch = lookupBrandBySKU(product.sku, brandRegistryEntries);
-      if (skuMatch) {
-        return {
-          ...product,
-          collectionBrand: skuMatch.brandName,
-          collectionCategory: product.collectionCategory || skuMatch.category,
-        };
-      }
-      return product;
-    });
-  })();
-  
-  // STEP 2: Inject manual sort index from brand registry
-  const productsWithSortIndex = config.brandRegistry && config.brandRegistry.length > 0
-    ? injectManualSortIndex(normalizedProducts, config.brandRegistry)
-    : normalizedProducts;
-  
-  // THEN filter out uncategorized products
-  const filteredProducts = productsWithSortIndex.filter(product => {
-    return !product.category || product.category.toLowerCase() !== "uncategorized";
-  });
-
-  // Group products by brand using flexible matching (same logic as preview panel)
-  // Products are grouped by: SKU→Registry match, product name match, collectionBrand, or category
-  const groupedProducts = filteredProducts
-    .reduce((acc, product) => {
-      const brandKey = getBrandKey(product, config.brandRegistry);
-      
-      if (!acc[brandKey]) {
-        acc[brandKey] = [];
-      }
-      acc[brandKey].push(product);
-      return acc;
-    }, {} as Record<string, any[]>);
-
-  // Sort products within each brand
-  // Priority 1: Manual order (via brand registry productOrder)
-  // Priority 2: Automatic wine type sorting (Sparkling → White → Rosé → Red)
-  const wineTypeOrder: Record<string, number> = {
-    'sparkling': 1,
-    'white': 2,
-    'rose': 3,
-    'rosé': 3,
-    'red': 4,
-  };
-
-  // Helper to extract secondary wine type from "Sparkling X" product names
-  const getSecondaryWineType = (productName: string, primaryType: string): string => {
-    if (primaryType !== 'sparkling') return primaryType;
-    
-    const lower = productName.toLowerCase();
-    // Check for secondary types in order of priority
-    if (lower.includes('white')) return 'white';
-    if (lower.includes('rosé') || lower.includes('rose') || lower.includes('pink')) return 'rosé';
-    if (lower.includes('red')) return 'red';
-    
-    return primaryType; // fallback to primary
-  };
-
-  Object.values(groupedProducts).forEach(brandProducts => {
-    brandProducts.sort((a, b) => {
-      // PRIORITY 1: Check for manual ordering first
-      const hasManualA = typeof a.manualSortIndex === 'number';
-      const hasManualB = typeof b.manualSortIndex === 'number';
-      
-      // Both have manual order - sort by manualSortIndex
-      if (hasManualA && hasManualB) {
-        return a.manualSortIndex - b.manualSortIndex;
-      }
-      
-      // Only A has manual order - A comes first
-      if (hasManualA && !hasManualB) return -1;
-      
-      // Only B has manual order - B comes first
-      if (!hasManualA && hasManualB) return 1;
-      
-      // PRIORITY 2: Neither has manual order - fall back to automatic wine type sorting
-      // Get primary wine types
-      const typeA = a.collectionType?.toLowerCase() || '';
-      const typeB = b.collectionType?.toLowerCase() || '';
-      
-      // For sparkling products, use secondary type from product name
-      const effectiveTypeA = getSecondaryWineType(a.product || '', typeA);
-      const effectiveTypeB = getSecondaryWineType(b.product || '', typeB);
-      
-      const orderA = wineTypeOrder[effectiveTypeA] || 999;
-      const orderB = wineTypeOrder[effectiveTypeB] || 999;
-      
-      if (orderA !== orderB) {
-        return orderA - orderB;
-      }
-      
-      // Tertiary sort: prioritize sparkling variants over non-sparkling when effective type is the same
-      if (typeA === 'sparkling' && typeB !== 'sparkling') return -1;
-      if (typeA !== 'sparkling' && typeB === 'sparkling') return 1;
-      
-      // Finally by product name
-      return (a.product || '').localeCompare(b.product || '');
-    });
-  });
+  const groupedProducts = getOrderedProductsByBrand(products, config.brandRegistry);
 
   // Render products by brand (sorted using brand registry ordering)
   const brandOrderingData = toBrandOrderingEntries(config.brandRegistry);
@@ -952,6 +881,11 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
     });
   });
 
+  const orderedProductsByBrand = sortProductsByBrandRegistryOrder(
+    groupedProducts,
+    config.brandRegistry,
+  );
+
   // Sort using brand registry ordering
   const brandOrderingData2 = toBrandOrderingEntries(config.brandRegistry);
   
@@ -968,7 +902,7 @@ async function generateClassicPDF(config: PDFConfig): Promise<void> {
   // Calculate where the footer area begins (content must end before this)
   const footerStartY = pageHeight - margin - footerHeight;
   
-  sortBrandGroups(Object.entries(groupedProducts), brandOrderingData2)
+  sortBrandGroups(Object.entries(orderedProductsByBrand), brandOrderingData2)
     .forEach(([groupBrandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 25;
@@ -1406,6 +1340,11 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
     });
   });
 
+  const orderedProductsByBrand = sortProductsByBrandRegistryOrder(
+    groupedProducts,
+    config.brandRegistry,
+  );
+
   // Render products by brand (sorted using brand registry ordering)
   const brandOrderingData3 = toBrandOrderingEntries(config.brandRegistry);
   
@@ -1423,7 +1362,7 @@ async function generateMinimalPDF(config: PDFConfig): Promise<void> {
   // Calculate where the footer area begins (content must end before this)
   const footerStartYMin = pageHeight - margin - footerHeight;
   
-  sortBrandGroups(Object.entries(groupedProducts), brandOrderingData3)
+  sortBrandGroups(Object.entries(orderedProductsByBrand), brandOrderingData3)
     .forEach(([groupBrandName, categoryProducts], index) => {
     if (index > 0) {
       yPosition += 12; // Minimal spacing between categories
