@@ -103,8 +103,7 @@ export default function Editor() {
       const url = user?.role === 'superAdmin' && companyIdForIntegration
         ? `/api/integrations?companyId=${companyIdForIntegration}`
         : "/api/integrations";
-      const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) return [];
+      const res = await apiRequest("GET", url);
       return res.json();
     },
     enabled: !!companyIdForIntegration,
@@ -155,13 +154,7 @@ export default function Editor() {
         ? `/api/companies/defaults?companyId=${companyIdForDefaults}`
         : '/api/companies/defaults';
       
-      const response = await fetch(url, {
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch company defaults');
-      }
+      const response = await apiRequest("GET", url);
       
       // Server now returns companyId in response for provenance verification
       return await response.json();

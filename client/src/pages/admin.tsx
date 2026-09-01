@@ -2254,8 +2254,7 @@ function BrandRegistryManager() {
       const url = isSuperAdmin && selectedCompanyId
         ? `/api/pricelists?companyId=${selectedCompanyId}`
         : "/api/pricelists";
-      const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch pricelists");
+      const res = await apiRequest("GET", url);
       const allPricelists = await res.json();
       // Filter to only this company's pricelists for super admin
       if (isSuperAdmin && selectedCompanyId) {

@@ -41,6 +41,8 @@ export default function Landing() {
     const errorParam = params.get("error");
     if (errorParam === "unauthorized") {
       setError("Access denied. Your email domain is not authorized. Please contact your administrator.");
+    } else if (errorParam === "session_expired") {
+      setError("Your session expired. Please sign in again.");
     }
   }, []);
 

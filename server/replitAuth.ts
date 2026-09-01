@@ -9,6 +9,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { applyTokenResponseToSession } from "@shared/session-token-update";
 
 const getOidcConfig = memoize(
   async () => {
@@ -46,10 +47,68 @@ function updateUserSession(
   user: any,
   tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
 ) {
-  user.claims = tokens.claims();
-  user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
+  applyTokenResponseToSession(user, tokens);
+}
+
+type RefreshedTokens = client.TokenEndpointResponse & client.TokenEndpointResponseHelpers;
+const sessionRefreshes = new Map<string, Promise<RefreshedTokens>>();
+
+function saveSession(req: any): Promise<void> {
+  return new Promise((resolve, reject) => {
+    req.session.save((error: Error | null) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+}
+
+async function ensureAuthenticatedSession(req: any, res: any): Promise<boolean> {
+  const user = req.user as any;
+
+  if (!req.isAuthenticated() || !user?.expires_at) {
+    res.status(401).json({ message: "Unauthorized" });
+    return false;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (now <= user.expires_at) {
+    return true;
+  }
+
+  if (user.isPasswordLogin) {
+    res.status(401).json({ message: "Session expired. Please log in again." });
+    return false;
+  }
+
+  if (!user.refresh_token) {
+    res.status(401).json({ message: "Session expired. Please log in again." });
+    return false;
+  }
+
+  const refreshKey = req.sessionID;
+  let refresh = sessionRefreshes.get(refreshKey);
+  if (!refresh) {
+    refresh = (async () => {
+      const config = await getOidcConfig();
+      return await client.refreshTokenGrant(config, user.refresh_token);
+    })();
+    sessionRefreshes.set(refreshKey, refresh);
+  }
+
+  try {
+    const tokenResponse = await refresh;
+    updateUserSession(user, tokenResponse);
+    await saveSession(req);
+    return true;
+  } catch (error) {
+    console.error("[Auth] Session refresh failed:", error);
+    res.status(401).json({ message: "Session expired. Please log in again." });
+    return false;
+  } finally {
+    if (sessionRefreshes.get(refreshKey) === refresh) {
+      sessionRefreshes.delete(refreshKey);
+    }
+  }
 }
 
 // Cache for super admin allowlist (loaded once at startup)
@@ -293,48 +352,13 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
-
-  if (!req.isAuthenticated() || !user.expires_at) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-  
-  // Check if session is still valid (not expired)
-  if (now <= user.expires_at) {
-    return next();
-  }
-
-  // Session is expired - handle based on login type
-  // Password-based sessions don't have refresh tokens - require re-login
-  if (user.isPasswordLogin) {
-    return res.status(401).json({ message: "Session expired. Please log in again." });
-  }
-
-  // OIDC sessions - try to refresh the token
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
+  if (await ensureAuthenticatedSession(req, res)) next();
 };
 
 // Middleware to check if user is super admin (full system access)
 export const requireSuperAdmin: RequestHandler = async (req, res, next) => {
+  if (!(await ensureAuthenticatedSession(req, res))) return;
   const user = req.user as any;
-  
-  if (!req.isAuthenticated() || !user.expires_at) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
   
   try {
     const userId = user.claims.sub;
@@ -352,11 +376,8 @@ export const requireSuperAdmin: RequestHandler = async (req, res, next) => {
 
 // Middleware to check if user is admin or super admin (for backward compatibility)
 export const isAdmin: RequestHandler = async (req, res, next) => {
+  if (!(await ensureAuthenticatedSession(req, res))) return;
   const user = req.user as any;
-  
-  if (!req.isAuthenticated() || !user.expires_at) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
   
   try {
     const userId = user.claims.sub;
@@ -374,11 +395,8 @@ export const isAdmin: RequestHandler = async (req, res, next) => {
 
 // Middleware for company-scoped admin (admin can only access their own company's resources)
 export const requireCompanyScopedAdmin: RequestHandler = async (req, res, next) => {
+  if (!(await ensureAuthenticatedSession(req, res))) return;
   const user = req.user as any;
-  
-  if (!req.isAuthenticated() || !user.expires_at) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
   
   try {
     const userId = user.claims.sub;

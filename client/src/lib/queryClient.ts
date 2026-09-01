@@ -1,8 +1,19 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+let sessionExpiryRedirectStarted = false;
+
+function redirectToSignIn() {
+  if (typeof window === "undefined" || sessionExpiryRedirectStarted) return;
+  sessionExpiryRedirectStarted = true;
+  window.location.assign("/?error=session_expired");
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
+    if (res.status === 401) {
+      redirectToSignIn();
+    }
     throw new Error(`${res.status}: ${text}`);
   }
 }
