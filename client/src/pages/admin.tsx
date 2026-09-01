@@ -30,6 +30,7 @@ import type {
   BrandCategory,
   Pricelist
 } from "@shared/schema";
+import { moveBrandProductBySku } from "@shared/brand-reorder";
 
 export default function AdminPage() {
   const { toast } = useToast();
@@ -2214,8 +2215,8 @@ function BrandRegistryManager() {
   // Product editing state
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingProductType, setEditingProductType] = useState<string>("");
-  const [draggedProductId, setDraggedProductId] = useState<string | null>(null);
-  const [draggedOverProductId, setDraggedOverProductId] = useState<string | null>(null);
+  const [draggedProductSku, setDraggedProductSku] = useState<string | null>(null);
+  const [draggedOverProductSku, setDraggedOverProductSku] = useState<string | null>(null);
   
   // Wix integration state
   const [wixAppId, setWixAppId] = useState("");
@@ -2960,63 +2961,51 @@ function BrandRegistryManager() {
   };
 
   // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, productId: string) => {
-    setDraggedProductId(productId);
+  const handleDragStart = (e: React.DragEvent, productSku: string) => {
+    setDraggedProductSku(productSku);
     e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragOver = (e: React.DragEvent, productId: string) => {
+  const handleDragOver = (e: React.DragEvent, productSku: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    setDraggedOverProductId(productId);
+    setDraggedOverProductSku(productSku);
   };
 
   const handleDragEnd = () => {
-    setDraggedProductId(null);
-    setDraggedOverProductId(null);
+    setDraggedProductSku(null);
+    setDraggedOverProductSku(null);
   };
 
-  const handleDrop = async (e: React.DragEvent, targetProductId: string, brandName: string) => {
+  const handleDrop = async (e: React.DragEvent, targetProductSku: string, brandName: string) => {
     e.preventDefault();
     
-    if (!draggedProductId || draggedProductId === targetProductId) {
-      setDraggedProductId(null);
-      setDraggedOverProductId(null);
+    if (!draggedProductSku || draggedProductSku === targetProductSku) {
+      setDraggedProductSku(null);
+      setDraggedOverProductSku(null);
       return;
     }
 
     // Get the products for this brand
     const brandProducts = productsByBrand?.[brandName] || [];
-    const draggedIndex = brandProducts.findIndex(p => p.id === draggedProductId);
-    const targetIndex = brandProducts.findIndex(p => p.id === targetProductId);
-
-    if (draggedIndex === -1 || targetIndex === -1) return;
-
-    // Reorder the products within this brand
-    const reorderedBrandProducts = [...brandProducts];
-    const [draggedProduct] = reorderedBrandProducts.splice(draggedIndex, 1);
-    reorderedBrandProducts.splice(targetIndex, 0, draggedProduct);
-
-    // Now we need to reconstruct the entire products array with the new order
-    // We'll keep all products from other brands in their original positions
-    // and replace this brand's products with the reordered ones
-    const allProductsFlat: any[] = [];
-    
-    // Flatten productsByBrand into a single array, preserving original order
-    // but using reordered products for the current brand
-    Object.entries(productsByBrand || {}).forEach(([brand, products]) => {
-      if (brand === brandName) {
-        allProductsFlat.push(...reorderedBrandProducts);
-      } else {
-        allProductsFlat.push(...products);
-      }
-    });
+    let reorderedBrandProducts: any[];
+    try {
+      reorderedBrandProducts = moveBrandProductBySku(
+        brandProducts,
+        draggedProductSku,
+        targetProductSku,
+      );
+    } catch {
+      handleDragEnd();
+      return;
+    }
 
     // Save the reordered products to the backend
     try {
+      const orderedSkus = reorderedBrandProducts.map((product) => product.sku);
       const payload = isSuperAdmin && selectedCompanyId
-        ? { reorderedProducts: allProductsFlat, companyId: selectedCompanyId }
-        : { reorderedProducts: allProductsFlat };
+        ? { brandName, orderedSkus, companyId: selectedCompanyId }
+        : { brandName, orderedSkus };
       
       await apiRequest("PATCH", "/api/brands/products", payload);
       
@@ -3034,8 +3023,8 @@ function BrandRegistryManager() {
       });
     }
 
-    setDraggedProductId(null);
-    setDraggedOverProductId(null);
+    setDraggedProductSku(null);
+    setDraggedOverProductSku(null);
   };
 
   const categoryLabels: Record<BrandCategory, string> = {
@@ -3376,19 +3365,19 @@ function BrandRegistryManager() {
                                   })()}
                                   {brandProducts.map((product, idx) => {
                                     const isEditing = editingProductId === product.id;
-                                    const isDragging = draggedProductId === product.id;
-                                    const isDraggedOver = draggedOverProductId === product.id;
+                                    const isDragging = draggedProductSku === product.sku;
+                                    const isDraggedOver = draggedOverProductSku === product.sku;
                                     const selectedForBrand = brandSelectedSkus.get(brand.brandName) || new Set();
                                     const isSelected = product.sku && selectedForBrand.has(product.sku);
                                     
                                     return (
                                       <div
-                                        key={product.id}
+                                        key={`${brand.brandName}:${product.sku}`}
                                         draggable={!isEditing}
-                                        onDragStart={(e) => handleDragStart(e, product.id)}
-                                        onDragOver={(e) => handleDragOver(e, product.id)}
+                                        onDragStart={(e) => handleDragStart(e, product.sku)}
+                                        onDragOver={(e) => handleDragOver(e, product.sku)}
                                         onDragEnd={handleDragEnd}
-                                        onDrop={(e) => handleDrop(e, product.id, brand.brandName)}
+                                        onDrop={(e) => handleDrop(e, product.sku, brand.brandName)}
                                         className={`flex items-center gap-3 p-3 rounded border text-sm transition-all ${
                                           isDragging ? 'opacity-50 bg-muted' : 'bg-muted/30'
                                         } ${isDraggedOver ? 'border-primary border-2' : ''} ${

@@ -24,6 +24,7 @@ import {
   sortFlatProductsByBrandRegistryOrder,
   sortProductsByBrandRegistryOrder,
 } from "@shared/product-ordering";
+import { reorderBrandProductsBySku } from "@shared/brand-reorder";
 
 // Helper to get effective company ID (supports Super Admin impersonation)
 function getEffectiveCompanyId(req: Request, user: User): number | null {
@@ -1205,8 +1206,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[PATCH /api/brands/products] reorderedProducts type:', typeof req.body.reorderedProducts);
       console.log('[PATCH /api/brands/products] reorderedProducts length:', req.body.reorderedProducts?.length);
 
-      // Check if this is a bulk reorder (reorderedProducts array) or single update (productId + updates)
-      if (req.body.reorderedProducts && Array.isArray(req.body.reorderedProducts)) {
+      // Brand Registry ordering is SKU-based so legacy duplicate row IDs cannot
+      // cause a valid drag operation to drop or duplicate products.
+      if (req.body.brandName && Array.isArray(req.body.orderedSkus)) {
+        const validation = z.object({
+          brandName: z.string().min(1),
+          orderedSkus: z.array(z.string().min(1)),
+        }).safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({
+            error: "Invalid brand reorder",
+            details: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`),
+          });
+        }
+
+        const brands = await storage.getBrandsByCompanyId(targetCompanyId);
+        let completeProductsInOrder: Pricelist["products"];
+        try {
+          completeProductsInOrder = reorderBrandProductsBySku(
+            latestPricelist.products,
+            validation.data.brandName,
+            validation.data.orderedSkus,
+            brands,
+          );
+        } catch (error) {
+          return res.status(400).json({
+            error: "Invalid brand reorder",
+            details: error instanceof Error ? error.message : "Unable to validate product order",
+          });
+        }
+
+        const brand = brands.find(
+          (candidate) => candidate.brandName === validation.data.brandName,
+        )!;
+        await storage.reorderPricelistAndUpdateBrandOrders(
+          latestPricelist.id,
+          completeProductsInOrder,
+          [{ brandId: brand.id, productOrder: validation.data.orderedSkus }],
+        );
+
+        res.json({ success: true });
+      // Keep the previous bulk format for compatibility with older clients,
+      // including its strict duplicate-ID validation.
+      } else if (req.body.reorderedProducts && Array.isArray(req.body.reorderedProducts)) {
         // Validate reorderedProducts - only require id field for reordering
         // Other fields should already exist from original CSV upload
         const reorderProductSchema = z.object({
