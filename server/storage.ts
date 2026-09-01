@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { buildAtomicReorderStatement, type BrandOrderUpdate } from "./reorder-persistence";
 import { 
   pricelists, 
   type InsertPricelist, 
@@ -60,7 +61,7 @@ export interface IStorage {
   reorderPricelistAndUpdateBrandOrders(
     pricelistId: number,
     products: Pricelist["products"],
-    brandOrders: Array<{ brandId: number; productOrder: string[] }>,
+    brandOrders: BrandOrderUpdate[],
   ): Promise<Pricelist>;
   deletePricelist(id: number): Promise<boolean>;
   
@@ -327,33 +328,28 @@ export class DatabaseStorage implements IStorage {
   async reorderPricelistAndUpdateBrandOrders(
     pricelistId: number,
     products: Pricelist["products"],
-    brandOrders: Array<{ brandId: number; productOrder: string[] }>,
+    brandOrders: BrandOrderUpdate[],
   ): Promise<Pricelist> {
-    return db.transaction(async (tx) => {
-      const [updatedPricelist] = await tx
-        .update(pricelists)
-        .set({ products, updatedAt: new Date() })
-        .where(eq(pricelists.id, pricelistId))
-        .returning();
+    const existingPricelist = await this.getPricelistById(pricelistId);
+    if (!existingPricelist) {
+      throw new Error("Pricelist not found while saving product order");
+    }
 
-      if (!updatedPricelist) {
-        throw new Error("Pricelist not found while saving product order");
-      }
+    const updatedAt = new Date();
 
-      for (const brandOrder of brandOrders) {
-        const [updatedBrand] = await tx
-          .update(brandRegistry)
-          .set({ productOrder: brandOrder.productOrder, updatedAt: new Date() })
-          .where(eq(brandRegistry.id, brandOrder.brandId))
-          .returning();
+    // Neon HTTP does not support Drizzle's interactive db.transaction API.
+    // A single PostgreSQL statement is still atomic, so use data-modifying
+    // CTEs and a guard expression that aborts the whole statement unless the
+    // pricelist and every requested brand row were updated.
+    await db.execute(
+      buildAtomicReorderStatement(pricelistId, products, brandOrders, updatedAt),
+    );
 
-        if (!updatedBrand) {
-          throw new Error(`Brand ${brandOrder.brandId} not found while saving product order`);
-        }
-      }
-
-      return updatedPricelist;
-    });
+    return {
+      ...existingPricelist,
+      products,
+      updatedAt,
+    };
   }
 
   async deletePricelist(id: number): Promise<boolean> {

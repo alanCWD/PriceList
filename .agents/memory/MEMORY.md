@@ -1,0 +1,1 @@
+- [Neon HTTP atomic writes](neon-http-atomic-writes.md) — interactive Drizzle transactions are unsupported; use one guarded PostgreSQL statement for atomic multi-table writes.
