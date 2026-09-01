@@ -28,11 +28,18 @@ export function reorderBrandProductsBySku<T extends OrderableProduct>(
     throw new Error(`Brand "${brandName}" does not exist`);
   }
 
-  const registrySkus = new Set(
-    (brand.skus || []).map((sku) => sku.trim()).filter(Boolean),
-  );
+  // Match the grouped Brand Registry API's ownership rule exactly. A legacy
+  // SKU may exist in more than one registry row; the final registry entry is
+  // its canonical owner until that bad membership is cleaned up.
+  const brandNameBySku = new Map<string, string>();
+  for (const registryBrand of brandRegistry) {
+    for (const rawSku of registryBrand.skus || []) {
+      const sku = rawSku.trim();
+      if (sku) brandNameBySku.set(sku, registryBrand.brandName);
+    }
+  }
   const currentBrandProducts = products.filter((product) =>
-    registrySkus.has(product.sku.trim()),
+    brandNameBySku.get(product.sku.trim()) === brandName,
   );
   const currentSkus = currentBrandProducts.map((product) => product.sku.trim());
   const normalizedOrder = orderedSkus.map((sku) => sku.trim());
@@ -59,7 +66,7 @@ export function reorderBrandProductsBySku<T extends OrderableProduct>(
   let nextBrandIndex = 0;
 
   return products.map((product) => {
-    if (!registrySkus.has(product.sku.trim())) return product;
+    if (brandNameBySku.get(product.sku.trim()) !== brandName) return product;
     return orderedProducts[nextBrandIndex++];
   });
 }

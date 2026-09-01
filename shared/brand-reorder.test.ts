@@ -68,3 +68,30 @@ test("rejects duplicate or incomplete SKU sequences", () => {
     /every current product/,
   );
 });
+
+test("uses the same canonical owner when a SKU appears in multiple brands", () => {
+  const products = [
+    { id: "product-1", sku: "A-1", product: "A One" },
+    { id: "product-2", sku: "SHARED", product: "Shared Product" },
+    { id: "product-3", sku: "A-2", product: "A Two" },
+    { id: "product-4", sku: "B-1", product: "B One" },
+  ];
+  const overlappingRegistry = [
+    { brandName: "Brand A", skus: ["A-1", "SHARED", "A-2"] },
+    { brandName: "Brand B", skus: ["SHARED", "B-1"] },
+  ];
+
+  const reordered = reorderBrandProductsBySku(
+    products,
+    "Brand A",
+    ["A-2", "A-1"],
+    overlappingRegistry,
+  );
+
+  assert.deepEqual(reordered.map((product) => product.sku), [
+    "A-2",
+    "SHARED",
+    "A-1",
+    "B-1",
+  ]);
+});
