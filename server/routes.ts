@@ -20,6 +20,10 @@ import {
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { findDuplicateSkus, reconcileProductIdsBySku } from "@shared/product-reconciliation";
+import {
+  sortFlatProductsByBrandRegistryOrder,
+  sortProductsByBrandRegistryOrder,
+} from "@shared/product-ordering";
 
 // Helper to get effective company ID (supports Super Admin impersonation)
 function getEffectiveCompanyId(req: Request, user: User): number | null {
@@ -732,40 +736,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Preserve isHidden settings from previous pricelist when uploading new CSV
-      // Match products by SKU and copy the isHidden flag from the previous pricelist
-      try {
-        const previousPricelist = await storage.getLatestPricelistByCompanyId(finalCompanyId);
-        if (previousPricelist && previousPricelist.products && pricelistData.products) {
-          // Build SKU → isHidden map from previous pricelist
-          const skuVisibilityMap = new Map<string, boolean>();
-          for (const product of previousPricelist.products) {
-            if (product.sku && product.isHidden !== undefined) {
-              skuVisibilityMap.set(product.sku, product.isHidden);
-            }
+      const previousPricelist = await storage.getLatestPricelistByCompanyId(finalCompanyId);
+      let importedProducts = pricelistData.products as Pricelist["products"];
+
+      if (previousPricelist?.products) {
+        // Keep stable product identity when a new pricelist is created from a
+        // later export, while retaining all mutable fields from the new rows.
+        importedProducts = reconcileProductIdsBySku(
+          previousPricelist.products,
+          importedProducts,
+        ).products;
+
+        // Preserve the existing visibility behavior for new pricelists.
+        const hiddenSkuSet = new Set(
+          previousPricelist.products
+            .filter((product) => product.sku && product.isHidden)
+            .map((product) => product.sku),
+        );
+        let preservedCount = 0;
+        importedProducts = importedProducts.map((product) => {
+          if (product.sku && hiddenSkuSet.has(product.sku)) {
+            preservedCount++;
+            return { ...product, isHidden: true };
           }
-          
-          // Apply isHidden values to matching SKUs in new products
-          let preservedCount = 0;
-          pricelistData.products = pricelistData.products.map((product: any) => {
-            if (product.sku && skuVisibilityMap.has(product.sku)) {
-              const previousIsHidden = skuVisibilityMap.get(product.sku);
-              if (previousIsHidden) {
-                preservedCount++;
-                return { ...product, isHidden: true };
-              }
-            }
-            return product;
-          });
-          
-          if (preservedCount > 0) {
-            console.log(`[POST /api/pricelists] Preserved isHidden settings for ${preservedCount} products from previous pricelist`);
-          }
+          return product;
+        });
+
+        if (preservedCount > 0) {
+          console.log(`[POST /api/pricelists] Preserved isHidden settings for ${preservedCount} products from previous pricelist`);
         }
-      } catch (err) {
-        console.log("[POST /api/pricelists] No previous pricelist found or error getting it:", err);
-        // Continue without preserving settings - this is not a critical failure
       }
+
+      const brands = await storage.getBrandsByCompanyId(finalCompanyId);
+      pricelistData.products = sortFlatProductsByBrandRegistryOrder(
+        importedProducts,
+        brands,
+      );
 
       console.log("[POST /api/pricelists] Validation passed, creating pricelist...");
       console.log("[POST /api/pricelists] categoryFilter in validation.data:", validation.data.categoryFilter);
@@ -861,7 +867,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (updateData.products) {
-        const duplicateSkus = findDuplicateSkus(updateData.products);
+        const incomingProducts = updateData.products as Pricelist["products"];
+        const duplicateSkus = findDuplicateSkus(incomingProducts);
         if (duplicateSkus.length > 0) {
           return res.status(400).json({
             error: `The upload contains duplicate SKU${duplicateSkus.length === 1 ? "" : "s"}: ${duplicateSkus.join(", ")}`,
@@ -871,10 +878,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // A new export is authoritative for mutable product fields (including
         // its name), while a unique matching SKU keeps the existing product ID.
         // Blank SKUs intentionally remain new standalone rows.
-        updateData.products = reconcileProductIdsBySku(
+        const reconciledProducts = reconcileProductIdsBySku(
           existingPricelist.products,
-          updateData.products,
+          incomingProducts,
         ).products;
+
+        if (existingPricelist.companyId) {
+          const brands = await storage.getBrandsByCompanyId(existingPricelist.companyId);
+          updateData.products = sortFlatProductsByBrandRegistryOrder(
+            reconciledProducts,
+            brands,
+          );
+        } else {
+          updateData.products = reconciledProducts;
+        }
       }
 
       console.log("[PATCH /api/pricelists] categoryFilter in validation.data:", validation.data.categoryFilter);
@@ -1526,6 +1543,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
+      const orderedProductsByBrand = sortProductsByBrandRegistryOrder(
+        productsByBrand,
+        brands,
+      );
+
       console.log(`[GET /api/brands/products] Total products: ${targetPricelist.products.length}`);
       console.log(`[GET /api/brands/products] Registry SKU mappings: ${skuToBrand.size}`);
       console.log(`[GET /api/brands/products] SKU-matched: ${skuMatched}`);
@@ -1534,7 +1556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Return products grouped by brand along with pricelist metadata
       res.json({
-        productsByBrand,
+        productsByBrand: orderedProductsByBrand,
         pricelistMeta: {
           id: targetPricelist.id,
           name: targetPricelist.name,

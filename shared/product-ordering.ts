@@ -10,6 +10,10 @@ export interface BrandProductOrder {
   productOrder?: string[] | null;
 }
 
+export interface BrandProductMembership extends BrandProductOrder {
+  skus?: string[] | null;
+}
+
 const WINE_TYPE_ORDER: Record<string, number> = {
   sparkling: 1,
   white: 2,
@@ -115,6 +119,7 @@ export function sortProductsBySavedSkuOrder<T extends OrderableProduct>(
   });
 }
 
+
 /**
  * Applies each registry brand's saved product order to its corresponding group.
  * Products belonging to an unregistered group use the deterministic fallback.
@@ -133,4 +138,55 @@ export function sortProductsByBrandRegistryOrder<T extends OrderableProduct>(
       sortProductsBySavedSkuOrder(products, savedOrderByBrand.get(brandName)),
     ]),
   );
+}
+
+/**
+ * Applies each registry brand's saved SKU order to a flat product array.
+ *
+ * Brand slots remain in their current positions, so this changes only the
+ * relative sequence of products belonging to the same registry brand.
+ * Unassigned and blank-SKU products remain untouched in their original slots.
+ */
+export function sortFlatProductsByBrandRegistryOrder<T extends OrderableProduct>(
+  products: readonly T[],
+  brandRegistry?: readonly BrandProductMembership[],
+): T[] {
+  if (!brandRegistry || brandRegistry.length === 0) {
+    return [...products];
+  }
+
+  const brandNameBySku = new Map<string, string>();
+  for (const brand of brandRegistry) {
+    for (const rawSku of brand.skus || []) {
+      const sku = rawSku.trim();
+      if (sku) {
+        brandNameBySku.set(sku, brand.brandName);
+      }
+    }
+  }
+
+  const productsByBrand: Record<string, T[]> = {};
+  for (const product of products) {
+    const sku = product.sku.trim();
+    const brandName = sku ? brandNameBySku.get(sku) : undefined;
+    if (brandName) {
+      (productsByBrand[brandName] ||= []).push(product);
+    }
+  }
+
+  const orderedProductsByBrand = sortProductsByBrandRegistryOrder(
+    productsByBrand,
+    brandRegistry,
+  );
+  const nextIndexByBrand = new Map<string, number>();
+
+  return products.map((product) => {
+    const sku = product.sku.trim();
+    const brandName = sku ? brandNameBySku.get(sku) : undefined;
+    if (!brandName) return product;
+
+    const nextIndex = nextIndexByBrand.get(brandName) || 0;
+    nextIndexByBrand.set(brandName, nextIndex + 1);
+    return orderedProductsByBrand[brandName][nextIndex];
+  });
 }
