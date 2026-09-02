@@ -60,3 +60,30 @@ test("does not reconcile blank or duplicate SKUs", () => {
   assert.deepEqual(result.duplicateSkus, ["DUPLICATE"]);
   assert.deepEqual(result.products.map((product) => product.id), ["new-blank", "new-1", "new-2"]);
 });
+
+test("does not carry duplicate legacy IDs into a refreshed import", () => {
+  const result = reconcileProductIdsBySku(
+    [
+      { id: "product-93", sku: "305932" },
+      { id: "product-93", sku: "717862" },
+    ],
+    [
+      { id: "product-0", sku: "305932" },
+      { id: "product-1", sku: "717862" },
+    ],
+  );
+
+  assert.deepEqual(result.products.map((product) => product.id), ["product-0", "product-1"]);
+});
+
+test("keeps reconciled IDs unique when a fresh row has a preserved product ID", () => {
+  const result = reconcileProductIdsBySku(
+    [{ id: "product-1", sku: "SKU-A" }],
+    [
+      { id: "product-0", sku: "SKU-B" },
+      { id: "product-1", sku: "SKU-A" },
+    ],
+  );
+
+  assert.deepEqual(result.products.map((product) => product.id), ["product-0", "product-1"]);
+});

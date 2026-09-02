@@ -25,7 +25,11 @@ import {
   sortProductsByBrandRegistryOrder,
 } from "@shared/product-ordering";
 import { reorderBrandProductsBySku } from "@shared/brand-reorder";
-import { findProductIndex } from "@shared/product-target";
+import {
+  findProductIndex,
+  findProductIndicesById,
+  findProductIndicesBySku,
+} from "@shared/product-target";
 import {
   findDuplicateBrandSkuMemberships,
   repairBrandOrderFromPricelist,
@@ -1358,13 +1362,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Single product update
         const { productId, productSku, updates } = req.body;
-        
-        if (!productId && !productSku) {
+
+        const normalizedProductId = typeof productId === "string" ? productId.trim() : "";
+        const normalizedProductSku = typeof productSku === "string" ? productSku.trim() : "";
+
+        if (!normalizedProductId && !normalizedProductSku) {
           return res.status(400).json({ error: "Product SKU or ID is required" });
         }
 
         // Prefer SKU because legacy generated IDs can be shared by distinct rows.
-        const productIndex = findProductIndex(latestPricelist.products, { sku: productSku, id: productId });
+        // Reject ambiguous legacy-only requests instead of silently updating the
+        // first matching product.
+        if (!normalizedProductSku && normalizedProductId) {
+          const idMatches = findProductIndicesById(latestPricelist.products, normalizedProductId);
+          if (idMatches.length > 1) {
+            return res.status(409).json({
+              error: "Product SKU is required",
+              details: "This legacy product ID belongs to multiple products. Retry the update with the product SKU.",
+            });
+          }
+        }
+
+        if (normalizedProductSku) {
+          const skuMatches = findProductIndicesBySku(latestPricelist.products, normalizedProductSku);
+          if (skuMatches.length > 1) {
+            return res.status(409).json({
+              error: "Product SKU is ambiguous",
+              details: "More than one product has this SKU. Resolve the duplicate SKU before updating the product.",
+            });
+          }
+        }
+
+        const productIndex = findProductIndex(latestPricelist.products, {
+          sku: normalizedProductSku || undefined,
+          id: normalizedProductId || undefined,
+        });
         if (productIndex === -1) {
           return res.status(404).json({ error: "Product not found" });
         }

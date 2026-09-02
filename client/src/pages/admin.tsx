@@ -2219,7 +2219,7 @@ function BrandRegistryManager() {
   const [selectedPricelistId, setSelectedPricelistId] = useState<number | null>(null);
   
   // Product editing state
-  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editingProductSku, setEditingProductSku] = useState<string | null>(null);
   const [editingProductType, setEditingProductType] = useState<string>("");
   const [draggedProductSku, setDraggedProductSku] = useState<string | null>(null);
   const [draggedOverProductSku, setDraggedOverProductSku] = useState<string | null>(null);
@@ -2496,17 +2496,17 @@ function BrandRegistryManager() {
 
   // Update product mutation (for type editing)
   const updateProductMutation = useMutation({
-    mutationFn: async (data: { productId: string; updates: any; companyId?: number }) => {
+    mutationFn: async (data: { productSku: string; updates: any; companyId?: number }) => {
       const payload = isSuperAdmin && selectedCompanyId
-        ? { productId: data.productId, updates: data.updates, companyId: selectedCompanyId }
-        : { productId: data.productId, updates: data.updates };
+        ? { productSku: data.productSku, updates: data.updates, companyId: selectedCompanyId }
+        : { productSku: data.productSku, updates: data.updates };
       const res = await apiRequest("PATCH", "/api/brands/products", payload);
       return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
       toast({ title: "Product updated successfully" });
-      setEditingProductId(null);
+      setEditingProductSku(null);
       setEditingProductType("");
     },
     onError: (error: any) => {
@@ -2776,19 +2776,19 @@ function BrandRegistryManager() {
 
   // Product editing handlers
   const handleStartEditProductType = (product: any) => {
-    setEditingProductId(product.id);
+    setEditingProductSku(product.sku);
     setEditingProductType(product.collectionType || "");
   };
 
-  const handleSaveProductType = (productId: string) => {
+  const handleSaveProductType = (productSku: string) => {
     updateProductMutation.mutate({
-      productId,
+      productSku,
       updates: { collectionType: editingProductType.trim() || null }
     });
   };
 
   const handleCancelEditProductType = () => {
-    setEditingProductId(null);
+    setEditingProductSku(null);
     setEditingProductType("");
   };
 
@@ -3414,7 +3414,7 @@ function BrandRegistryManager() {
                                     );
                                   })()}
                                   {brandProducts.map((product, idx) => {
-                                    const isEditing = editingProductId === product.id;
+                                    const isEditing = editingProductSku === product.sku;
                                     const isDragging = draggedProductSku === product.sku;
                                     const isDraggedOver = draggedOverProductSku === product.sku;
                                     const selectedForBrand = brandSelectedSkus.get(brand.brandName) || new Set();
@@ -3480,7 +3480,7 @@ function BrandRegistryManager() {
                                                   autoFocus
                                                   onKeyDown={(e) => {
                                                     if (e.key === 'Enter') {
-                                                      handleSaveProductType(product.id);
+                                                       handleSaveProductType(product.sku);
                                                     } else if (e.key === 'Escape') {
                                                       handleCancelEditProductType();
                                                     }
@@ -3504,7 +3504,7 @@ function BrandRegistryManager() {
                                               variant="ghost"
                                               size="sm"
                                               className="text-xs"
-                                              onClick={() => handleSaveProductType(product.id)}
+                                              onClick={() => handleSaveProductType(product.sku)}
                                               disabled={updateProductMutation.isPending}
                                             >
                                               Save

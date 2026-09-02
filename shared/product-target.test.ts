@@ -19,3 +19,21 @@ test("keeps ID fallback behavior for older callers", () => {
   assert.equal(findProductIndex(products, { id: "product-1" }), 0);
   assert.equal(findProductIndex(products, { sku: "missing", id: "product-1" }), 0);
 });
+
+test("does not choose a row when an ID is shared and no SKU identifies it", () => {
+  const products = [
+    { id: "product-285", sku: "707378", product: "Odd Society London Dry Gin" },
+    { id: "product-285", sku: "90685", product: "Odd Society Prospector Rye Whisky 375 ml" },
+  ];
+
+  assert.equal(findProductIndex(products, { id: "product-285" }), -1);
+});
+
+test("does not choose a row when the requested SKU is also duplicated", () => {
+  const products = [
+    { id: "product-1", sku: "DUPLICATE", product: "First" },
+    { id: "product-2", sku: "DUPLICATE", product: "Second" },
+  ];
+
+  assert.equal(findProductIndex(products, { sku: "DUPLICATE" }), -1);
+});
