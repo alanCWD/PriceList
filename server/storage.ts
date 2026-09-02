@@ -1,5 +1,6 @@
 import { db } from "../db";
 import { buildAtomicReorderStatement, type BrandOrderUpdate } from "./reorder-persistence";
+import type { BrandRegistryRepairUpdate } from "@shared/brand-registry-repair";
 import { 
   pricelists, 
   type InsertPricelist, 
@@ -85,6 +86,7 @@ export interface IStorage {
   getBrandByName(companyId: number, brandName: string): Promise<BrandRegistry | undefined>;
   createBrand(brand: InsertBrandRegistry): Promise<BrandRegistry>;
   updateBrand(id: number, brand: UpdateBrandRegistry): Promise<BrandRegistry | undefined>;
+  repairBrandRegistry(updates: BrandRegistryRepairUpdate[]): Promise<void>;
   deleteBrand(id: number): Promise<boolean>;
   
   // Product Visibility operations
@@ -506,6 +508,30 @@ export class DatabaseStorage implements IStorage {
       .where(eq(brandRegistry.id, id))
       .returning();
     return result[0];
+  }
+
+  async repairBrandRegistry(updates: BrandRegistryRepairUpdate[]): Promise<void> {
+    if (updates.length === 0) return;
+    const textArray = (values: string[]) =>
+      values.length > 0
+        ? sql`ARRAY[${sql.join(values.map((value) => sql`${value}`), sql`, `)}]::text[]`
+        : sql`ARRAY[]::text[]`;
+    const rows = updates.map((update) =>
+      sql`(${update.id}::integer, ${textArray(update.skus)}, ${textArray(update.productOrder)})`,
+    );
+
+    await db.execute(sql`
+      WITH repair_rows(id, skus, product_order) AS (
+        VALUES ${sql.join(rows, sql`, `)}
+      )
+      UPDATE brand_registry AS brand
+      SET
+        skus = repair.skus,
+        product_order = repair.product_order,
+        updated_at = NOW()
+      FROM repair_rows AS repair
+      WHERE brand.id = repair.id
+    `);
   }
   
   async deleteBrand(id: number): Promise<boolean> {

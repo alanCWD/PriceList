@@ -26,6 +26,10 @@ import {
 } from "@shared/product-ordering";
 import { reorderBrandProductsBySku } from "@shared/brand-reorder";
 import { findProductIndex } from "@shared/product-target";
+import {
+  findDuplicateBrandSkuMemberships,
+  repairBrandOrderFromPricelist,
+} from "@shared/brand-registry-repair";
 
 // Helper to get effective company ID (supports Super Admin impersonation)
 function getEffectiveCompanyId(req: Request, user: User): number | null {
@@ -1901,6 +1905,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: errorMessage });
       }
 
+      const existingBrands = await storage.getBrandsByCompanyId(targetCompanyId);
+      const duplicateMemberships = findDuplicateBrandSkuMemberships([
+        ...existingBrands,
+        {
+          brandName: validation.data.brandName,
+          skus: validation.data.skus || [],
+        },
+      ]);
+      if (duplicateMemberships.length > 0) {
+        return res.status(409).json({
+          error: "SKU already assigned",
+          details: duplicateMemberships.map(
+            ({ sku, brandNames }) => `${sku}: ${brandNames.join(", ")}`,
+          ),
+        });
+      }
+
       const brand = await storage.createBrand(validation.data);
       res.status(201).json(brand);
     } catch (error) {
@@ -1946,6 +1967,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validation.success) {
         const errorMessage = fromZodError(validation.error).message;
         return res.status(400).json({ error: errorMessage });
+      }
+
+      if (validation.data.skus) {
+        const brands = await storage.getBrandsByCompanyId(existing.companyId);
+        const proposedBrands = brands.map((brand) =>
+          brand.id === existing.id
+            ? { ...brand, skus: validation.data.skus }
+            : brand,
+        );
+        const duplicateMemberships = findDuplicateBrandSkuMemberships(proposedBrands);
+        if (duplicateMemberships.length > 0) {
+          return res.status(409).json({
+            error: "SKU already assigned",
+            details: duplicateMemberships.map(
+              ({ sku, brandNames }) => `${sku}: ${brandNames.join(", ")}`,
+            ),
+          });
+        }
       }
 
       const brand = await storage.updateBrand(id, validation.data);
@@ -1998,6 +2037,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Merge new SKUs with existing ones (no duplicates)
       const existingSkus = existing.skus || [];
+      const brands = await storage.getBrandsByCompanyId(existing.companyId);
+      const requestedSkus = new Set(skus.map((sku: string) => sku.trim()).filter(Boolean));
+      const conflictingBrands = brands.filter((brand) =>
+        brand.id !== existing.id
+        && (brand.skus || []).some((sku) => requestedSkus.has(sku.trim())),
+      );
+      if (conflictingBrands.length > 0) {
+        return res.status(409).json({
+          error: "SKU already assigned",
+          details: `Remove the selected SKU from ${conflictingBrands.map((brand) => brand.brandName).join(", ")} before assigning it to ${existing.brandName}`,
+        });
+      }
       const allSkusSet = new Set([...existingSkus, ...skus]);
       const allSkus = Array.from(allSkusSet);
       
@@ -2006,6 +2057,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error adding SKUs to brand:", error);
       res.status(500).json({ error: "Failed to add SKUs to brand" });
+    }
+  });
+
+  app.post("/api/brands/:id/repair-order", isAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid brand ID" });
+
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      const brand = await storage.getBrandById(id);
+      if (!brand) return res.status(404).json({ error: "Brand not found" });
+      if (user.role !== "superAdmin" && brand.companyId !== getEffectiveCompanyId(req, user)) {
+        return res.status(403).json({ error: "Access denied: Brand belongs to different company" });
+      }
+
+      const latestPricelist = await storage.getLatestPricelistByCompanyId(brand.companyId);
+      if (!latestPricelist) {
+        return res.status(404).json({ error: "No pricelist found for this company" });
+      }
+
+      const brands = await storage.getBrandsByCompanyId(brand.companyId);
+      const repair = repairBrandOrderFromPricelist(latestPricelist.products, id, brands);
+      await storage.repairBrandRegistry(repair.updates);
+
+      res.json({
+        success: true,
+        productOrder: repair.updates.find((update) => update.id === id)?.productOrder || [],
+        removedMemberships: repair.removedMemberships,
+      });
+    } catch (error) {
+      const details = error instanceof Error ? error.message : "Unable to repair brand order";
+      res.status(400).json({ error: "Brand order could not be repaired", details });
     }
   });
 
@@ -2367,6 +2452,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!importData || !importData.brands) {
         return res.status(400).json({ error: "Invalid import data format" });
+      }
+
+      const existingBrands = await storage.getBrandsByCompanyId(targetCompanyId);
+      const importedByName = new Map<string, { brandName: string; skus: string[] }>(
+        importData.brands
+          .filter((brand: any) => brand?.brandName && brand?.category)
+          .map((brand: any) => [
+            brand.brandName,
+            {
+              brandName: brand.brandName,
+              skus: Array.isArray(brand.skus) ? brand.skus : [],
+            },
+          ]),
+      );
+      const projectedBrands = [
+        ...existingBrands.map((brand) => importedByName.get(brand.brandName) || brand),
+        ...Array.from(importedByName.values()).filter(
+          (brand: any) => !existingBrands.some((existing) => existing.brandName === brand.brandName),
+        ),
+      ];
+      const duplicateMemberships = findDuplicateBrandSkuMemberships(projectedBrands);
+      if (duplicateMemberships.length > 0) {
+        return res.status(400).json({
+          error: "Duplicate SKU ownership in import",
+          details: duplicateMemberships.map(
+            ({ sku, brandNames }) => `${sku}: ${brandNames.join(", ")}`,
+          ),
+        });
       }
 
       console.log(`[Brand Import] Starting import for company ${targetCompanyId}`);

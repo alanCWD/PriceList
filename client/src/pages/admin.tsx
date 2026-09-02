@@ -2566,6 +2566,31 @@ function BrandRegistryManager() {
     },
   });
 
+  const repairBrandOrderMutation = useMutation({
+    mutationFn: async ({ brandId }: { brandId: number; brandName: string }) => {
+      const res = await apiRequest("POST", `/api/brands/${brandId}/repair-order`, {});
+      return await res.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brands/products"] });
+      const conflictNote = data.removedMemberships?.length
+        ? ` Resolved ${data.removedMemberships.length} conflicting SKU assignment.`
+        : "";
+      toast({
+        title: "Product order repaired",
+        description: `${variables.brandName} now follows the latest pricelist row order.${conflictNote}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Unable to repair product order",
+        description: error.message || "The registry conflict could not be resolved safely",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Assign SKUs to brand mutation
   const assignSkusMutation = useMutation({
     mutationFn: async ({ brandId, skus }: { brandId: number; skus: string[] }) => {
@@ -3266,6 +3291,25 @@ function BrandRegistryManager() {
                                 </div>
                               </AccordionTrigger>
                               <div className="flex gap-2 ml-4">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Replace ${brand.brandName}'s saved product order with the latest pricelist row order?`)) {
+                                      repairBrandOrderMutation.mutate({
+                                        brandId: brand.id,
+                                        brandName: brand.brandName,
+                                      });
+                                    }
+                                  }}
+                                  disabled={repairBrandOrderMutation.isPending}
+                                  data-testid={`button-repair-brand-order-${brand.id}`}
+                                  title="Use latest pricelist row order"
+                                >
+                                  <ArrowUpDown className="w-4 h-4 mr-1" />
+                                  Use Pricelist Order
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"

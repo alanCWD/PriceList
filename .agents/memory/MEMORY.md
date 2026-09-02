@@ -1,1 +1,2 @@
 - [Neon HTTP atomic writes](neon-http-atomic-writes.md) — interactive Drizzle transactions are unsupported; use one guarded PostgreSQL statement for atomic multi-table writes.
+- [Brand order repair source](brand-order-repair-source.md) — when a saved producer order is corrupt, rebuild it from the latest pricelist row order rather than automatic sorting.
