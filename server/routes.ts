@@ -25,6 +25,7 @@ import {
   sortProductsByBrandRegistryOrder,
 } from "@shared/product-ordering";
 import { reorderBrandProductsBySku } from "@shared/brand-reorder";
+import { findProductIndex } from "@shared/product-target";
 
 // Helper to get effective company ID (supports Super Admin impersonation)
 function getEffectiveCompanyId(req: Request, user: User): number | null {
@@ -1352,25 +1353,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ success: true });
       } else {
         // Single product update
-        const { productId, updates } = req.body;
+        const { productId, productSku, updates } = req.body;
         
-        if (!productId) {
-          return res.status(400).json({ error: "Product ID is required" });
+        if (!productId && !productSku) {
+          return res.status(400).json({ error: "Product SKU or ID is required" });
         }
 
-        // Find the product to get its SKU
-        const product = latestPricelist.products.find((p: any) => p.id === productId);
-        if (!product) {
+        // Prefer SKU because legacy generated IDs can be shared by distinct rows.
+        const productIndex = findProductIndex(latestPricelist.products, { sku: productSku, id: productId });
+        if (productIndex === -1) {
           return res.status(404).json({ error: "Product not found" });
         }
+        const product = latestPricelist.products[productIndex];
 
         // Update the product in the products array
-        const updatedProducts = latestPricelist.products.map((p: any) => {
-          if (p.id === productId) {
-            return { ...p, ...updates };
-          }
-          return p;
-        });
+        const updatedProducts = latestPricelist.products.map((p: any, index: number) =>
+          index === productIndex ? { ...p, ...updates } : p,
+        );
 
         // Save updated pricelist
         await storage.updatePricelist(latestPricelist.id, {

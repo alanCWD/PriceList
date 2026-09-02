@@ -2514,10 +2514,10 @@ function BrandRegistryManager() {
 
   // Toggle product visibility mutation
   const toggleVisibilityMutation = useMutation({
-    mutationFn: async (data: { productId: string; isHidden: boolean }) => {
+    mutationFn: async (data: { productSku: string; isHidden: boolean }) => {
       const payload = isSuperAdmin && selectedCompanyId
-        ? { productId: data.productId, updates: { isHidden: data.isHidden }, companyId: selectedCompanyId }
-        : { productId: data.productId, updates: { isHidden: data.isHidden } };
+        ? { productSku: data.productSku, updates: { isHidden: data.isHidden }, companyId: selectedCompanyId }
+        : { productSku: data.productSku, updates: { isHidden: data.isHidden } };
       const res = await apiRequest("PATCH", "/api/brands/products", payload);
       return await res.json();
     },
@@ -3474,7 +3474,7 @@ function BrandRegistryManager() {
                                               variant="ghost"
                                               size="icon"
                                               onClick={() => toggleVisibilityMutation.mutate({
-                                                productId: product.id,
+                                                productSku: product.sku,
                                                 isHidden: !product.isHidden
                                               })}
                                               disabled={toggleVisibilityMutation.isPending}
