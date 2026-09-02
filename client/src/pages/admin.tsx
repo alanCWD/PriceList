@@ -31,6 +31,7 @@ import type {
   Pricelist
 } from "@shared/schema";
 import { moveBrandProductBySku } from "@shared/brand-reorder";
+import { getOptionalFieldDefaults } from "@shared/field-mapping-defaults";
 
 export default function AdminPage() {
   const { toast } = useToast();
@@ -179,6 +180,7 @@ function CompaniesManager() {
     format: "",
     price: "",
     category: "",
+    ribbon: "ribbon",
     notes: "",
     productImageUrl: "",
   });
@@ -243,6 +245,7 @@ function CompaniesManager() {
       format: "",
       price: "",
       category: "",
+      ribbon: "ribbon",
       notes: "",
       productImageUrl: "",
     });
@@ -277,6 +280,7 @@ function CompaniesManager() {
     }
     
     // Auto-detect mappings from CSV headers (only for new companies)
+    const optionalDefaults = getOptionalFieldDefaults(trimmedHeaders);
     const autoMapping: FieldMapping = {
       product: trimmedHeaders.find(h => {
         const lower = h.toLowerCase();
@@ -289,7 +293,7 @@ function CompaniesManager() {
       }) || "",
       price: trimmedHeaders.find(h => h.toLowerCase().includes("price")) || "",
       category: trimmedHeaders.find(h => h.toLowerCase().includes("category") || h.toLowerCase().includes("producer") || h.toLowerCase().includes("winery")) || "",
-      notes: trimmedHeaders.find(h => h.toLowerCase().includes("note")) || "",
+      ...optionalDefaults,
       productImageUrl: trimmedHeaders.find(h => {
         const lower = h.toLowerCase();
         return lower.includes("productimage") || lower === "productimageurl";
@@ -331,6 +335,7 @@ function CompaniesManager() {
       format: (company.defaultFieldMapping as any)?.format || "",
       price: (company.defaultFieldMapping as any)?.price || "",
       category: (company.defaultFieldMapping as any)?.category || "",
+      ribbon: (company.defaultFieldMapping as any)?.ribbon || "",
       notes: (company.defaultFieldMapping as any)?.notes || "",
       productImageUrl: (company.defaultFieldMapping as any)?.productImageUrl || "",
     };
@@ -366,6 +371,7 @@ function CompaniesManager() {
       format: defaultFieldMapping.format?.trim() || "",
       price: defaultFieldMapping.price?.trim() || "",
       category: defaultFieldMapping.category?.trim() || "",
+      ribbon: defaultFieldMapping.ribbon?.trim() || "",
       notes: defaultFieldMapping.notes?.trim() || "",
       productImageUrl: defaultFieldMapping.productImageUrl?.trim() || "",
     };

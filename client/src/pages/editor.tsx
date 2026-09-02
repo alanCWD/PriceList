@@ -20,6 +20,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { stripHtml } from "@/lib/text-utils";
 import { parseCollection, extractWineTypeFromProductName, lookupBrandBySKU, registryHasSKUMappings, type BrandRegistryEntry } from "@/lib/collection-parser";
 import { findDuplicateSkus, reconcileProductIdsBySku } from "@shared/product-reconciliation";
+import { getOptionalFieldDefaults } from "@shared/field-mapping-defaults";
 import type { Product, SalesAgent, CompanyBranding, QRCodeConfig, FieldMapping, Pricelist, Template, BrandRegistry } from "@shared/schema";
 
 export default function Editor() {
@@ -45,7 +46,7 @@ export default function Editor() {
     format: "",
     price: "",
     category: "",
-    ribbon: "",
+    ribbon: "ribbon",
     notes: "",
     productImageUrl: "",
   });
@@ -607,14 +608,18 @@ export default function Editor() {
     
     // Priority 1: Company defaults (for new pricelists)
     if (companyDefaults?.defaultFieldMapping) {
+      const optionalDefaults = getOptionalFieldDefaults(headers, {
+        ribbon: (companyDefaults.defaultFieldMapping as any).ribbon || "",
+        notes: companyDefaults.defaultFieldMapping.notes || "",
+      });
       mappingToUse = {
         product: companyDefaults.defaultFieldMapping.product || "",
         sku: companyDefaults.defaultFieldMapping.sku || "",
         format: companyDefaults.defaultFieldMapping.format || "",
         price: companyDefaults.defaultFieldMapping.price || "",
         category: companyDefaults.defaultFieldMapping.category || "",
-        ribbon: (companyDefaults.defaultFieldMapping as any).ribbon || "",
-        notes: companyDefaults.defaultFieldMapping.notes || "",
+        ribbon: optionalDefaults.ribbon,
+        notes: optionalDefaults.notes,
         productImageUrl: companyDefaults.defaultFieldMapping.productImageUrl || "",
       };
       source = "company defaults";
@@ -653,14 +658,7 @@ export default function Editor() {
         }) || "",
         price: headers.find(h => h.toLowerCase().includes("price")) || "",
         category: headers.find(h => h.toLowerCase().includes("category") || h.toLowerCase().includes("producer") || h.toLowerCase().includes("winery")) || "",
-        ribbon: headers.find(h => h.toLowerCase() === "ribbon") || "",
-        notes: headers.find(h => {
-          const lower = h.toLowerCase();
-          // Match columns that are specifically 'notes', contain 'notes', or Wix's additionalInfoDescription2
-          return lower === "notes" || 
-                 (lower.includes("note") && !lower.includes("ribbon")) ||
-                 lower === "additionalinfodescription2";
-        }) || "",
+        ...getOptionalFieldDefaults(headers),
         productImageUrl: headers.find(h => {
           const lower = h.toLowerCase();
           return lower.includes("productimage") || lower === "productimageurl";
